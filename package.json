@@ -1,0 +1,24 @@
+{
+  "name": "desktop1",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "blake thollaug",
+  "type": "commonjs",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "runpile": "npx sass src/public:build/public && npx tsc && electron .",
+    "compile": "npx sass src/public:build/public && npx tsc",
+    "compile-ts": "npx tsc",
+    "watch-ts": "npx tsc --watch",
+    "compile-sass": "sass src/public:build/public",
+    "watch-sass": "sass --watch ./src/public/:./build/public/"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.1",
+    "electron": "^42.1.0",
+    "sass": "^1.99.0",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "src/scripts",
+    "outDir": "build/scripts",
+
+    "allowJs": false,
+
+    // Environment Settings
+    // See also https://aka.ms/tsconfig/module
+    
+    "module": "commonjs",
+    "target": "esnext",
+    "esModuleInterop": true,
+    "types": ["node"],
+    
+    // "module": "es2015",
+    // "emitDeclarationOnly": true,
+    // // "noEmit": true,
+    // "allowImportingTsExtensions": true,
+
+    // "module": "nodenext",
+    // "target": "es2022",
+    // "moduleResolution": "node16",
+    // "esModuleInterop": true,
+    
+    // For nodejs:
+    // "lib": ["es2024", "ESNext.Array", "ESNext.Collection", "ESNext.Iterator"],
+    // "types": ["node"],
+    // and npm install -D @types/node
+
+    // Other Outputs
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Style Options
+    // "noImplicitReturns": true,
+    // "noImplicitOverride": true,
+    // "noUnusedLocals": true,
+    // "noUnusedParameters": true,
+    // "noFallthroughCasesInSwitch": true,
+    // "noPropertyAccessFromIndexSignature": true,
+
+    // Recommended Options
+    "strict": true,
+    // "verbatimModuleSyntax": true,
+    // "isolatedModules": true,
+    // "noUncheckedSideEffectImports": true,
+    // "moduleDetection": "force",
+    "skipLibCheck": true,
+  },
+  "include": [
+    "src/scripts/renderer.ts",
+    "src/scripts/preload.ts"
+  ],
+  // "exclude": [
+  //   "node_modules"
+  // ],
+  // "references": [
+  //   {"path": "" }
+  // ]
+}

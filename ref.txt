@@ -1,0 +1,5 @@
+Commands Reference
+ - run typescript compiler:             `$npm run compile-ts`
+ - automatic typescript compiler:       `$npm run watch-ts`
+ - compile sass to css:                 `$npm run compile-sass`
+ - automatic sass to css compilation:   `$npm run watch-sass`

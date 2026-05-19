@@ -1,0 +1,6 @@
+@use "./stylesheets/index.scss";
+
+body {
+    background: index.$background-color-1;
+    color: index.$text-color-1;
+}
