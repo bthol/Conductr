@@ -7,7 +7,11 @@
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
+    "start": "electron-forge start",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish",
+    "devstart": "electron .",
     "runpile": "npx sass src/public:build/public && npx tsc && electron .",
     "compile": "npx sass src/public:build/public && npx tsc",
     "compile-ts": "npx tsc",
@@ -16,6 +20,8 @@
     "watch-sass": "sass --watch ./src/public/:./build/public/"
   },
   "devDependencies": {
+    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/publisher-github": "^7.11.1",
     "@types/node": "^25.9.1",
     "electron": "^42.1.0",
     "sass": "^1.99.0",

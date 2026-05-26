@@ -3,3 +3,111 @@ Commands Reference
  - automatic typescript compiler:       `$npm run watch-ts`
  - compile sass to css:                 `$npm run compile-sass`
  - automatic sass to css compilation:   `$npm run watch-sass`
+
+
+Concept Work / Research and Design
+
+
+Ride the coattails of engineers with wires orchestrated by conductors in this audio texture engine synthesizer.
+
+Conductor's role in an orchestra
+
+coordinating sections
+attenuating performance
+Cuing key events
+
+Electrical conductive properties of materials
+
+as Resistance increases, Current decreases
+Current can be interpretted as a modulation source
+or more specifically as the frequency of a modulation source
+
+as Ampacity increases, Temperature increases
+Temperature can be interpretted as the frequency distribution of partials or as the color of the sound
+such that the spectral distribution increases into the higher frequency ranges as Temperature increases
+As a maximum Temperature is approached, the timbre of the sound can change
+and inversely, as the minimum Temperature is approached the timbre of the sound can change
+such that the sound has a differnt character at the extremes of its Temperature ranges than it does within a normal range
+There will need to be some way to determine the exact maximum and minimum Temperature
+as well as the method of timbral modulation and distribution of modulation ammount before extreme ranges 
+
+I should introduce a model to organize all of these relationships into a single Concept
+Let the model be a wire with properties for:
+ - material (Ressistivity): affects frenquency of modulation source
+ - material (Temperature): affects timbral distortion distribution, maximum and minimum values
+ - wire diameter (Ampacity): affects the amplitude of modulation source
+
+Ampacity ==> modulation Amplitude
+Ressistivity ==> modulation Frequency
+
+Perhaps, the wire can be thought of as a carrier of total power ammount, where that power distributes between properties.
+In this idea, the wire model essentially determines how to distribute the power sent through it amongst its wire properties.
+
+If wire properties include wire length, I can start to think of the timing of the power as it is sent through the wire.
+This would allow me to consider the harmonics between power transmissions in multiple wires,
+which would help to bridge the conceptual gap between orchestral conductors and material conductors,
+because the harmonics can be managed by some model for a conductor in the orchestral sense.
+
+Wire Model
+Material (physicochemical properties of material)
+ - Thermochromism: ammount of change in frequency distribution, ammount of Thermistor Effect (decreases Resistance as temperature increases)
+ - Thermal expansion and contraction: timbral deformation type and curvature of deformation ammount around temperature extremes
+ - Ressistivity: material maximum (melting point) and minimum (freezing point) Temperature, maximum propagation speed
+ - Ductility: ammount by which a wire of this material can be attenuated by the Conductor Model (by which Diamter can be reduced to increase Length)
+Geometry (phyical characteristics of wire)
+ - Diameter: Increases Ampacity and Ressistivity as this characteristic increases
+ - Length: multiplies by Resistance to determine Velocity
+Transmission (wave properties of modulation source)
+ - Velocity: calculated propagation speed
+ - Frequency: Velocity over period (treat wire Length as wave period to prevent Gibbs phenomenon)
+ - Ampacity: 
+
+Conductor Model
+Comodualtion (combines modulation sources--properties from wire models--into a single comodulation source)
+ - Frequency Harmonization: attenuate wire Geometry to bring  (ductility: increase length => decrease diameter)
+ - Ampacity Normalization: let the comodulation source amplitude be the median of the wires' ampacity
+ - Bandwidth Smoothing: set a fixed maximum ammount of change in comodulation source properties per unit time
+Cuing: modulaton sources only run and Comodulation source calculation only occurs while cuing (playing a note)
+
+User Parameters
+User selects materials from a material menu that displays all of the properties for each material
+or a material menu is displayed upon selection of a material in a list of materials <-- THIS ONE
+Geometric characteristics each have a dedicated parametric control with a fixed range, meaning a page or tab for each wire
+Transmission properties are displayed after calculation
+Cuing will eventually be controled by midi input into synth, but will just be an on/off button until then (cue/hold button)
+alternatively, it can be a gate that affects output volume to create a rythm <-- THIS ONE
+Allow a single parameter for ammount of comodulation (essentially an inverse distortion effect; lower values are rougher and higher values are smoother)
+The comodulation parameter can be thought of as an expression wheel effect for effective control during performance
+Allow another parameter for ammount of modulation from comodulation source
+
+Under the hood
+3 Wire models for modulation source properties
+1 conductor model for comodulation source properties
+3 polyphonic generators (sections) that carry the comodulation source
+
+Over the hood
+For each Wire,
+ - Choose a material to display a material/transmission property table
+ - tweak geometric parameters to affect values in table to taste
+For the Conductor,
+ - control comodulation for a more or less orchestrated modulation
+ - control ammount of modulation (comodulation amplitude)
+ - Select gate shape (ramp down, ramp up, triangle)
+ - Select gate ammount (percent ammount of comodulation amplitude)
+ - Select gate speed (1:1, 1:2, 1:3, 1:4 ratio between rhythm period and comodulation period)
+For each Section,
+ - Select a fourier series waveform (triangle, square, or saw) from a list to generate that kind of waveform for voices in section
+ - Select number of voices in section (monophonic to duophonic to polyphonic; 1, 2 or 3 voices)
+ - Select ammount of phase shift between voices (unison knob)
+ - note: let each section have its own running phase to prevent unison between sections
+ - Adjust intensity parameter (increase voice amplitude and filter cutoff and decrease filter resonance) to affect the relative intensity of that section to others
+
+Before developing any of this,
+it is critical to determine if the technologies that are used to develop it
+can be used in all areas of the synthesizer's desired application, 
+and to determine all areas of the synthesizer's desired application.
+
+Is this a standalone only synth or will I want a plugin version for use in a Digital Audio Workstation?
+
+A plugin version makes the synth essentially usable on market where I can also demonstrate its abilities,
+and make it possible to include the project in my web portfolio by linking to that marketplace.

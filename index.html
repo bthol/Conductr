@@ -9,8 +9,68 @@
     <link rel="stylesheet" href="./build/public/style.css">
 </head>
 <body id="root">
-    <h1>Conductr</h1>
-    <button id="btn1" type="button">click me</button>
-    <button id="btn2" type="button">reload</button>
+    <h1 class="supertitle">Conductr</h1>
+    <p class="subtitle">Ride the coattails of engineers with wires orchestrated by conductors</p>
+    <!-- macro module -->
+    <div id="macros">
+        <div class="title">Macros</div>
+        <button id="play-btn" type="button">play</button>
+        <button id="stop-btn" type="button">stop</button>
+        <button id="breaker" type="button">breaker</button>
+        <input id="master-gain-in" type="number" placeholder="In Gain" min="0" max="99" value="100">
+        <input id="master-gain-out" type="number" placeholder="Out Gain" min="0" max="99" value="99">
+    </div>
+
+    <!-- wire module -->
+     <div>
+        <div class="title">Wire Model</div>
+     </div>
+
+     <!-- conductor module -->
+     <div>
+        <div class="title">Conductor Model</div>
+     </div>
+
+    <!-- orchestra module -->
+    <div>
+        <div class="title">Orchestra</div>
+        <!-- OSC1 -->
+        <div id="osc1" class="oscs">
+            <div class="subtitle">Section 1</div>
+            <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="99">
+            <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="261.63">
+            <select name="type" class="type">
+                <option value="sine">sine</option>
+                <option value="triangle">triangle</option>
+                <option value="saw">saw</option>
+                <option value="square">square</option>
+            </select>
+        </div>
+        <!-- OSC2 -->
+        <div id="osc2" class="oscs">
+            <div class="subtitle">Section 2</div>
+            <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="99">
+            <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+            <select name="type" class="type">
+                <option value="sine">sine</option>
+                <option value="triangle">triangle</option>
+                <option value="saw">saw</option>
+                <option value="square">square</option>
+            </select>
+        </div>
+        <!-- OSC3 -->
+        <div id="osc3" class="oscs">
+            <div class="subtitle">Section 3</div>
+            <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="99">
+            <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="392.00">
+            <select name="type" class="type">
+                <option value="sine">sine</option>
+                <option value="triangle">triangle</option>
+                <option value="saw">saw</option>
+                <option value="square">square</option>
+            </select>
+        </div>
+    </div>
+    
 </body>
 </html>

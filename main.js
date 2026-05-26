@@ -50,9 +50,9 @@ app.whenReady().then(() => {
   win = new BrowserWindow({
     width: width,
     height: height,
-    minWidth: 200,
+    minWidth: 300,
     minHeight: 400,
-    // frame: false,
+    frame: true,
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'build', 'scripts', 'preload.js'),
