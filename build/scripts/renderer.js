@@ -1,47 +1,65 @@
 "use strict";
-// rerender file
-// handles element navigation events
 console.log("linked script");
 ;
-// main process response handler
 window.electronAPI.res((data) => {
     console.log(data);
 });
-// TESTING ELECTRONAPI
-// DOM selections
-// const btn1: HTMLElement | null = document.getElementById('btn1');
-// const btn2: HTMLElement | null = document.getElementById('btn2');
-// // DOM manipulation
-// if (btn1) {
-//     btn1.addEventListener('click', () => {
-//         const channel: string = 'btn1-channel';
-//         const message: string = 'ipc renderer to main';
-//         console.log(message);
-//         window.electronAPI.msg(channel, message);
-//         btn1.innerText = `clicked`;
-//         btn1.style.color = '#ff0000';
-//     });
-// }
-// if (btn2) {
-//     btn2.addEventListener('click', () => {
-//         console.log('clicked btn2');
-//         window.location.reload();
-//     })
-// }
-// use Web Audio API
-// look into tone.js: https://tonejs.github.io/
-// AudioNode, AudioParam, AnalyserNode, 
-// setup audio context
+const variance = 4;
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
-// declare global structures
-let oscillators = {}; // stores parameters for each oscilator from user parameters
-let voices = []; // stores voices generated with parameter values
+async function getProcessorModules() {
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/clamp-processor.js');
+}
+;
+function analyze(node) {
+    if (node) {
+        const bufferSize = 128;
+        node.fftSize = bufferSize;
+        node.maxDecibels = 6;
+        node.minDecibels = -200;
+        let data = new Float32Array(bufferSize);
+        let debounce;
+        function loop(currentTime) {
+            if (node) {
+                clearTimeout(debounce);
+                debounce = setTimeout(() => {
+                    clearTimeout(debounce);
+                    node.getFloatTimeDomainData(data);
+                    let peak = 0;
+                    for (let i = 0; i < data.length; i++) {
+                        const datum = data[i];
+                        if (typeof datum === 'number') {
+                            const absValue = Math.abs(datum);
+                            if (absValue > peak) {
+                                peak = absValue;
+                            }
+                        }
+                    }
+                    console.log(peak);
+                    requestAnimationFrame(loop);
+                }, 1000);
+            }
+        }
+        ;
+        loop(audioContext.currentTime);
+    }
+}
+;
+function clamp(input) {
+    const processor = new AudioWorkletNode(audioContext, 'clamp-processor');
+    processor.port.onmessage = (event) => {
+        console.log('clamp-processor thread: ', event.data);
+    };
+    input.connect(processor);
+    return processor;
+}
+;
+let oscillators = {};
+let voices = [];
+let analysis = {};
 let playback = false;
-// parameter for master volume control
-let maxIn = 1; // 0 - 1
-let maxOut = 0.99; // 0 - 0.99
-// parameter elements
+let maxIn = 0.5;
+let maxOut = 0.5;
 const breakerBtn = document.getElementById('breaker');
 const playBtn = document.getElementById('play-btn');
 const stopBtn = document.getElementById('stop-btn');
@@ -51,23 +69,18 @@ const osc1 = document.getElementById('osc1');
 const osc2 = document.getElementById('osc2');
 const osc3 = document.getElementById('osc3');
 function shutup() {
-    oscillators = {}; // clear oscilator data
-    voices.forEach((osc) => { osc.stop(audioContext.currentTime); }); // mute each voice
-    voices = []; // clear voices data
+    oscillators = {};
+    voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
+    voices = [];
 }
 ;
-function sound() {
-    // generates voices from oscillators
-    // clear your throat
+async function sound() {
     if (playback) {
         shutup();
     }
-    // handle macros
     if (masterGainIn && masterGainOut) {
-        // get user values
         let inVal = Number(masterGainIn.value);
         let outVal = Number(masterGainOut.value);
-        // enforce macro ranges
         if (inVal > 100) {
             inVal = 100;
         }
@@ -80,11 +93,9 @@ function sound() {
         else if (outVal < 0) {
             outVal = 0;
         }
-        // apply values to macros
         maxIn = inVal / 100;
         maxOut = outVal / 100;
     }
-    // get user data + add data to oscillators structure
     const oscs = document.querySelectorAll('.oscs');
     let gotit = true;
     for (const osc of oscs) {
@@ -97,17 +108,20 @@ function sound() {
                 const type = oscType.value;
                 const hz = Number(oscFreq.value);
                 const gain = Number(oscGain.value);
-                // 0 - 99 => 0/100 - 99/100 => 0 - +inf or lim1 => 0 - 1
-                // maxIn distributes levels below its percentage value within 0 - 99 range
-                // maxOut distributes levels below its value within 0 - 1 range
-                const gainCalc = (-Math.log10(-(gain * maxIn) / 100 + 1)) / 2 * maxOut; // logarithmic distribution of gain
+                const v = (variance * (hz / 20000));
+                const gainFactor = .25;
+                const gainV = Math.random() * v * gainFactor;
+                const gainCalc = (((-(Math.log10((-((gain * maxIn) + (gainV)) / 100) + 1)) / 2))) * maxOut;
+                const freqFactor = .5;
+                const freqV = Math.random() * v * freqFactor;
+                const freqCalc = hz - freqV;
                 if (gainCalc < 1 && gainCalc >= 0) {
-                    const osc = { 'type': type, 'hz': hz, 'gain': gainCalc };
+                    const osc = { 'type': type, 'hz': freqCalc, 'gain': gainCalc };
                     oscillators[ID] = osc;
                     gotit = true;
                 }
                 else {
-                    const osc = { 'type': type, 'hz': hz, 'gain': 0.99 * maxOut };
+                    const osc = { 'type': type, 'hz': freqCalc, 'gain': 0.99 * maxOut };
                     oscillators[ID] = osc;
                     gotit = true;
                 }
@@ -126,67 +140,77 @@ function sound() {
             break;
         }
     }
-    // iterate over oscillators structure
     if (gotit) {
-        Object.keys(oscillators).forEach((key) => {
-            // declare oscillator variables
-            const oscil = oscillators[key]; // each oscillator
-            const osc = audioContext.createOscillator(); // each voice from oscillator
+        const keys = Object.keys(oscillators);
+        for (const key of keys) {
+            const oscil = oscillators[key];
+            const osc = audioContext.createOscillator();
             const oscType = oscil['type'];
             const oscFreq = oscil['hz'];
             const oscGain = audioContext.createGain();
             const oscVol = oscil['gain'];
-            // configure oscillator with variables
             osc.type = oscType;
             osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
-            // route oscillator node to gain node
             oscGain.gain.value = oscVol;
             osc.connect(oscGain);
-            // connect to destination (playback system for audio output)
-            oscGain.connect(audioContext.destination);
-            // store in structure for global reference
+            const preAnalyzer = audioContext.createAnalyser();
+            analysis[key] = [];
+            analysis[key].push(preAnalyzer);
+            oscGain.connect(preAnalyzer);
+            const clampNode = clamp(oscGain);
+            clampNode.connect(audioContext.destination);
+            const postAnalyzer = audioContext.createAnalyser();
+            analysis[key].push(postAnalyzer);
+            clampNode.connect(postAnalyzer);
             voices.push(osc);
-            // play oscilator
-            osc.start(audioContext.currentTime);
+            osc.start(0);
+        }
+    }
+    if (gotit) {
+        const keys = Object.keys(analysis);
+        const key = keys[0];
+        if (typeof key === 'string') {
+            const nodeList = analysis[key];
+            if (nodeList) {
+                analyze(nodeList[1]);
+            }
+        }
+    }
+}
+;
+let cache = setTimeout(() => { }, 0);
+async function setup() {
+    if (playBtn && stopBtn && breakerBtn && masterGainIn && masterGainOut && osc1 && osc2 && osc3) {
+        await getProcessorModules();
+        playBtn.addEventListener('click', () => {
+            sound();
+            playback = true;
+        });
+        stopBtn.addEventListener('click', () => {
+            shutup();
+            playback = false;
+        });
+        breakerBtn.addEventListener('click', () => { window.location.reload(); });
+        masterGainIn.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    sound();
+                }, 100);
+            }
+        });
+        masterGainOut.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    sound();
+                }, 100);
+            }
         });
     }
 }
 ;
-// if all elements are working
-let cache = setTimeout(() => { }, 0);
-if (playBtn && stopBtn && breakerBtn && masterGainIn && masterGainOut && osc1 && osc2 && osc3) {
-    // setup user controls
-    // mute voices and clear osc and voice data, generate osc and voice data and play voices
-    playBtn.addEventListener('click', () => {
-        sound();
-        playback = true;
-    });
-    // mute all and clear voices
-    stopBtn.addEventListener('click', () => {
-        shutup();
-        playback = false;
-    });
-    // breaker button reloads program
-    breakerBtn.addEventListener('click', () => { window.location.reload(); });
-    // controls oscillator input gain
-    masterGainIn.addEventListener('input', () => {
-        if (playback) {
-            clearTimeout(cache);
-            cache = setTimeout(() => {
-                clearTimeout(cache);
-                sound();
-            }, 100);
-        }
-    });
-    // controls oscillator output gain
-    masterGainOut.addEventListener('input', () => {
-        if (playback) {
-            clearTimeout(cache);
-            cache = setTimeout(() => {
-                clearTimeout(cache);
-                sound();
-            }, 100);
-        }
-    });
-}
+setup();
 //# sourceMappingURL=renderer.js.map

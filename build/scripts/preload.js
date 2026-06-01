@@ -1,7 +1,4 @@
 "use strict";
-// Source - https://stackoverflow.com/a/78305575
-// Posted by Praise Dare
-// Retrieved 2026-05-19, License - CC BY-SA 4.0
 const { ipcRenderer } = require('electron/renderer');
 const { contextBridge } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
