@@ -43,7 +43,7 @@ window.electronAPI.res((data) => {
 // channelCountMode, AnalyserNode.getFloatTimeDomainData()
 
 // variance affects the variability oscillator properties
-const variance: number = 4;
+let variance: number = 4;
 
 // setup audio context
 const options: Object = {'sampleRate': 44100.0, 'latencyHint': 'interactive'};
@@ -124,6 +124,26 @@ function clamp(input: AudioNode): AudioWorkletNode {
     return processor;
 };
 
+// waveform functions
+function sigmoid(amount = 2) {
+    // generates curve for waveshaper
+  const k = typeof amount === 'number' ? amount : 2;
+  const n_samples: number = 44100;
+  const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+  const deg: Number = Math.PI / 180;
+  
+  for (let i = 0; i < n_samples; ++i) {
+    // Map array index to an input audio range of [-1, 1]
+    const x = (i * 2) / n_samples - 1;
+    
+    // S-curve functions -- Soft-clipping Sigmoid
+    curve[i] = Math.tanh(x * k) / Math.tanh(k); // k = drive
+    // curve[i] = x / Math.sqrt(1 + x * x);
+    // curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+  }
+  return curve;
+};
+
 // declare global structures
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscilator from user parameters
 let voices: Array<OscillatorNode> = []; // stores voices generated with parameter values
@@ -132,15 +152,18 @@ let playback: boolean = false;
 
 // parameter for master volume control
 // 0.5 output == -6 dB
-let maxIn: number = 0.5; // 0 - 1
+let maxIn: number = 1; // 0 - 1
 let maxOut: number = 0.5; // 0 - 0.99
+let master: number = .75; // 0 - 0.99
 
 // UI elements
 const breakerBtn: HTMLElement | null = document.getElementById('breaker');
 const playBtn: HTMLElement | null = document.getElementById('play-btn');
 const stopBtn: HTMLElement | null = document.getElementById('stop-btn');
-const masterGainIn = document.getElementById('master-gain-in') as HTMLInputElement;
-const masterGainOut = document.getElementById('master-gain-out') as HTMLInputElement;
+const OscPreGain = document.getElementById('osc-gain-in') as HTMLInputElement;
+const OscPostGain = document.getElementById('osc-gain-out') as HTMLInputElement;
+const masterGain = document.getElementById('master-gain') as HTMLInputElement;
+const variability = document.getElementById('variability') as HTMLInputElement;
 const osc1: HTMLElement | null = document.getElementById('osc1');
 const osc2: HTMLElement | null = document.getElementById('osc2');
 const osc3: HTMLElement | null = document.getElementById('osc3');
@@ -160,27 +183,40 @@ async function sound() {
     }
 
     // handle macros
-    if (masterGainIn && masterGainOut) {
+    if (OscPreGain && OscPostGain) {
 
-        // get user values
-        let inVal: number = Number(masterGainIn.value);
-        let outVal: number = Number(masterGainOut.value);
-
-        // enforce macro ranges
+        // get user values from conductor module
+        let inVal: number = Number(OscPreGain.value);
         if (inVal > 100) {
             inVal = 100;
         } else if (inVal < 0) {
             inVal = 0;
         }
+        maxIn = inVal/100;
+
+        let outVal: number = Number(OscPostGain.value);
         if (outVal > 99) {
-            outVal = 100;
+            outVal = 99;
         } else if (outVal < 0) {
             outVal = 0;
         }
-
-        // apply values to macros
-        maxIn = inVal/100;
         maxOut = outVal/100;
+
+        let masterVal: number = Number(masterGain.value);
+        if (masterVal > 99) {
+            masterVal = 99;
+        } else if (masterVal < 0) {
+            masterVal = 0;
+        }
+        master = masterVal/100;
+
+        let vary: number = Number(variability.value);
+        if (vary > 10) {
+            vary = 10;
+        } else if (vary < 1) {
+            vary = 1;
+        }
+        variance = vary;
     }
 
     // get user data + add data to oscillators structure
@@ -188,16 +224,24 @@ async function sound() {
     let gotit: boolean = true;
     for (const osc of oscs) {
         if (osc) {
+            // oscillator elements
             const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+            const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+            const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
             const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+            const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
             const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
             const oscType: HTMLInputElement | null = osc.querySelector('.type');
-            const ID: string | undefined = crypto.randomUUID().split('-')[0];
-            if (oscGain && oscFreq && oscPart && oscType && typeof ID === 'string') {
+            const ID: string | undefined = crypto.randomUUID().split('-')[0]; // generate Osc ID
+            if (oscGain && oscDriv && oscVoic && oscFreq && oscDetu && oscPart && oscType && typeof ID === 'string') {
                 // oscillator properties
-                const type: string = oscType.value;
-                const hz: number = Number(oscFreq.value);
                 const gain: number = Number(oscGain.value);
+                const drive: number = Number(oscDriv.value);
+                const voices: number = Number(oscVoic.value);
+                const hz: number = Number(oscFreq.value);
+                const detune: number = Number(oscDetu.value);
+                const partials: number = Number(oscPart.value);
+                const type: string = oscType.value;
 
                 // VARIABILITY ENGINE
 
@@ -228,7 +272,7 @@ async function sound() {
                 // gain variation
                 const gainFactor: number = .25; // 4:1  variation to gain
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
-                const gainCalc: number = (((-(Math.log10((-(gain * maxIn + gainV)/100) + 1))/2))) * maxOut;
+                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * maxIn : (-Math.log10(-(gain/100) + 1)/2 + gainV) * maxIn;
 
                 // frequency variation
                 const freqFactor: number = .5; // 2:1  variation to frequency
@@ -243,7 +287,6 @@ async function sound() {
                 const timbFactor: number = .1; // 10:1 variation to timbre
 
                 // generate waveform
-                const partials: number = Number(oscPart.value);
                 const real: Float32Array = new Float32Array(partials);
                 const imag: Float32Array = new Float32Array(partials);
                 let waveform: PeriodicWave;
@@ -388,16 +431,40 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
 
-                // add oscillator to oscillators structure
-                if (gainCalc < 1 && gainCalc >= 0) {
-                    const osc: object = {'waveform':waveform, 'hz':freqCalc, 'gain':gainCalc};
-                    oscillators[ID] = osc;
-                    gotit = true;
-                } else {
-                    const osc: object = {'waveform':waveform, 'hz':freqCalc, 'gain':0.99 * maxOut};
-                    oscillators[ID] = osc;
-                    gotit = true;
+                // enforce ranges to validate user input and prevent variability engine from causing trouble
+                let gainVal: number = gainCalc;
+                if (gainCalc >= 1 || gainCalc < 0) {
+                    gainVal = (1 - gainV - .01) * maxIn;
                 }
+                let voiceVal: number = voices;
+                if (voiceVal > 4) {
+                    voiceVal = 4;
+                } else if (voiceVal < 1) {
+                    voiceVal = 1;
+                }
+                let driveVal: number = drive;
+                if (driveVal > 10) {
+                    driveVal = 10;
+                } else if (driveVal < 2) {
+                    driveVal = 2;
+                }
+                let freqVal: number = freqCalc;
+                if (freqVal > 20000) {
+                    freqVal = 20000;
+                } else if (freqVal < 20) {
+                    freqVal = 20;
+                }
+                let detuneVal: number = detune;
+                if (detuneVal > 24) {
+                    detuneVal = 24;
+                } else if (detuneVal < -24) {
+                    detuneVal = -24;
+                }
+                
+                // add oscillator to oscillators object
+                const osc: object = {'waveform':waveform, 'voices':voiceVal, 'gain':gainVal, 'drive':driveVal, 'hz':freqVal, 'detune': detuneVal};
+                oscillators[ID] = osc;
+                gotit = true;
 
             } else {
                 console.log('parameter elements not found');
@@ -414,43 +481,71 @@ async function sound() {
         }
     }
 
-    // iterate over oscillators structure to generate voices
     if (gotit) {
+
+        // voices > FX > Master > out
+        const masterGainNode: GainNode = audioContext.createGain();
+        masterGainNode.gain.value = Number(masterGain.value)/100;
+        masterGainNode.connect(audioContext.destination);
+
+        // generate voices
         const keys: Array<string> = Object.keys(oscillators);
         for (const key of keys) {
     
-            // declare oscillator variables
+            // collect oscillator properties
             const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
-            const osc: OscillatorNode = audioContext.createOscillator(); // each voice from oscillator
             const waveform: PeriodicWave = oscil['waveform'];
-
-            // console.log(waveform);
-
+            const oscVoic: number = oscil['voices'];
             const oscFreq: number = oscil['hz'];
-            const oscGain: GainNode = audioContext.createGain();
+            const oscDetu: number = oscil['detune'];
             const oscVol: number = oscil['gain'];
-
-            // generator process routing
-            // branch0 > oscillator > gain > branch1 or compression > soft limiter > brickwall limit > 0 dB clamp > output and branch2
-            // branch1 > pre-analysis
-            // branch2 > post-analysis
-
-            // configure oscillator node with variables
-            osc.setPeriodicWave(waveform); // set waveform
-            osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime); // set frequency
-            oscGain.gain.value = oscVol; // set gain
+            const oscDrive: number = oscil['drive'];
             
-            // route oscillator node to gain node to apply gain
-            osc.connect(oscGain);
+            // generator process route map
+            // oscillator > pregain > waveshaper > postgain > 3Comp > clamp > out
+            //                      > preAnalyzer                           > postAnalyzer
             
+            // create gain node to apply pre gain value
+            const preGain: GainNode = audioContext.createGain();
+            preGain.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
+            
+            // create voices for oscilator
+            // const spread: number = 100/oscVoic/100; // percent detune per voice
+            for (let v = 0; v < oscVoic; v++) {
+                // each voice from oscillator
+                const osc: OscillatorNode = audioContext.createOscillator();
+                // set waveform
+                osc.setPeriodicWave(waveform);
+                // set frequency
+                osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
+                // set detune
+                osc.detune.value = v * oscDetu;
+                // connect each voice from the oscillator to pre gain node
+                osc.connect(preGain);
+                // store pointer to oscillator in structure for global reference
+                voices.push(osc);
+            }
+
+            // sigmoid curve waveshaper distortion
+            const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
+            const oversample: OverSampleType = '4x';
+            waveshaper.curve = sigmoid(oscDrive); // Higher number = sharper S-curve / more saturation
+            waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
+            preGain.connect(waveshaper);
+
             // pre-analysis
             const preAnalyzer: AnalyserNode =  audioContext.createAnalyser();
             // store in global structure
             analysis[key] = []; // init key for osc in structure
             analysis[key].push(preAnalyzer); // add node to array at key in structure
-            oscGain.connect(preAnalyzer);
+            preGain.connect(preAnalyzer);
 
-            // generator dynamics system
+            // apply out gain before dynamics system to ensure all levels follow curve
+            const postGain: GainNode = audioContext.createGain();
+            postGain.gain.value = maxOut;
+            waveshaper.connect(postGain);
+
+            // 3Comp: generator dynamics system
             // -12 dB - -3 dB total range before brickwall
             // 3X compressors affecting that range
             // 3X 3 dB ranges in total range
@@ -474,7 +569,7 @@ async function sound() {
             compressor.ratio.value = 3;       // 1:3 ratio
             compressor.attack.value = 0.05;   // 1:2 with release
             compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-            oscGain.connect(compressor);
+            postGain.connect(compressor);
             
             // soft limit before critical range
             const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
@@ -498,21 +593,22 @@ async function sound() {
             const clampNode: AudioWorkletNode = clamp(brickwall);
 
             const dry: GainNode = audioContext.createGain();
-            clampNode.connect(dry);
             oscil['FX'] = dry; // store dry gain node in FX property for oscillator FX chain
-            dry.connect(audioContext.destination);
+            clampNode.connect(dry);
+            dry.connect(masterGainNode);
 
             // post-analysis
             const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer) // store in global structure
             clampNode.connect(postAnalyzer);
 
-            // store pointer to oscillator in structure for global reference
-            voices.push(osc);
-    
-            // run oscilator
-            osc.start(0);
         }
+        
+        // run voices
+        for (const v of voices) {
+            v.start(0);
+        }
+
     }
 
     // get data from analyser nodes
@@ -525,8 +621,8 @@ async function sound() {
             if (nodeList) {
                 // control which analyzers log data here
 
-                // analyze(nodeList[0]) // preAnalysis for osc1
-                analyze(nodeList[1]) // postAnalysis for osc1
+                analyze(nodeList[0]) // preAnalysis for osc1
+                // analyze(nodeList[1]) // postAnalysis for osc1
 
                 // analyze(nodeList[0]) // preAnalysis for osc2
                 // analyze(nodeList[1]) // postAnalysis for osc2
@@ -548,49 +644,92 @@ let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && masterGainIn && masterGainOut && osc1 && osc2 && osc3) {
+    if (playBtn && stopBtn && breakerBtn && OscPreGain && OscPostGain && masterGain && variability && osc1 && osc2 && osc3) {
 
-        // get processor modules
+        // load processor modules
         await getProcessorModules();
         
         // setup listeners for user controls
+        const latency: number = 150; // millisecs
+        let listening: boolean = true;
 
         // mute voices and clear osc and voice data, generate osc and voice data and play voices
         playBtn.addEventListener('click', () => {
-            sound();
-            playback = true;
+            if (listening) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                    playback = true;
+                }, latency)
+            }
         });
     
         // mute all and clear voices
         stopBtn.addEventListener('click', () => {
-            shutup();
-            playback = false;
+            if (listening) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    shutup();
+                    playback = false;
+                }, latency)
+            }
         });
     
         // breaker button reloads program
         breakerBtn.addEventListener('click', () => {window.location.reload()});
     
-        // controls oscillator input gain
-        masterGainIn.addEventListener('input', () => {
-            if (playback) {
+        // controls oscillator pre gain into drive
+        OscPreGain.addEventListener('input', () => {
+            if (listening && playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
-                    sound();
-                }, 100);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
             }
         });
     
-        // controls oscillator output gain
-        masterGainOut.addEventListener('input', () => {
+        // controls oscillator post gain out of drive
+        OscPostGain.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+        
+        // controls master audio level
+        masterGain.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    sound();
+                }, latency);
+            }
+        });
+        
+        // controls master audio level
+        variability.addEventListener('input', () => {
             if (playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     sound();
-                }, 100);
+                }, latency);
             }
         });
+
     }
 };
 setup();

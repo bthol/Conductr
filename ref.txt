@@ -111,3 +111,7 @@ Is this a standalone only synth or will I want a plugin version for use in a Dig
 
 A plugin version makes the synth essentially usable on market where I can also demonstrate its abilities,
 and make it possible to include the project in my web portfolio by linking to that marketplace.
+
+
+Each 'orchestra' can be a sequencer, so that there are three simultaneous sequencers.
+Call the unison effect plurals, to borrow from the lnaguage of classical/jazz theory.
