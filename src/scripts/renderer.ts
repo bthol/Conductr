@@ -94,7 +94,7 @@ function analyze(node: AnalyserNode | undefined) {
                     }
 
                     // console.log(data);
-                    console.log(peak);
+                    // console.log(peak);
 
                     requestAnimationFrame(loop);
                 }, 1000)
@@ -190,15 +190,16 @@ async function sound() {
         if (osc) {
             const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
             const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+            const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
             const oscType: HTMLInputElement | null = osc.querySelector('.type');
             const ID: string | undefined = crypto.randomUUID().split('-')[0];
-            if (oscGain && oscFreq && oscType && typeof ID === 'string') {
+            if (oscGain && oscFreq && oscPart && oscType && typeof ID === 'string') {
                 // oscillator properties
                 const type: string = oscType.value;
                 const hz: number = Number(oscFreq.value);
                 const gain: number = Number(oscGain.value);
 
-                // VARIABILITY ENGINE/CALCULATION
+                // VARIABILITY ENGINE
 
                 // GAIN
                 // logarithmic distribution of gain levels
@@ -221,27 +222,179 @@ async function sound() {
                 // uses same v value for frequency variation
 
                 // random ammount of possible variance applied, adjusted by frequency
+                // each property has a factor of variation, which when all are summed euqals 1
                 const v: number = (variance * (hz / 20000)); // maximum possible variation
                 
                 // gain variation
-                const gainFactor: number = .25; // 1:4  percent of variation to gain
+                const gainFactor: number = .25; // 4:1  variation to gain
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
-                const gainCalc: number = (((-(Math.log10((-((gain * maxIn) + (gainV))/100) + 1))/2))) * maxOut;
+                const gainCalc: number = (((-(Math.log10((-(gain * maxIn + gainV)/100) + 1))/2))) * maxOut;
 
-                // frequency varaition
-                const freqFactor: number = .5; // 2:4  percent of variation to frequency
+                // frequency variation
+                const freqFactor: number = .5; // 2:1  variation to frequency
                 const freqV: number = Math.random() * v*freqFactor; // variation ammount for frequency
                 const freqCalc: number = hz - freqV;
 
+                // stereo varation
+                const stereoFactor: number = .15 // 20:3 variation to stereo
+                const stereoV: number = Math.random() * v*stereoFactor; // variation ammount for stereo
+
                 // timbral variation
+                const timbFactor: number = .1; // 10:1 variation to timbre
 
+                // generate waveform
+                const partials: number = Number(oscPart.value);
+                const real: Float32Array = new Float32Array(partials);
+                const imag: Float32Array = new Float32Array(partials);
+                let waveform: PeriodicWave;
+                if (type === 'sine') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
 
+                    // set partial
+                    imag[1] = 1;
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+
+                } else if (type === 'triangle') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    for (let n = 1; n < partials + 1; n++) {
+                        if (n % 2 !== 0) {
+                            // Triangle wave uses only odd harmonics
+                            // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
+                            const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
+                            const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
+                            const cutoff: number = 500/20000; // percent hertz
+                            const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
+                            const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
+                            imag[n] = partial + timbCalc; // account for variation on each partial
+                            // imag[n] = partial;
+                        } else {
+                            // Even harmonics are zero
+                            imag[n] = 0;
+                        }
+                        // Cosine terms are zero
+                        real[n] = 0;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+
+                } else if (type === 'saw') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    for (let n = 1; n < partials + 1; n++) {
+                        const partial: number = 1 / (n * Math.PI);
+                        const cutoff: number = 10000/20000; // percent hertz
+                        const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
+                        const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
+                        imag[n] = partial + timbCalc;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+
+                } else if (type === 'square') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    for (let n = 0; n < partials; n++) {
+                        if (n % 2 !== 0) {
+                            const partial: number = 4 / (n * Math.PI); // Fourier series coefficient for square wave
+                            const cutoff: number = 1000/20000; // percent hertz
+                            const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
+                            const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
+                            imag[n] = partial + timbCalc;
+                        } else {
+                            imag[n] = 0;
+                        }
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+                    
+                } else if (type === 'conv-geo-series-0.5') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    let a: number = 0;
+                    let b: number = 1;
+                    for (let i = 1; i < partials; i++) {
+                        real[i] = a;
+                        imag[i] = b;
+                        b *= .5;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+                
+                } else if (type === 'conv-geo-series-0.25') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    let a: number = 0;
+                    let b: number = 1;
+                    for (let i = 1; i < partials; i++) {
+                        real[i] = a;
+                        imag[i] = b;
+                        b *= .25;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+                } else if (type === 'conv-geo-series-0.125') {
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // generate partials
+                    let a: number = 0;
+                    let b: number = 1;
+                    for (let i = 1; i < partials; i++) {
+                        real[i] = a;
+                        imag[i] = b;
+                        b *= .125;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+
+                } else {
+                    // if no type detected, default to sine waveform
+
+                    // DC offset
+                    real[0] = 0;
+                    imag[0] = 0;
+
+                    // set partial
+                    imag[1] = 1;
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+                }
+
+                // add oscillator to oscillators structure
                 if (gainCalc < 1 && gainCalc >= 0) {
-                    const osc: object = {'type':type, 'hz':freqCalc, 'gain':gainCalc};
+                    const osc: object = {'waveform':waveform, 'hz':freqCalc, 'gain':gainCalc};
                     oscillators[ID] = osc;
                     gotit = true;
                 } else {
-                    const osc: object = {'type':type, 'hz':freqCalc, 'gain':0.99 * maxOut};
+                    const osc: object = {'waveform':waveform, 'hz':freqCalc, 'gain':0.99 * maxOut};
                     oscillators[ID] = osc;
                     gotit = true;
                 }
@@ -261,7 +414,7 @@ async function sound() {
         }
     }
 
-    // iterate over oscillators structure to produce voices
+    // iterate over oscillators structure to generate voices
     if (gotit) {
         const keys: Array<string> = Object.keys(oscillators);
         for (const key of keys) {
@@ -269,23 +422,27 @@ async function sound() {
             // declare oscillator variables
             const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
             const osc: OscillatorNode = audioContext.createOscillator(); // each voice from oscillator
-            const oscType: OscillatorType = oscil['type'];
+            const waveform: PeriodicWave = oscil['waveform'];
+
+            // console.log(waveform);
+
             const oscFreq: number = oscil['hz'];
             const oscGain: GainNode = audioContext.createGain();
             const oscVol: number = oscil['gain'];
 
-            // branch0 > oscillator > gain > branch1 or compression > soft limiter > brickwall limit > 0 dB clamp > output or branch2
+            // generator process routing
+            // branch0 > oscillator > gain > branch1 or compression > soft limiter > brickwall limit > 0 dB clamp > output and branch2
             // branch1 > pre-analysis
             // branch2 > post-analysis
 
-            // configure oscillator node with variables + start
-            osc.type = oscType;
-            osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
+            // configure oscillator node with variables
+            osc.setPeriodicWave(waveform); // set waveform
+            osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime); // set frequency
+            oscGain.gain.value = oscVol; // set gain
             
-            // route oscillator node to gain node
-            oscGain.gain.value = oscVol;
+            // route oscillator node to gain node to apply gain
             osc.connect(oscGain);
-
+            
             // pre-analysis
             const preAnalyzer: AnalyserNode =  audioContext.createAnalyser();
             // store in global structure
@@ -293,7 +450,7 @@ async function sound() {
             analysis[key].push(preAnalyzer); // add node to array at key in structure
             oscGain.connect(preAnalyzer);
 
-            // dynamics system
+            // generator dynamics system
             // -12 dB - -3 dB total range before brickwall
             // 3X compressors affecting that range
             // 3X 3 dB ranges in total range
@@ -311,38 +468,39 @@ async function sound() {
             //      - comp3: applies 1/1 of 1:3.4 ratio
 
             // compress to put dynamics on a curve
-            // const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            // compressor.threshold.value = -12; // Start compressing at -12 dB
-            // compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
-            // compressor.ratio.value = 3;       // 1:3 ratio
-            // compressor.attack.value = 0.05;   // 1:2 with release
-            // compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-            // oscGain.connect(compressor);
+            const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            compressor.threshold.value = -12; // Start compressing at -12 dB
+            compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
+            compressor.ratio.value = 3;       // 1:3 ratio
+            compressor.attack.value = 0.05;   // 1:2 with release
+            compressor.release.value = 0.1;   // slows release to bring up lower dynamics
+            oscGain.connect(compressor);
             
-            // // soft limit before critical range
-            // const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            // limiter.threshold.value = -6;    // limit at -9 dB
-            // limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
-            // limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
-            // limiter.attack.value = 0.05;     // 1:1 with release
-            // limiter.release.value = 0.05;
-            // compressor.connect(limiter);
+            // soft limit before critical range
+            const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            limiter.threshold.value = -6;    // limit at -9 dB
+            limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
+            limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
+            limiter.attack.value = 0.05;     // 1:1 with release
+            limiter.release.value = 0.05;
+            compressor.connect(limiter);
             
-            // // brickwall at maximum value
-            // const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            // brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
-            // brickwall.knee.value = 0;         // 0 dB knee for immediate effect
-            // brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
-            // brickwall.attack.value = 0;       // allow peaks
-            // brickwall.release.value = 0.1;
-            // limiter.connect(brickwall);
+            // brickwall at maximum value
+            const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
+            brickwall.knee.value = 0;         // 0 dB knee for immediate effect
+            brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
+            brickwall.attack.value = 0;       // allow peaks
+            brickwall.release.value = 0.1;
+            limiter.connect(brickwall);
 
             // clamp for 0 dB hard-clipping/peak-elimination
-            // const clampNode: AudioWorkletNode = clamp(brickwall);
-            const clampNode: AudioWorkletNode = clamp(oscGain);
-            
-            // connect to destination (playback system for audio output)
-            clampNode.connect(audioContext.destination);
+            const clampNode: AudioWorkletNode = clamp(brickwall);
+
+            const dry: GainNode = audioContext.createGain();
+            clampNode.connect(dry);
+            oscil['FX'] = dry; // store dry gain node in FX property for oscillator FX chain
+            dry.connect(audioContext.destination);
 
             // post-analysis
             const postAnalyzer: AnalyserNode = audioContext.createAnalyser();

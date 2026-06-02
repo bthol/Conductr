@@ -21,23 +21,23 @@ class ClampProcessor extends AudioWorkletProcessor {
     this.processed = 0; // stores the number of inputs processed into outputs
 
     // Listen to messages from main thread
-    this.port.onmessage = (event) => {
-      // ping response for testing messaging
-      if (event.data.type === 'PING') {
-        this.port.postMessage({ msg: 'clamp-processor pinged'});
-      }
-    };
+    // this.port.onmessage = (event) => {
+    //   // ping response for testing messaging
+    //   if (event.data.type === 'PING') {
+    //     this.port.postMessage({ msg: 'clamp-processor pinged'});
+    //   }
+    // };
 
   }
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
     // logging to renderer main process
     this.count++;
-    this.processed = 0;
-    if (!this.logoff) {
-      this.lognum++;
-      if (this.lognum >= this.maxlog) {this.logoff = true};
-      this.port.postMessage({ msg: 'clamp-processor ran', count:this.count});
-    }
+    // this.processed = 0;
+    // if (!this.logoff) {
+    //   this.lognum++;
+    //   if (this.lognum >= this.maxlog) {this.logoff = true};
+    //   this.port.postMessage({ msg: 'clamp-processor ran', count:this.count});
+    // }
     // iterate over all inputs and corresponding outputs
     // assuming:
     //  - an equal number of inputs and outputs
@@ -82,11 +82,11 @@ class ClampProcessor extends AudioWorkletProcessor {
           if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
             
             // input data in each channel
-            if (!this.logoff) {
-              this.lognum++;
-              if (this.lognum >= this.maxlog) {this.logoff = true};
-              this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
-            }
+            // if (!this.logoff) {
+            //   this.lognum++;
+            //   if (this.lognum >= this.maxlog) {this.logoff = true};
+            //   this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
+            // }
             
             // processes audio in chunks of 128 samples
             // to prevent data loss by lengths greater than 128, iterate for number of samples in output channel
@@ -104,11 +104,11 @@ class ClampProcessor extends AudioWorkletProcessor {
             }
             
             // ouput data in each channel
-            if (!this.logoff) {
-              this.lognum++;
-              if (this.lognum >= this.maxlog) {this.logoff = true};
-              this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
-            }
+            // if (!this.logoff) {
+            //   this.lognum++;
+            //   if (this.lognum >= this.maxlog) {this.logoff = true};
+            //   this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
+            // }
 
           }
         }
