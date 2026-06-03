@@ -7,6 +7,15 @@ $title-color-border: hsl(240, 2%, 40%);
 
 // detailing
 $detailing: hsl(58, 94%, 48%);
+$detailing-gradient-fallback: #fcb04525;
+$detailing-gradient-1: hsl(276, 65%, 47%);
+$detailing-gradient-2: hsl(0, 65%, 55%);
+$detailing-gradient-3: hsl(35, 65%, 63%);
+// $detailing-gradient-1: rgb(131, 58, 180);
+// $detailing-gradient-2: rgb(253, 29, 29);
+// $detailing-gradient-3: rgb(252, 176, 69);
+// srgb or oklab color-spaces
+$detailing-gradient-solid-cover: color-mix(in srgb, color-mix(in srgb, $detailing-gradient-1, $detailing-gradient-3), $detailing-gradient-2);
 
 // default theme
 $text-color-1: hsl(66, 100%, 50%);
@@ -16,3 +25,6 @@ $background-color-2: hsl(242, 16%, 63%);
 $background-color-3: hsl(235, 31%, 33%);
 $border-color: hsl(240, 95%, 22%);
 $shadow-color: hsl(244, 50%, 7%);
+
+$color-on: rgb(17, 224, 17);
+$color-off: rgb(96, 104, 82);

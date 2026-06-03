@@ -1,6 +1,97 @@
 @use "./stylesheets/index.scss";
 
+// set defaults
 body {
     background: index.$background-color-1;
     color: index.$text-color-1;
+    font-size: index.$font-size-default;
+}
+
+.panel {
+    padding: 8px;
+    margin: 10px 0px;
+    background-color: index.$background-color-2;
+    border: 1px solid index.$border-color;
+    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
+    @include index.break-corners;
+    display: flex;
+    align-items: center;
+}
+
+.module {
+    padding: 8px;
+    margin: 10px 0px;
+    background-color: index.$background-color-3;
+    border: 1px solid index.$border-color;
+    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
+    @include index.break-corners;
+}
+
+.bordering {
+    position: relative;
+    padding: 8px;
+    margin: 10px 0px;
+    border: 1.5px solid index.$detailing;
+    background: index.$detailing-gradient-fallback;
+    background: -webkit-linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
+    background: -moz-linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
+    background: linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
+    @include index.break-corners;
+}
+
+.bordering > div {
+    background: index.$detailing-gradient-solid-cover;
+    border: 5px solid transparent;
+}
+
+.section-layout {
+    display: flex;
+    gap: 1vw;
+}
+
+// font size control
+.supertitle {
+    font-size: index.$font-large;
+}
+
+.subtitle {
+    font-size: index.$font-small;
+}
+
+.title {
+    font-size: index.$font-medium;
+}
+
+.dark-font {
+    color: index.$text-color-2;
+}
+
+// indicator light style
+
+// include animation
+@include index.blinker('blink', index.$color-on, index.$color-off);
+
+.indicator-light-label-layout {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: max-content;
+    margin-right: 3vw;
+}
+
+.light-label {
+    margin-right: .75vw;
+    font-size: index.$font-small;
+    cursor: default;
+}
+
+.indicator-light {
+    background: index.$color-off;
+    border-radius: 100px;
+    height: 16px;
+    width: 16px;
+}
+
+#run-light {
+    animation: blink 1s linear infinite;
 }

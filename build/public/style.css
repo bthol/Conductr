@@ -1,6 +1,100 @@
 body {
   background: hsl(250, 71%, 47%);
   color: hsl(66, 100%, 50%);
+  font-size: medium;
+}
+
+.panel {
+  padding: 8px;
+  margin: 10px 0px;
+  background-color: hsl(242, 16%, 63%);
+  border: 1px solid hsl(240, 95%, 22%);
+  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 7%);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+}
+
+.module {
+  padding: 8px;
+  margin: 10px 0px;
+  background-color: hsl(235, 31%, 33%);
+  border: 1px solid hsl(240, 95%, 22%);
+  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 7%);
+  border-radius: 3px;
+}
+
+.bordering {
+  position: relative;
+  padding: 8px;
+  margin: 10px 0px;
+  border: 1.5px solid hsl(58, 94%, 48%);
+  background: rgba(252, 176, 69, 0.1450980392);
+  background: -webkit-linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
+  background: -moz-linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
+  background: linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
+  border-radius: 3px;
+}
+
+.bordering > div {
+  background: color-mix(in srgb, color-mix(in srgb, hsl(276, 65%, 47%), hsl(35, 65%, 63%)), hsl(0, 65%, 55%));
+  border: 5px solid transparent;
+}
+
+.section-layout {
+  display: flex;
+  gap: 1vw;
+}
+
+.supertitle {
+  font-size: xx-large;
+}
+
+.subtitle {
+  font-size: large;
+}
+
+.title {
+  font-size: x-large;
+}
+
+.dark-font {
+  color: hsl(0, 4%, 20%);
+}
+
+@keyframes blink {
+  from {
+    background-color: rgb(17, 224, 17);
+    box-shadow: 0px 0px 4px 1px rgb(17, 224, 17);
+  }
+  to {
+    background-color: rgb(96, 104, 82);
+    box-shadow: 0px 0px 0px 0px rgb(96, 104, 82);
+  }
+}
+.indicator-light-label-layout {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: max-content;
+  margin-right: 3vw;
+}
+
+.light-label {
+  margin-right: 0.75vw;
+  font-size: large;
+  cursor: default;
+}
+
+.indicator-light {
+  background: rgb(96, 104, 82);
+  border-radius: 100px;
+  height: 16px;
+  width: 16px;
+}
+
+#run-light {
+  animation: blink 1s linear infinite;
 }
 
 /*# sourceMappingURL=style.css.map */

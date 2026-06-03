@@ -4,44 +4,110 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
-    <title>Conductr</title>
+    <title>ConductR</title>
     <script defer src="./build/scripts/renderer.js"></script>
     <link rel="stylesheet" href="./build/public/style.css">
 </head>
 <body id="root">
-    <h1 class="supertitle">Conductr</h1>
+
+    <h1 class="supertitle">ConductR</h1>
+
     <p class="subtitle">Ride the coattails of engineers with wires orchestrated by conductors</p>
+
+    <div id="indicator-lights" class="panel dark-font">
+
+        <div class="indicator-light-label-layout">
+            <div class="light-label">Run</div>
+            <div id="run-light" class="indicator-light"></div>
+        </div>
+
+        <div class="indicator-light-label-layout">
+            <div class="light-label">Sect 1</div>
+            <div id="osc1-light" class="indicator-light"></div>
+        </div>
+
+        <div class="indicator-light-label-layout">
+            <div class="light-label">Sect 2</div>
+            <div id="osc2-light" class="indicator-light"></div>
+        </div>
+
+        <div class="indicator-light-label-layout">
+            <div class="light-label">Sect 3</div>
+            <div id="osc3-light" class="indicator-light"></div>
+        </div>
+
+    </div>
 
     <!-- conductor module (macros) -->
     <div id="conductor" class="module">
+
         <div class="title">Conductor</div>
-        <div>
-            <button id="play-btn" type="button">play</button>
-            <button id="stop-btn" type="button">stop</button>
-            <button id="breaker" type="button">breaker</button>
+
+        <div class="bordering">
+            <div>
+                <div>
+                    <button id="play-btn" type="button">run</button>
+                    <button id="stop-btn" type="button">reset</button>
+                    <button id="breaker" type="button">breaker</button>
+                </div>
+            </div>
         </div>
-        <div>
-            <div>Predrive</div>
-            <input id="osc-gain-in" type="number" placeholder="Pre-gain" min="0" max="100" value="50">
-        </div>
-        <div>
-            <div>Postdrive</div>
-            <input id="osc-gain-out" type="number" placeholder="Post-gain" min="0" max="99" value="50">
-        </div>
-        <div>
-            <div>Master</div>
-            <input id="master-gain" type="number" placeholder="Master Gain" min="0" max="100" value="100">
-        </div>
-        <div>
-            <div>Variability</div>
-            <input id="variability" type="number" placeholder="variability" min="1" max="10" value="4">
+
+        <div class="bordering">
+            <div>
+                <div>
+                    <div>Predrive</div>
+                    <input id="osc-gain-in" type="number" placeholder="Pre-gain" min="0" max="100" value="50">
+                </div>
+                <div>
+                    <div>Postdrive</div>
+                    <input id="osc-gain-out" type="number" placeholder="Post-gain" min="0" max="99" value="50">
+                </div>
+                <div>
+                    <div>Master</div>
+                    <input id="master-gain" type="number" placeholder="Master Gain" min="0" max="100" value="100">
+                </div>
+                <div>
+                    <div>Variability</div>
+                    <input id="variability" type="number" placeholder="variability" min="1" max="10" value="4">
+                </div>
+            </div>
+
         </div>
     </div>
 
-    <!-- wire module (modulation) -->
-     <di id="wire" class="module">
-        <div class="title">Wire</div>
-     </div>
+    <!-- Circuit module (modulation) -->
+    <div id="circuit" class="module">
+
+        <div class="title">Circuit</div>
+
+        <div class="section-layout">
+            <!-- MOD1 -->
+            <div id="mod1" class="mods bordering">
+                <div>
+                    <div class="subtitle">Wire 1</div>
+
+                </div>
+            </div>
+
+            <!-- MOD2 -->
+            <div id="mod2" class="mods bordering">
+                <div>
+                    <div class="subtitle">Wire 2</div>
+
+                </div>
+            </div>
+
+            <!-- MOD3 -->
+            <div id="mod3" class="mods bordering">
+                <div>
+                    <div class="subtitle">Wire 3</div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
 
 
     <!-- orchestra module (oscilators) -->
@@ -49,129 +115,137 @@
 
         <div class="title">Orchestra</div>
 
-        <!-- OSC1 -->
-        <div id="osc1" class="oscs">
-            <div class="subtitle">Section 1</div>
-            <div>
-                <div>Waveform</div>
-                <select name="type" class="type">
-                    <option value="sine">sine</option>
-                    <option value="triangle" selected>triangle</option>
-                    <option value="saw">saw</option>
-                    <option value="square">square</option>
-                    <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                    <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                    <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
-                </select>
+        <div class="section-layout">
+            <!-- OSC1 -->
+            <div id="osc1" class="oscs bordering">
+                <div>
+                    <div class="subtitle">Section 1</div>
+                    <div>
+                        <div>Waveform</div>
+                        <select name="type" class="type">
+                            <option value="sine">sine</option>
+                            <option value="triangle" selected>triangle</option>
+                            <option value="saw">saw</option>
+                            <option value="square">square</option>
+                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
+                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
+                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div>Amplitude</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="99">
+                    </div>
+                    <div>
+                        <div>Drive</div>
+                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                    </div>
+                    <div>
+                        <div>Frequency</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="261.63">
+                    </div>
+                    <div>
+                        <div>Voices</div>
+                        <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
+                    </div>
+                    <div>
+                        <div>detune</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
+                    </div>
+                    <div>
+                        <div>Partials</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                    </div>
+                </div>
             </div>
-            <div>
-                <div>Amplitude</div>
-                <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="99">
+            
+            <!-- OSC2 -->
+            <div id="osc2" class="oscs bordering">
+                <div>
+                    <div class="subtitle">Section 2</div>
+                    <div>
+                        <div>Waveform</div>
+                        <select name="type" class="type">
+                            <option value="sine">sine</option>
+                            <option value="triangle" selected>triangle</option>
+                            <option value="saw">saw</option>
+                            <option value="square">square</option>
+                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
+                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
+                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div>Amplitude</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
+                    </div>
+                    <div>
+                        <div>Drive</div>
+                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                    </div>
+                    <div>
+                        <div>Frequency</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="329.63">
+                    </div>
+                    <div>
+                        <div>Voices</div>
+                        <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
+                    </div>
+                    <div>
+                        <div>detune</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
+                    </div>
+                    <div>
+                        <div>Partials</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                    </div>
+                </div>
             </div>
-            <div>
-                <div>Drive</div>
-                <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+            
+            <!-- OSC3 -->
+            <div id="osc3" class="oscs bordering">
+                <div>
+                    <div class="subtitle">Section 3</div>
+                    <div>
+                        <div>Waveform</div>
+                        <select name="type" class="type">
+                            <option value="sine">sine</option>
+                            <option value="triangle" selected>triangle</option>
+                            <option value="saw">saw</option>
+                            <option value="square">square</option>
+                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
+                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
+                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div>Amplitude</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
+                    </div>
+                    <div>
+                        <div>Drive</div>
+                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                    </div>
+                    <div>
+                        <div>Frequency</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="392.00">
+                    </div>
+                    <div>
+                        <div>Voices</div>
+                        <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
+                    </div>
+                    <div>
+                        <div>detune</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
+                    </div>
+                    <div>
+                        <div>Partials</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                    </div>
+                </div>
             </div>
-            <div>
-                <div>Frequency</div>
-                <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="261.63">
-            </div>
-            <div>
-                <div>Voices</div>
-                <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
-            </div>
-            <div>
-                <div>detune</div>
-                <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
-            </div>
-            <div>
-                <div>Partials</div>
-                <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
-            </div>
+        
         </div>
-
-        <!-- OSC2 -->
-        <div id="osc2" class="oscs">
-            <div class="subtitle">Section 2</div>
-            <div>
-                <div>Waveform</div>
-                <select name="type" class="type">
-                    <option value="sine">sine</option>
-                    <option value="triangle" selected>triangle</option>
-                    <option value="saw">saw</option>
-                    <option value="square">square</option>
-                    <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                    <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                    <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
-                </select>
-            </div>
-            <div>
-                <div>Amplitude</div>
-                <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
-            </div>
-            <div>
-                <div>Drive</div>
-                <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
-            </div>
-            <div>
-                <div>Frequency</div>
-                <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="329.63">
-            </div>
-            <div>
-                <div>Voices</div>
-                <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
-            </div>
-            <div>
-                <div>detune</div>
-                <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
-            </div>
-            <div>
-                <div>Partials</div>
-                <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
-            </div>
-        </div>
-
-        <!-- OSC3 -->
-        <div id="osc3" class="oscs">
-            <div class="subtitle">Section 3</div>
-            <div>
-                <div>Waveform</div>
-                <select name="type" class="type">
-                    <option value="sine">sine</option>
-                    <option value="triangle" selected>triangle</option>
-                    <option value="saw">saw</option>
-                    <option value="square">square</option>
-                    <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                    <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                    <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
-                </select>
-            </div>
-            <div>
-                <div>Amplitude</div>
-                <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
-            </div>
-            <div>
-                <div>Drive</div>
-                <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
-            </div>
-            <div>
-                <div>Frequency</div>
-                <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="392.00">
-            </div>
-            <div>
-                <div>Voices</div>
-                <input class="voices" type="number" placeholder="voices" min="1" max="4" value="2">
-            </div>
-            <div>
-                <div>detune</div>
-                <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="2">
-            </div>
-            <div>
-                <div>Partials</div>
-                <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
-            </div>
-        </div>
-
     </div>
     
 </body>

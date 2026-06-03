@@ -1,0 +1,12 @@
+@mixin blinker($name, $color-on, $color-off) {
+    @keyframes #{$name} {
+        from {
+            background-color: $color-on;
+            box-shadow: 0px 0px 4px 1px $color-on;
+        }
+        to {
+            background-color: $color-off;
+            box-shadow: 0px 0px 0px 0px $color-off;
+        }
+    }
+}

@@ -50,7 +50,7 @@ app.whenReady().then(() => {
   win = new BrowserWindow({
     width: width,
     height: height,
-    minWidth: 300,
+    minWidth: 540,
     minHeight: 400,
     frame: true,
     icon: path.join(__dirname, 'assets', 'icon.ico'),
