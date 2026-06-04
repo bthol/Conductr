@@ -115,3 +115,24 @@ and make it possible to include the project in my web portfolio by linking to th
 
 Each 'orchestra' can be a sequencer, so that there are three simultaneous sequencers.
 Call the unison effect plurals, to borrow from the lnaguage of classical/jazz theory.
+
+
+conditional tree is good for short FX chains
+but does not scale for longer FX chain
+what if the effects each had a chain number, which could be used to determine their place in the overall chain
+This approach, however, would require user input validation to ensure there aren't duplicate chain numbers
+alternatively, I could have FX elements in an order within the GUI and a control for changing order
+and just increase the chain number by one for each next element in the order,
+but the DOM is so subject to mutation that storing data, like the order of FX in FX chain, in the GUI is not reliable.
+Before trying to solve the problem of how to control the order of FX in the FX chain, it may be useful to first create effects
+and then use those effects as a basis for considering how differnt chain orders would world work.
+
+Effect Types:
+ - Delay
+ - Reverb
+ - chorus/unison
+ - phaser
+ - flanger
+ - ring mod
+ 
+

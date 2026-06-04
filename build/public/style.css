@@ -18,9 +18,12 @@ body {
 .module {
   padding: 8px;
   margin: 10px 0px;
-  background-color: hsl(235, 31%, 33%);
-  border: 1px solid hsl(240, 95%, 22%);
-  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 7%);
+  background: hsl(235, 31%, 33%);
+  background: -webkit-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
+  background: -moz-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
+  background: linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
+  border: 1.5px solid hsl(240, 95%, 22%);
+  box-shadow: inset 0px 0px 5px 0px hsl(244, 50%, 7%);
   border-radius: 3px;
 }
 
@@ -29,20 +32,22 @@ body {
   padding: 8px;
   margin: 10px 0px;
   border: 1.5px solid hsl(58, 94%, 48%);
-  background: rgba(252, 176, 69, 0.1450980392);
-  background: -webkit-linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
-  background: -moz-linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
-  background: linear-gradient(90deg, hsl(276, 65%, 47%) 0%, hsl(0, 65%, 55%) 50%, hsl(35, 65%, 63%) 100%);
+  background: hsl(205, 31%, 33%);
+  background: -webkit-linear-gradient(180deg, hsl(205, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(205, 31%, 33%) 100%);
+  background: -moz-linear-gradient(180deg, hsl(205, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(205, 31%, 33%) 100%);
+  background: linear-gradient(180deg, hsl(205, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(205, 31%, 33%) 100%);
   border-radius: 3px;
 }
 
 .bordering > div {
-  background: color-mix(in srgb, color-mix(in srgb, hsl(276, 65%, 47%), hsl(35, 65%, 63%)), hsl(0, 65%, 55%));
-  border: 5px solid transparent;
+  background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
+  border: 8px solid transparent;
 }
 
 .section-layout {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1vw;
 }
 

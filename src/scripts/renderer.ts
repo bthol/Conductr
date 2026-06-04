@@ -483,12 +483,9 @@ async function sound() {
 
     if (gotit) {
 
-        // voices > FX > Master > out
-        const masterGainNode: GainNode = audioContext.createGain();
-        masterGainNode.gain.value = Number(masterGain.value)/100;
-        masterGainNode.connect(audioContext.destination);
-
         // generate voices
+        const dry: GainNode = audioContext.createGain(); // no FX
+        const wet: GainNode = audioContext.createGain(); // FX
         const keys: Array<string> = Object.keys(oscillators);
         for (const key of keys) {
     
@@ -510,7 +507,6 @@ async function sound() {
             preGain.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
             
             // create voices for oscilator
-            // const spread: number = 100/oscVoic/100; // percent detune per voice
             for (let v = 0; v < oscVoic; v++) {
                 // each voice from oscillator
                 const osc: OscillatorNode = audioContext.createOscillator();
@@ -589,20 +585,54 @@ async function sound() {
             brickwall.release.value = 0.1;
             limiter.connect(brickwall);
 
-            // clamp for 0 dB hard-clipping/peak-elimination
-            const clampNode: AudioWorkletNode = clamp(brickwall);
-
-            const dry: GainNode = audioContext.createGain();
-            oscil['FX'] = dry; // store dry gain node in FX property for oscillator FX chain
-            clampNode.connect(dry);
-            dry.connect(masterGainNode);
+            // route to dry and wet gain nodes for FX chain
+            brickwall.connect(dry);
+            brickwall.connect(wet);
 
             // post-analysis
             const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer) // store in global structure
-            clampNode.connect(postAnalyzer);
-
+            brickwall.connect(postAnalyzer);
         }
+
+        // FX Process Route Map
+        // voices > Dry > Master
+        //        > Wet > chain > FX > Master
+        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
+        wet.connect(FX); // bypass FX chain
+        // conditional tree determines FX chain order
+        // let chainOrder: string = 'A > B > C';
+        // if (chainOrder === 'A > B > C') {
+
+        // } else if (chainOrder === 'A > C > B') {
+        
+        // } else if (chainOrder === 'B > A > C') {
+
+        // } else if (chainOrder === 'B > C > A') {
+
+        // } else if (chainOrder === 'C > A > B') {
+
+        // } else if (chainOrder === 'C > B > A') {
+
+        // }
+
+        // Master Procecss Route Map
+        // Dry > Master Gain > clamp > out 
+        // FX  > 
+        const masterGainNode: GainNode = audioContext.createGain();
+        masterGainNode.gain.value = Number(masterGain.value)/100;
+        
+        // dry and wet ammount should combine to 1
+        let dryVal: number = 0; // store dry ammount
+        let wetVal: number = 1; // store wet ammount
+        dry.gain.value = keys.length === 0 ? 0 : dryVal / keys.length; // adjust ammount by number of oscilators
+        wet.gain.value = keys.length === 0 ? 0 : wetVal / keys.length; // adjust ammount by number of oscilators
+        dry.connect(masterGainNode);
+        FX.connect(masterGainNode);
+        
+        // clamp for 0 dB hard-clipping/peak-elimination
+        const clampOut: AudioWorkletNode = clamp(masterGainNode);
+        clampOut.connect(audioContext.destination);
         
         // run voices
         for (const v of voices) {

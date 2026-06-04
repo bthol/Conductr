@@ -1,4 +1,5 @@
 @use "./stylesheets/index.scss";
+@use "sass:color";
 
 // set defaults
 body {
@@ -21,9 +22,12 @@ body {
 .module {
     padding: 8px;
     margin: 10px 0px;
-    background-color: index.$background-color-3;
-    border: 1px solid index.$border-color;
-    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
+    background: index.$background-color-3;
+    background: -webkit-linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
+    background: -moz-linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
+    background: linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
+    border: 1.5px solid index.$border-color;
+    box-shadow: inset 0px 0px 5px 0px index.$shadow-color;
     @include index.break-corners;
 }
 
@@ -33,19 +37,21 @@ body {
     margin: 10px 0px;
     border: 1.5px solid index.$detailing;
     background: index.$detailing-gradient-fallback;
-    background: -webkit-linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
-    background: -moz-linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
-    background: linear-gradient(90deg, index.$detailing-gradient-1 0%, index.$detailing-gradient-2 50%, index.$detailing-gradient-3 100%);
+    background: -webkit-linear-gradient(180deg, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-1) 0%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-2) 50%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-3) 100%);
+    background: -moz-linear-gradient(180deg, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-1) 0%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-2) 50%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-3) 100%);
+    background: linear-gradient(180deg, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-1) 0%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-2) 50%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-3) 100%);
     @include index.break-corners;
 }
 
 .bordering > div {
     background: index.$detailing-gradient-solid-cover;
-    border: 5px solid transparent;
+    border: 8px solid transparent;
 }
 
 .section-layout {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 1vw;
 }
 

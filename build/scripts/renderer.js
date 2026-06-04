@@ -306,9 +306,8 @@ async function sound() {
         }
     }
     if (gotit) {
-        const masterGainNode = audioContext.createGain();
-        masterGainNode.gain.value = Number(masterGain.value) / 100;
-        masterGainNode.connect(audioContext.destination);
+        const dry = audioContext.createGain();
+        const wet = audioContext.createGain();
         const keys = Object.keys(oscillators);
         for (const key of keys) {
             const oscil = oscillators[key];
@@ -361,15 +360,24 @@ async function sound() {
             brickwall.attack.value = 0;
             brickwall.release.value = 0.1;
             limiter.connect(brickwall);
-            const clampNode = clamp(brickwall);
-            const dry = audioContext.createGain();
-            oscil['FX'] = dry;
-            clampNode.connect(dry);
-            dry.connect(masterGainNode);
+            brickwall.connect(dry);
+            brickwall.connect(wet);
             const postAnalyzer = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer);
-            clampNode.connect(postAnalyzer);
+            brickwall.connect(postAnalyzer);
         }
+        const FX = audioContext.createGain();
+        wet.connect(FX);
+        const masterGainNode = audioContext.createGain();
+        masterGainNode.gain.value = Number(masterGain.value) / 100;
+        let dryVal = 0;
+        let wetVal = 1;
+        dry.gain.value = keys.length === 0 ? 0 : dryVal / keys.length;
+        wet.gain.value = keys.length === 0 ? 0 : wetVal / keys.length;
+        dry.connect(masterGainNode);
+        FX.connect(masterGainNode);
+        const clampOut = clamp(masterGainNode);
+        clampOut.connect(audioContext.destination);
         for (const v of voices) {
             v.start(0);
         }
