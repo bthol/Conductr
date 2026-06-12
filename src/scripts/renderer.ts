@@ -42,20 +42,244 @@ window.electronAPI.res((data) => {
 // look into tone.js: https://tonejs.github.io/
 // channelCountMode, AnalyserNode.getFloatTimeDomainData()
 
-// variance affects the variability oscillator properties
-let variance: number = 4;
 
 // setup audio context
 const options: Object = {'sampleRate': 44100.0, 'latencyHint': 'interactive'};
 const audioContext: AudioContext = new AudioContext(options);
 
-// add functions for custom processors
+// declare global structures
+let playback: boolean = false; // stores the program run state (run: true, off: false)
+let oscillators: { [key: string]: any } = {}; // stores parameters for each oscilator from user parameters
+let voices: Array<OscillatorNode> = []; // stores voices generated with parameter values
+let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator, second index = analyzer node for that oscillator
+
+// parameter for master volume control
+
+// 0.5 output == -6 dB
+let master: number = .75; // 0 - 0.99
+let FortePiano: number = 1; // 0 - 2
+let creciendo: number = 4; // 1 - 10
+let expressivity: number = 4; // 1 - 10
+let variance: number = 4; // 1 - 10
+
+let driveMult: number = 1; // 
+
+// global dynamic modifiers
+let Attack: number = 1; // 1 - 10
+let Release: number = 1; // 1 - 10
+let Sustain: number = 1; // 1 - 10
+
+// DOM elements
+
+// Player Controls
+const masterGain = document.getElementById('master-gain') as HTMLInputElement; // Master Gain out
+
+const breakerBtn: HTMLElement | null = document.getElementById('breaker');
+const playBtn: HTMLElement | null = document.getElementById('play-btn');
+const stopBtn: HTMLElement | null = document.getElementById('stop-btn');
+
+// Conductor
+
+// Vertical Plane
+const FPControl = document.getElementById('forte-piano') as HTMLInputElement; // Master Gain in
+const DMControl = document.getElementById('drive-multiplier') as HTMLInputElement; // Master Drive
+
+// Horizontal Plane
+const SControl = document.getElementById('staccato') as HTMLInputElement; // ASR dynamic control: attack
+const LControl = document.getElementById('legato') as HTMLInputElement; // ASR dynamic control: release
+const TControl = document.getElementById('tenuto') as HTMLInputElement; // ASR dynamic control: sustain
+const VControl = document.getElementById('variability') as HTMLInputElement; // increases range of variability engine
+
+// Saggital Plane
+const EControl = document.getElementById('expressivity') as HTMLInputElement; // dry-wet FX control
+const CControl = document.getElementById('creciendo') as HTMLInputElement; // intensity control
+
+// Orchestra
+
+// Section 1
+const osc1: HTMLElement | null = document.getElementById('osc1');
+
+// Section 2
+const osc2: HTMLElement | null = document.getElementById('osc2');
+
+// Section 3
+const osc3: HTMLElement | null = document.getElementById('osc3');
+
+// waveshaper functions
+function linear(): Float32Array<ArrayBuffer> {
+    // line from -1 to 1
+    const n_samples: number = 44100;
+    const line: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+    const incriment: number = 2/n_samples;
+    let y: number = -1;
+    for (let x = 0; x < n_samples; x++) {
+        line[x] = y;
+        y += incriment;
+    }
+    line[n_samples/2] = 0; // ensure middle value is correct
+    line[n_samples - 1] = 1; // ensure end value is correct
+    return line;
+};
+
+function sigmoid1(amount = 2): Float32Array<ArrayBuffer> {
+    // generates curve for waveshaper
+    const n_samples: number = 44100;
+    const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
+    for (let i = 0; i < n_samples; ++i) {
+        // Map array index to an input audio range of [-1, 1]
+        const x = (i * 2) / n_samples - 1;
+        
+        // S-curve functions -- Soft-clipping Sigmoid
+        const output: number = Math.tanh(x * k) / Math.tanh(k); // k = drive
+        curve[i] = output < 1 ? output > -1 ? output : -1 : 1; // clamp values at max and min value
+    }
+    curve[n_samples - 1] = 1; // ensure end value is correct
+    return curve;
+};
+
+function sigmoid2(amount = 2): Float32Array<ArrayBuffer> {
+    // generates curve for waveshaper
+    const n_samples: number = 44100;
+    const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
+    const deg = Math.PI / 180;
+    
+    for (let i = 0; i < n_samples; ++i) {
+        // Map array index to an input audio range of [-1, 1]
+        const x = (i * 2) / n_samples - 1;
+        
+        // S-curve functions -- Soft-clipping Sigmoid
+        const output: number = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+
+        // clamp values at max and min value
+        curve[i] =  output < 1 ? output > -1 ? output : -1 : 1; // clamp values at max and min value
+    }
+    curve[n_samples - 1] = 1; // ensure end value is correct
+    return curve;
+};
+
+function sigmoid3(amount = 1): Float32Array<ArrayBuffer> {
+    // generates curve for waveshaper
+    const n_samples: number = 44100;
+    const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+    const k = typeof amount === 'number' ? amount >= 1 ? amount : 1 : 1;
+
+    for (let i = 0; i < n_samples; ++i) {
+        // Normalize array index i to the domain [-1, 1]
+        const x: number = ((i / (n_samples - 1)) * 2 - 1) * k;
+        
+        // hyperbolic tangent function * k
+        const output: number = (x / Math.sqrt(x * x + 1));
+
+        // clamp values at max and min value
+        curve[i] = output < 1 ? output > -1 ? output : -1 : 1;
+    }
+    curve[n_samples - 1] = 1; // ensure end value is correct
+    return curve;
+};
+
+// custom processors
 // I/O processor type convention: input type GainNode and output type GainNode
 async function getProcessorModules() {
     // collects all processor scripts by adding their modules to the global audio context
     await audioContext.audioWorklet.addModule('./build/scripts/processors/clamp-processor.js');
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/LUFS-processor.js');
 };
 
+// Analysis Functions
+function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number {
+    // Trapezoidal method of numerical definite integration for a discrete data set (data)
+    // The total interval of integration from a to b is divided into subintervals represented as trapezoids on their side
+
+    // returns 0 if there is an undefined value in data
+    // otherwise it returns the area of the wave off of equilibrium (a value of zero)
+    // a.k.a. total power of the wave
+
+    // Reimann's Integration is more efficient, but lacks the desired accuracy accomplished by the Trapezoidal Method
+    // Simpson's Rule is more accurate (using parabolas), but more computationally complex,
+    // especially since the Trapezoidal Method can be highly optimized for the use case of this function
+    // x axis = array index = time
+    // y axis = value at x index = amplitude
+    // it is possible to use uniform grid optimization
+    // becauase the data array is read at a constant rate,
+    // so change in x is constant,
+    // and no need for sorting x into incrimental order,
+    // because indexes already are in incrimental order
+    // Trapezoid Area = (b1 + b2)/2 * h
+    // Area = delta x * ( (y0 + yn)/2 + SUM(y1, ..., yn-1) )
+    // Area = ( (y0 + yn)/2 + SUM(y1, ..., yn-1) ) // since delta x is 1 and anything multiplied by 1 is itself
+    let Area: number = 0;
+    for (let i = 1; i < data.length - 1; i++) {
+        const y: number | undefined = data[i];
+        if (y === undefined) {return 0} else {
+            Area += Math.abs(y);
+        }
+    }
+    const first: number | undefined = data[0];
+    const last: number | undefined = data[data.length - 1];
+    if (first === undefined || last === undefined) {return 0} else {
+        Area += (Math.abs(first) + Math.abs(last)) / 2;
+    }
+
+    return Area;
+};
+
+// calculates peak level
+function peak(data: Float32Array<ArrayBuffer>): number {
+    let peak: number = 0;
+    for (let i = 0; i < data.length; i++) {
+        const datum: number | undefined = data[i];
+        if (typeof datum === 'number') {
+            const absValue = Math.abs(datum);
+            if (absValue > peak) {
+                peak = absValue;
+            }
+        }
+    }
+    return peak;
+};
+
+// analysis for peak levels
+function analyzePeak(node: AnalyserNode | undefined) {
+    // performs real-time analysis on peak value of data stream from analyser node
+    if (node) {
+        
+        const bufferSize: number = 128; // number of samples per second
+        node.fftSize = bufferSize;
+        node.maxDecibels = 6; // measure up to +6 dB to detect peaks over 0 dB
+        node.minDecibels = -200; // measure down to ensure detection of dynamic behavior
+        let data: Float32Array<ArrayBuffer> = new Float32Array(bufferSize);
+    
+        // console.log(audioContext.state); // should be "running"
+        // console.log(node); // should not be undefined + have updated properties
+
+        let debounce: ReturnType<typeof setTimeout>;
+        function loop(currentTime: number) {
+            if (node) {
+                clearTimeout(debounce);
+                debounce = setTimeout(() => {
+                    // cleanup timeout
+                    clearTimeout(debounce);
+                    // get data
+                    node.getFloatTimeDomainData(data);
+                    // calculate peak from data
+                    const peakVal: number = peak(data);
+
+                    // console.log(data);
+                    console.log(peakVal);
+
+                    requestAnimationFrame(loop);
+                }, 1000)
+            }
+        };
+    
+        loop(audioContext.currentTime);
+
+    }
+};
+
+// general analysis
 function analyze(node: AnalyserNode | undefined) {
     // performs real-time analysis on analyser node
     // gets:
@@ -82,19 +306,10 @@ function analyze(node: AnalyserNode | undefined) {
                     // get data
                     node.getFloatTimeDomainData(data);
                     // calculate peak from data
-                    let peak: number = 0;
-                    for (let i = 0; i < data.length; i++) {
-                        const datum: number | undefined = data[i];
-                        if (typeof datum === 'number') {
-                            const absValue = Math.abs(datum);
-                            if (absValue > peak) {
-                                peak = absValue;
-                            }
-                        }
-                    }
+                    const peakVal: number = peak(data);
 
                     // console.log(data);
-                    // console.log(peak);
+                    // console.log(peakVal);
 
                     requestAnimationFrame(loop);
                 }, 1000)
@@ -124,50 +339,7 @@ function clamp(input: AudioNode): AudioWorkletNode {
     return processor;
 };
 
-// waveform functions
-function sigmoid(amount = 2) {
-    // generates curve for waveshaper
-  const k = typeof amount === 'number' ? amount : 2;
-  const n_samples: number = 44100;
-  const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
-  const deg: Number = Math.PI / 180;
-  
-  for (let i = 0; i < n_samples; ++i) {
-    // Map array index to an input audio range of [-1, 1]
-    const x = (i * 2) / n_samples - 1;
-    
-    // S-curve functions -- Soft-clipping Sigmoid
-    curve[i] = Math.tanh(x * k) / Math.tanh(k); // k = drive
-    // curve[i] = x / Math.sqrt(1 + x * x);
-    // curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-  }
-  return curve;
-};
-
-// declare global structures
-let oscillators: { [key: string]: any } = {}; // stores parameters for each oscilator from user parameters
-let voices: Array<OscillatorNode> = []; // stores voices generated with parameter values
-let analysis: {[key: string]: Array<AnalyserNode>} = {}; // frist index = oscillator, second index = analyzer node for that oscillator
-let playback: boolean = false;
-
-// parameter for master volume control
-// 0.5 output == -6 dB
-let maxIn: number = 1; // 0 - 1
-let maxOut: number = 0.5; // 0 - 0.99
-let master: number = .75; // 0 - 0.99
-
-// UI elements
-const breakerBtn: HTMLElement | null = document.getElementById('breaker');
-const playBtn: HTMLElement | null = document.getElementById('play-btn');
-const stopBtn: HTMLElement | null = document.getElementById('stop-btn');
-const OscPreGain = document.getElementById('osc-gain-in') as HTMLInputElement;
-const OscPostGain = document.getElementById('osc-gain-out') as HTMLInputElement;
-const masterGain = document.getElementById('master-gain') as HTMLInputElement;
-const variability = document.getElementById('variability') as HTMLInputElement;
-const osc1: HTMLElement | null = document.getElementById('osc1');
-const osc2: HTMLElement | null = document.getElementById('osc2');
-const osc3: HTMLElement | null = document.getElementById('osc3');
-
+// audio functions
 function shutup() {
     oscillators = {}; // clear oscilator data
     voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
@@ -183,38 +355,129 @@ async function sound() {
     }
 
     // handle macros
-    if (OscPreGain && OscPostGain) {
+    if (masterGain && DMControl && FPControl && CControl && VControl) {
 
-        // get user values from conductor module
-        let inVal: number = Number(OscPreGain.value);
-        if (inVal > 100) {
-            inVal = 100;
-        } else if (inVal < 0) {
-            inVal = 0;
-        }
-        maxIn = inVal/100;
+        // obtain and sanitize user values from conductor module
 
-        let outVal: number = Number(OscPostGain.value);
-        if (outVal > 99) {
-            outVal = 99;
-        } else if (outVal < 0) {
-            outVal = 0;
-        }
-        maxOut = outVal/100;
-
+        // Master Gain
         let masterVal: number = Number(masterGain.value);
-        if (masterVal > 99) {
-            masterVal = 99;
+        if (masterVal > 100) {
+            masterVal = 100;
         } else if (masterVal < 0) {
             masterVal = 0;
         }
         master = masterVal/100;
 
-        let vary: number = Number(variability.value);
-        if (vary > 10) {
+        // Creciendo/Diminuendo = Intensity control
+        let CreciendoVal: number = Number(CControl.value);
+        const CreciendoRange: number = 10;
+        // enforce range
+        if (CreciendoVal > CreciendoRange) { // above max
+            CreciendoVal = CreciendoRange;
+        } else if (CreciendoVal < -CreciendoRange) { // below min
+            CreciendoVal = -CreciendoRange;
+        } else if (CreciendoVal > 0 && CreciendoVal % 1 !== 0) { // round + fractions up
+            CreciendoVal = Math.ceil(CreciendoVal);
+        } else if (CreciendoVal < 0 && CreciendoVal % 1 !== 0) { // round - fractions down
+            CreciendoVal = Math.floor(CreciendoVal);
+        }
+        // convert scale
+        if (CreciendoVal === 0) { // bypass
+            creciendo = 1;
+        } else if (CreciendoVal > 0) { // +
+            creciendo = 1 + CreciendoVal/CreciendoRange;
+        } else if (CreciendoVal < 0) { // -
+            creciendo = 1 + CreciendoVal/CreciendoRange;
+        } else { // bypass
+            creciendo = 1;
+            console.log('macro range error: creciendo/diminuendo');
+        }
+
+        // Expressivity = Envelope Multiplier
+        let expVal: number = Number(FPControl.value);
+        const expRange: number = 10;
+        // enforce range
+        if (expVal > expRange) { // above max
+            expVal = expRange;
+        } else if (expVal < -expRange) { // below min
+            expVal = -expRange;
+        } else if (expVal > 0 && expVal % 1 !== 0) { // round + fractions up
+            expVal = Math.ceil(expVal);
+        } else if (expVal < 0 && expVal % 1 !== 0) { // round - fractions down
+            expVal = Math.floor(expVal);
+        }
+        // convert scale
+        if (expVal === 0) { // bypass
+            FortePiano = 1;
+        } else if (expVal > 0) { // +
+            FortePiano = 1 + expVal/expRange;
+        } else if (expVal < 0) { // -
+            FortePiano = 1 + expVal/expRange;
+        } else { // bypass
+            FortePiano = 1;
+            console.log('macro range error: Expressivity');
+        }
+
+        // Major Gusto = Drive Multiplier
+        let driveMultiplier: number = Number(DMControl.value); // control range: -10 - 0 | 0 - 30, converted range: 0 - 1 | 1 - 5, mult range: 0.1X - 5X 
+        const driveMultRange: number = 3 * creciendo; // range of multiplication
+        const driveMultGran: number = 10; // granularity per unit
+        // enforce range
+        if (driveMultiplier > driveMultGran * driveMultRange) { // above max
+            driveMultiplier = driveMultGran * driveMultRange;
+        } else if (driveMultiplier < -driveMultGran) { // blow min
+            driveMultiplier = -driveMultGran;
+        } else if (driveMultiplier > 0 && driveMultiplier % 1 !== 0) { // round + fractions up
+            driveMultiplier = Math.ceil(driveMultiplier);
+        } else if (driveMultiplier < 0 && driveMultiplier % 1 !== 0) { // round - fractions down
+            driveMultiplier = Math.floor(driveMultiplier);
+        }
+        // convert scale
+        if (driveMultiplier === 0) { // bypass
+            driveMult = 1;
+        } else if (driveMultiplier > 0) { // +
+            driveMult = 1 + driveMultiplier/driveMultGran * creciendo; // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
+        } else if (driveMultiplier < 0) { // -
+            driveMult = 1 + driveMultiplier/driveMultGran * creciendo;
+        } else { // bypass
+            driveMult = 1;
+            console.log('macro range error: Drive Multiplier');
+        }
+
+        // Forte-Piano = oscillator pre-gain multiplier
+        let inVal: number = Number(FPControl.value);
+        const inRange: number = 50;
+        // enforce range
+        if (inVal > inRange) { // above max
+            inVal = inRange;
+        } else if (inVal < -inRange) { // below min
+            inVal = -inRange;
+        } else if (inVal > 0 && inVal % 1 !== 0) { // round + fractions up
+            inVal = Math.ceil(inVal);
+        } else if (inVal < 0 && inVal % 1 !== 0) { // round - fractions down
+            inVal = Math.floor(inVal);
+        }
+        // convert scale
+        if (inVal === 0) { // bypass
+            FortePiano = 1;
+        } else if (inVal > 0) { // +
+            FortePiano = 1 + inVal/inRange;
+        } else if (inVal < 0) { // -
+            FortePiano = 1 + inVal/inRange;
+        } else { // bypass
+            FortePiano = 1;
+            console.log('macro range error: Forte Piano');
+        }
+
+        // variability
+        let vary: number = Number(VControl.value);
+        // enforce range
+        if (vary > 10) { // above max
             vary = 10;
-        } else if (vary < 1) {
+        } else if (vary < 1) { // below min
             vary = 1;
+        } else if (inVal % 1 !== 0) { // round + fractions up
+            inVal = Math.ceil(inVal);
         }
         variance = vary;
     }
@@ -227,18 +490,25 @@ async function sound() {
             // oscillator elements
             const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
             const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+            const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
             const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
             const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
             const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
             const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
             const oscType: HTMLInputElement | null = osc.querySelector('.type');
-            const ID: string | undefined = crypto.randomUUID().split('-')[0]; // generate Osc ID
-            if (oscGain && oscDriv && oscVoic && oscFreq && oscDetu && oscPart && oscType && typeof ID === 'string') {
+
+            // oscillator ID
+            const ID: string | undefined = crypto.randomUUID().split('-')[0]; // generate a unique Oscillator ID
+
+            // test oscilator element integrity
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType && typeof ID === 'string') {
+                
                 // oscillator properties
                 const gain: number = Number(oscGain.value);
                 const drive: number = Number(oscDriv.value);
+                const driveCharacter: string = oscDrCh.value;
                 const voices: number = Number(oscVoic.value);
-                const hz: number = Number(oscFreq.value);
+                const freq: number = Number(oscFreq.value);
                 const detune: number = Number(oscDetu.value);
                 const partials: number = Number(oscPart.value);
                 const type: string = oscType.value;
@@ -248,36 +518,41 @@ async function sound() {
                 // GAIN
                 // logarithmic distribution of gain levels
                 // ranges: 0 - 99 => 0/100 - 99/100 => 0 - +inf or lim1 => 0 - 1
-                // maxIn distributes levels below its percentage value within 0 - 99 range
-                // maxOut distributes levels below its value within 0 - 1 range
+                // FortePiano distributes levels below its percentage value within 0 - 99 range
+                // makeup distributes levels below its value within 0 - 1 range
                 // as frequency increases, gain variation increases; stable bass and dynamic trebble
-                // with a variance of 2 (not accounting for factor)
-                //  - 100 hz has max possible variance of 0.01
-                //  - 1,000 hz has max possible variance of 0.1
-                //  - 10,000 hz has max possible variance of 1
-                //  - 20,000 hz has max possible variance of 2
-                // with a variance of 4 (not accounting for factor)
-                //  - 100 hz has max possible variance of 0.02
-                //  - 1,000 hz has max possible variance of 0.2
-                //  - 10,000 hz has max possible variance of 2
-                //  - 20,000 hz has max possible variance of 4
+                // with a variance of 2 (not accounting for factor) = minimum
+                //  - 100 hz has max possible of 0.01
+                //  - 1,000 hz has max possible of 0.1
+                //  - 10,000 hz has max possible of 1
+                //  - 20,000 hz has max possible of 2
+                // with a variance of 4 (not accounting for factor) = default
+                //  - 100 hz has max possible of 0.02
+                //  - 1,000 hz has max possible of 0.2
+                //  - 10,000 hz has max possible of 2
+                //  - 20,000 hz has max possible of 4
+                // with a variance of 10 (not accounting for factor) = maximum
+                //  - 100 hz has max possible of 0.05
+                //  - 1,000 hz has max possible of 0.5
+                //  - 10,000 hz has max possible of 5
+                //  - 20,000 hz has max possible of 10
                 
                 // FREQUENCY
                 // uses same v value for frequency variation
 
                 // random ammount of possible variance applied, adjusted by frequency
                 // each property has a factor of variation, which when all are summed euqals 1
-                const v: number = (variance * (hz / 20000)); // maximum possible variation
+                const v: number = (variance * (freq / 20000)); // maximum possible variation
                 
                 // gain variation
                 const gainFactor: number = .25; // 4:1  variation to gain
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
-                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * maxIn : (-Math.log10(-(gain/100) + 1)/2 + gainV) * maxIn;
+                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * FortePiano : (-Math.log10(-(gain/100) + 1)/2 + gainV) * FortePiano;
 
                 // frequency variation
                 const freqFactor: number = .5; // 2:1  variation to frequency
                 const freqV: number = Math.random() * v*freqFactor; // variation ammount for frequency
-                const freqCalc: number = hz - freqV;
+                const freqCalc: number = freq - freqV;
 
                 // stereo varation
                 const stereoFactor: number = .15 // 20:3 variation to stereo
@@ -287,9 +562,9 @@ async function sound() {
                 const timbFactor: number = .1; // 10:1 variation to timbre
 
                 // generate waveform
-                const real: Float32Array = new Float32Array(partials);
-                const imag: Float32Array = new Float32Array(partials);
-                let waveform: PeriodicWave;
+                const real: Float32Array = new Float32Array(partials); // real coefficients
+                const imag: Float32Array = new Float32Array(partials); // imaginary coefficients
+                let waveform: PeriodicWave; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
                 if (type === 'sine') {
                     // DC offset
                     real[0] = 0;
@@ -367,7 +642,7 @@ async function sound() {
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
                     
-                } else if (type === 'conv-geo-series-0.5') {
+                } else if (type === 'inf-conv-geo-series-0.5') {
                     // DC offset
                     real[0] = 0;
                     imag[0] = 0;
@@ -384,7 +659,7 @@ async function sound() {
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
                 
-                } else if (type === 'conv-geo-series-0.25') {
+                } else if (type === 'inf-conv-geo-series-0.25') {
                     // DC offset
                     real[0] = 0;
                     imag[0] = 0;
@@ -400,7 +675,7 @@ async function sound() {
 
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
-                } else if (type === 'conv-geo-series-0.125') {
+                } else if (type === 'inf-conv-geo-series-0.125') {
                     // DC offset
                     real[0] = 0;
                     imag[0] = 0;
@@ -431,11 +706,26 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
 
+                // apply stereo variation via phazing
+
+
                 // enforce ranges to validate user input and prevent variability engine from causing trouble
+                
+                // varied properties
                 let gainVal: number = gainCalc;
-                if (gainCalc >= 1 || gainCalc < 0) {
-                    gainVal = (1 - gainV - .01) * maxIn;
+                if (gainCalc >= 1) {
+                    gainVal = 1 - gainV;
+                } else if (gainCalc < 0) {
+                    gainVal = 0;
                 }
+                let freqVal: number = freqCalc;
+                if (freqVal > 20000) {
+                    freqVal = 20000;
+                } else if (freqVal < 20) {
+                    freqVal = 20;
+                }
+
+                // unvaried properties
                 let voiceVal: number = voices;
                 if (voiceVal > 4) {
                     voiceVal = 4;
@@ -445,14 +735,8 @@ async function sound() {
                 let driveVal: number = drive;
                 if (driveVal > 10) {
                     driveVal = 10;
-                } else if (driveVal < 2) {
-                    driveVal = 2;
-                }
-                let freqVal: number = freqCalc;
-                if (freqVal > 20000) {
-                    freqVal = 20000;
-                } else if (freqVal < 20) {
-                    freqVal = 20;
+                } else if (driveVal < 1) {
+                    driveVal = 1;
                 }
                 let detuneVal: number = detune;
                 if (detuneVal > 24) {
@@ -460,9 +744,8 @@ async function sound() {
                 } else if (detuneVal < -24) {
                     detuneVal = -24;
                 }
-                
                 // add oscillator to oscillators object
-                const osc: object = {'waveform':waveform, 'voices':voiceVal, 'gain':gainVal, 'drive':driveVal, 'hz':freqVal, 'detune': detuneVal};
+                const osc: {[key:string]: any} = {'waveform':waveform, 'oscVoices':voiceVal, 'gain':gainVal, 'drive':driveVal, 'driveCharacter': driveCharacter, 'freq':freqVal, 'detune':detuneVal};
                 oscillators[ID] = osc;
                 gotit = true;
 
@@ -481,30 +764,36 @@ async function sound() {
         }
     }
 
+    // generate voices
     if (gotit) {
 
-        // generate voices
+        // create out nodes to route to after each voice generation
         const dry: GainNode = audioContext.createGain(); // no FX
         const wet: GainNode = audioContext.createGain(); // FX
+
+        // iterate over every oscillator
         const keys: Array<string> = Object.keys(oscillators);
         for (const key of keys) {
     
             // collect oscillator properties
             const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
             const waveform: PeriodicWave = oscil['waveform'];
-            const oscVoic: number = oscil['voices'];
-            const oscFreq: number = oscil['hz'];
+            const oscVoic: number = oscil['oscVoices'];
+            const oscFreq: number = oscil['freq'];
             const oscDetu: number = oscil['detune'];
             const oscVol: number = oscil['gain'];
             const oscDrive: number = oscil['drive'];
+            const oscDriCh: string = oscil['driveCharacter'];
             
             // generator process route map
-            // oscillator > pregain > waveshaper > postgain > 3Comp > clamp > out
-            //                      > preAnalyzer                           > postAnalyzer
+            // oscillator: voice > gain > waveshaper > makeup > dry
+            //             voice >      > preAnalyzer         > postAnalyzer
+            //             voice >                            > wet
+            //             voice >
             
             // create gain node to apply pre gain value
-            const preGain: GainNode = audioContext.createGain();
-            preGain.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
+            const gainNode: GainNode = audioContext.createGain();
+            gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
             
             // create voices for oscilator
             for (let v = 0; v < oscVoic; v++) {
@@ -517,120 +806,170 @@ async function sound() {
                 // set detune
                 osc.detune.value = v * oscDetu;
                 // connect each voice from the oscillator to pre gain node
-                osc.connect(preGain);
+                osc.connect(gainNode);
                 // store pointer to oscillator in structure for global reference
                 voices.push(osc);
             }
-
-            // sigmoid curve waveshaper distortion
-            const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-            const oversample: OverSampleType = '4x';
-            waveshaper.curve = sigmoid(oscDrive); // Higher number = sharper S-curve / more saturation
-            waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
-            preGain.connect(waveshaper);
-
+            
             // pre-analysis
             const preAnalyzer: AnalyserNode =  audioContext.createAnalyser();
             // store in global structure
             analysis[key] = []; // init key for osc in structure
             analysis[key].push(preAnalyzer); // add node to array at key in structure
-            preGain.connect(preAnalyzer);
+            gainNode.connect(preAnalyzer);
 
-            // apply out gain before dynamics system to ensure all levels follow curve
-            const postGain: GainNode = audioContext.createGain();
-            postGain.gain.value = maxOut;
-            waveshaper.connect(postGain);
+            // sigmoid curve waveshaper distortion
+            const makeupGainNode: GainNode = audioContext.createGain();
+            console.log('drive');
+            console.log(oscDrive);
+            if (oscDrive > 1) {
+                // build
+                const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
+                const oversample: OverSampleType = '2x';
+                let waveshaperCurve: Float32Array<ArrayBuffer>;
+                if (oscDriCh === 'sigmoid1') {
+                    waveshaperCurve = sigmoid1(oscDrive * driveMult);
+                } else if (oscDriCh === 'sigmoid2') {
+                    waveshaperCurve = sigmoid2(oscDrive * driveMult);
+                } else if (oscDriCh === 'sigmoid3') {
+                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                } else {
+                    // default to sigmoid 3 if faulty string is provided
+                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                }
+                waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
+                waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
+                const referenceLine: Float32Array<ArrayBuffer> = linear();
+                // Calculate the power difference and set makeup gain value to a corrective factor
+                // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
+                // f = total output power = integration of the waveshaper curve
+                // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
+                // reciprocal of factor: 1/(1+(f-i)/i)
+                const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
+                const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
+                const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
+                makeupGainNode.gain.value = powerFactor;
 
-            // 3Comp: generator dynamics system
-            // -12 dB - -3 dB total range before brickwall
-            // 3X compressors affecting that range
-            // 3X 3 dB ranges in total range
-            //  -12 dB - -9 dB -- 1:1.1 ratio
-            //      - comp1: applies 1/3 of 1:3 ratio
-            //  -9 dB - -6 dB  -- 1:4 ratio
-            //      - comp1: applies 2/3 of 1:3 ratio
-            //      - comp2: applies 1/2 of 1:2 ratio
-            //  -6 dB - -3 dB  -- 1.6 ratio
-            //      - comp1: applies 3/3 of 1:3 ratio
-            //      - comp2: applies 2/2 of 1:2 ratio
-            //  -3 dB - 0 dB   -- 1:20 ratio
-            //      - comp1: applies 3/3 of 1:3 ratio
-            //      - comp2: applies 2/2 of 1:2 ratio
-            //      - comp3: applies 1/1 of 1:3.4 ratio
+                // route
+                gainNode.connect(waveshaper);
+                waveshaper.connect(makeupGainNode);
 
-            // compress to put dynamics on a curve
-            const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            compressor.threshold.value = -12; // Start compressing at -12 dB
-            compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
-            compressor.ratio.value = 3;       // 1:3 ratio
-            compressor.attack.value = 0.05;   // 1:2 with release
-            compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-            postGain.connect(compressor);
+            } else {
+
+                // bypass drive
+                gainNode.connect(makeupGainNode);
+                makeupGainNode.gain.value = 1;
+            }
             
-            // soft limit before critical range
-            const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            limiter.threshold.value = -6;    // limit at -9 dB
-            limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
-            limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
-            limiter.attack.value = 0.05;     // 1:1 with release
-            limiter.release.value = 0.05;
-            compressor.connect(limiter);
-            
-            // brickwall at maximum value
-            const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
-            brickwall.knee.value = 0;         // 0 dB knee for immediate effect
-            brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
-            brickwall.attack.value = 0;       // allow peaks
-            brickwall.release.value = 0.1;
-            limiter.connect(brickwall);
-
-            // route to dry and wet gain nodes for FX chain
-            brickwall.connect(dry);
-            brickwall.connect(wet);
-
             // post-analysis
             const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer) // store in global structure
-            brickwall.connect(postAnalyzer);
+            makeupGainNode.connect(postAnalyzer);
+
+            // route to dry and wet gain nodes for FX chain
+            makeupGainNode.connect(dry);
+            makeupGainNode.connect(wet);
+
         }
 
         // FX Process Route Map
-        // voices > Dry > Master
-        //        > Wet > chain > FX > Master
-        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
-        wet.connect(FX); // bypass FX chain
-        // conditional tree determines FX chain order
-        // let chainOrder: string = 'A > B > C';
-        // if (chainOrder === 'A > B > C') {
+        // Dry              > out
+        // Wet > chain > FX > out
 
-        // } else if (chainOrder === 'A > C > B') {
-        
-        // } else if (chainOrder === 'B > A > C') {
-
-        // } else if (chainOrder === 'B > C > A') {
-
-        // } else if (chainOrder === 'C > A > B') {
-
-        // } else if (chainOrder === 'C > B > A') {
-
-        // }
-
-        // Master Procecss Route Map
-        // Dry > Master Gain > clamp > out 
-        // FX  > 
-        const masterGainNode: GainNode = audioContext.createGain();
-        masterGainNode.gain.value = Number(masterGain.value)/100;
-        
         // dry and wet ammount should combine to 1
+        
         let dryVal: number = 0; // store dry ammount
         let wetVal: number = 1; // store wet ammount
         dry.gain.value = keys.length === 0 ? 0 : dryVal / keys.length; // adjust ammount by number of oscilators
         wet.gain.value = keys.length === 0 ? 0 : wetVal / keys.length; // adjust ammount by number of oscilators
-        dry.connect(masterGainNode);
-        FX.connect(masterGainNode);
+
+        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
+        FX.gain.value = 1; // ensure level is not affected
+
+        // before FX
+        const preAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['FX'] = []; // init key for osc in structure
+        analysis['FX'].push(preAnalysis) // store in global structure
+        wet.connect(preAnalysis);
+
+        // after FX
+        const postAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['FX'].push(postAnalysis) // store in global structure
+        FX.connect(postAnalysis);
+
+        // FX Chain
+
+        // Modulations
+        //  - Ring Modulation (RM)
+        //  - Pulse Width Modulation (PWM)
+        //  - Frequency Modulation (FM)
+
+        // Stereoizations
+        //  - Stereo Multiplier (doubler)
+        //  - Haas Effect (stereo delay)
+        //  - Stereo Panner
+
+        // Spatializations
+        //  - Dymanic Delay Line (DDL)
+        //  - Rverberation Module
+
+        wet.connect(FX); // bypass FX chain
+
+        // Master Process Route Map
+        // Dry > 3Comp > Master Gain > clamp > out
+        // FX  > 
+
+        // 3Comp: generator dynamics system
+        // -12 dB - -3 dB total range before brickwall
+        // 3X compressors affecting that range
+        // 3X 3 dB ranges in total range
+        //  -12 dB - -9 dB -- 1:1.1 ratio
+        //      - comp1: applies 1/3 of 1:3 ratio
+        //  -9 dB - -6 dB  -- 1:4 ratio
+        //      - comp1: applies 2/3 of 1:3 ratio
+        //      - comp2: applies 1/2 of 1:2 ratio
+        //  -6 dB - -3 dB  -- 1.6 ratio
+        //      - comp1: applies 3/3 of 1:3 ratio
+        //      - comp2: applies 2/2 of 1:2 ratio
+        //  -3 dB - 0 dB   -- 1:20 ratio
+        //      - comp1: applies 3/3 of 1:3 ratio
+        //      - comp2: applies 2/2 of 1:2 ratio
+        //      - comp3: applies 1/1 of 1:3.4 ratio
+
+        // compress to put dynamics on a curve
+        const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        compressor.threshold.value = -12; // Start compressing at -12 dB
+        compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
+        compressor.ratio.value = 3;       // 1:3 ratio
+        compressor.attack.value = 0.05;   // 1:2 with release
+        compressor.release.value = 0.1;   // slows release to bring up lower dynamics
+        dry.connect(compressor);
+        FX.connect(compressor);
         
-        // clamp for 0 dB hard-clipping/peak-elimination
+        // soft limit before critical range
+        const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        limiter.threshold.value = -6;    // limit at -9 dB
+        limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
+        limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
+        limiter.attack.value = 0.05;     // 1:1 with release
+        limiter.release.value = 0.05;
+        compressor.connect(limiter);
+        
+        // brickwall at maximum value
+        const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
+        brickwall.knee.value = 0;         // 0 dB knee for immediate effect
+        brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
+        brickwall.attack.value = 0;       // allow peaks
+        brickwall.release.value = 0.1;
+        limiter.connect(brickwall);
+
+        // master gain control
+        const masterGainNode: GainNode = audioContext.createGain();
+        masterGainNode.gain.value = Number(masterGain.value)/100;
+        brickwall.connect(masterGainNode);
+        
+        // clamp for 0 dB hard-clipping peak-elimination
         const clampOut: AudioWorkletNode = clamp(masterGainNode);
         clampOut.connect(audioContext.destination);
         
@@ -651,7 +990,7 @@ async function sound() {
             if (nodeList) {
                 // control which analyzers log data here
 
-                analyze(nodeList[0]) // preAnalysis for osc1
+                // analyze(nodeList[0]) // preAnalysis for osc1
                 // analyze(nodeList[1]) // postAnalysis for osc1
 
                 // analyze(nodeList[0]) // preAnalysis for osc2
@@ -660,7 +999,7 @@ async function sound() {
                 // analyze(nodeList[0]) // preAnalysis for osc3
                 // analyze(nodeList[1]) // postAnalysis for osc3
                 
-                // allstream logging (not reccomended)
+                // allstream logging (not reccomended; mixes data streams)
                 // for (const node of nodeList) {
                 //     analyze(node);
                 // }
@@ -674,7 +1013,7 @@ let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && OscPreGain && OscPostGain && masterGain && variability && osc1 && osc2 && osc3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && FPControl && CControl && VControl && osc1 && osc2 && osc3) {
 
         // load processor modules
         await getProcessorModules();
@@ -682,6 +1021,8 @@ async function setup(): Promise<void> {
         // setup listeners for user controls
         const latency: number = 150; // millisecs
         let listening: boolean = true;
+
+        // playback controls
 
         // mute voices and clear osc and voice data, generate osc and voice data and play voices
         playBtn.addEventListener('click', () => {
@@ -711,32 +1052,8 @@ async function setup(): Promise<void> {
     
         // breaker button reloads program
         breakerBtn.addEventListener('click', () => {window.location.reload()});
-    
-        // controls oscillator pre gain into drive
-        OscPreGain.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    sound(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-    
-        // controls oscillator post gain out of drive
-        OscPostGain.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    sound(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
+
+        // macros
         
         // controls master audio level
         masterGain.addEventListener('input', () => {
@@ -748,9 +1065,35 @@ async function setup(): Promise<void> {
                 }, latency);
             }
         });
+    
+        // controls gain for all oscillators
+        FPControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+    
+        // controls intensity
+        CControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
         
-        // controls master audio level
-        variability.addEventListener('input', () => {
+        // controls variability
+        VControl.addEventListener('input', () => {
             if (playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {

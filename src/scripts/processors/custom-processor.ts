@@ -1,10 +1,5 @@
-// custom-processor: prevents peaking above 0 dB
-function isFloat32ArrayArray(input: unknown): input is Float32Array<ArrayBufferLike>[] {
-  if (!Array.isArray(input)) return false;
-  if (input.length === 0) return true;
-  return input.every(item => item instanceof Float32Array);
-};
-class ClampProcessor extends AudioWorkletProcessor {
+// custom-processor: does something
+class CustomProcessor extends AudioWorkletProcessor {
   // logging
   count: number;
   logoff: boolean;
@@ -63,7 +58,7 @@ class ClampProcessor extends AudioWorkletProcessor {
       const output: Float32Array<ArrayBufferLike>[] | undefined = outputs[put];
       
       // check input and output types aren't undefined
-      if (isFloat32ArrayArray(input) && isFloat32ArrayArray(output)) {
+      if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
         
         // count number of channels
         // if (!this.logoff) {
@@ -99,7 +94,7 @@ class ClampProcessor extends AudioWorkletProcessor {
               // describe the process
               
               // process input
-              const out: number = inputChannel[i];
+              const out: number = Number(inputChannel[i]);
               
               // assign to output
               outputChannel[i] = out;
@@ -122,4 +117,4 @@ class ClampProcessor extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor("clamp-processor", ClampProcessor);
+registerProcessor("clamp-processor", CustomProcessor);

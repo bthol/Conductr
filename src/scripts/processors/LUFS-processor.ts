@@ -1,5 +1,5 @@
-// clamp-processor: prevents peaking above 0 dB
-class ClampProcessor extends AudioWorkletProcessor {
+// LUFS-processor: prevents peaking above 0 dB
+class LUFSProcessor extends AudioWorkletProcessor {
   // logging
   count: number;
   logoff: boolean;
@@ -16,23 +16,24 @@ class ClampProcessor extends AudioWorkletProcessor {
     this.processed = 0; // stores the number of inputs processed into outputs
 
     // Listen to messages from main thread
-    // this.port.onmessage = (event) => {
-    //   // ping response for testing messaging
-    //   if (event.data.type === 'PING') {
-    //     this.port.postMessage({ msg: 'clamp-processor pinged'});
-    //   }
-    // };
+    this.port.onmessage = (event) => {
+      // ping response for testing messaging
+      if (event.data.type === 'PING') {
+        this.port.postMessage({ msg: 'clamp-processor pinged'});
+      }
+    };
 
   }
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
     // logging to renderer main process
     this.count++;
     // this.processed = 0;
-    // if (!this.logoff) {
-    //   this.lognum++;
-    //   if (this.lognum >= this.maxlog) {this.logoff = true};
-    //   this.port.postMessage({ msg: 'clamp-processor ran', count:this.count});
-    // }
+    if (!this.logoff) {
+      this.lognum++;
+      if (this.lognum >= this.maxlog) {this.logoff = true};
+      this.port.postMessage({ msg: 'clamp-processor ran', count:this.count});
+    }
+
     // iterate over all inputs and corresponding outputs
     // assuming:
     //  - an equal number of inputs and outputs
@@ -58,6 +59,7 @@ class ClampProcessor extends AudioWorkletProcessor {
       
       // check input and output types aren't undefined
       if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
+        
         // count number of channels
         // if (!this.logoff) {
         //   this.lognum++;
@@ -77,33 +79,41 @@ class ClampProcessor extends AudioWorkletProcessor {
           if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
             
             // input data in each channel
-            // if (!this.logoff) {
-            //   this.lognum++;
-            //   if (this.lognum >= this.maxlog) {this.logoff = true};
-            //   this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
-            // }
+            if (!this.logoff) {
+              this.lognum++;
+              if (this.lognum >= this.maxlog) {this.logoff = true};
+              this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
+            }
             
             // processes audio in chunks of 128 samples
             // to prevent data loss by lengths greater than 128, iterate for number of samples in output channel
             for (let i = 0; i < outputChannel.length; i++) {
               // impliment logic for custom processing here
               // this.processed++; // optional value to determine number of inputs processed
-              
-              // Clamp the audio sample between -1.0 and 1.0 (0 dB limit)
+
+              // Caclulate LUFS level (ITU-R BS.1770-4 standard)
+
+              // Pre-filtering (k-weighting): A high-pass and high-frequency shelving filter are applied to model human hearing
+
+              // Mean Square: calculate the mean square of the filtered channels
+
+              // Channel Weighting: reduce weight of channels on stereo edges
+
+              // Gating: Relative and Absolute gating
               
               // process input
-              const out: number = Math.max( -1.0, Math.min(1.0, Number(inputChannel[i]) ));
+              const out: number = Number(inputChannel[i]);
               
               // assign to output
               outputChannel[i] = out;
             }
             
             // ouput data in each channel
-            // if (!this.logoff) {
-            //   this.lognum++;
-            //   if (this.lognum >= this.maxlog) {this.logoff = true};
-            //   this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
-            // }
+            if (!this.logoff) {
+              this.lognum++;
+              if (this.lognum >= this.maxlog) {this.logoff = true};
+              this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
+            }
 
           }
         }
@@ -115,4 +125,4 @@ class ClampProcessor extends AudioWorkletProcessor {
   }
 }
 
-registerProcessor("clamp-processor", ClampProcessor);
+registerProcessor("LUFS-processor", LUFSProcessor);

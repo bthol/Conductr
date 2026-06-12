@@ -61,6 +61,7 @@
     "src/scripts/renderer.ts",
     "src/scripts/preload.ts",
     "src/scripts/processors/clamp-processor.ts",
+    "src/scripts/processors/LUFS-processor.ts",
   ],
   // "exclude": [
   //   "node_modules"

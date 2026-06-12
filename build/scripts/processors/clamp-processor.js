@@ -1,12 +1,4 @@
 "use strict";
-function isFloat32ArrayArray(input) {
-    if (!Array.isArray(input))
-        return false;
-    if (input.length === 0)
-        return true;
-    return input.every(item => item instanceof Float32Array);
-}
-;
 class ClampProcessor extends AudioWorkletProcessor {
     count;
     logoff;
@@ -26,7 +18,7 @@ class ClampProcessor extends AudioWorkletProcessor {
         for (let put = 0; put < outputs.length; put++) {
             const input = inputs[put];
             const output = outputs[put];
-            if (isFloat32ArrayArray(input) && isFloat32ArrayArray(output)) {
+            if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
                 for (let channel = 0; channel < output.length; channel++) {
                     const inputChannel = input[channel];
                     const outputChannel = output[channel];

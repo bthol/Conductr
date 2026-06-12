@@ -38,12 +38,14 @@
 
     </div>
 
-    <!-- conductor module (macros) -->
-    <div id="conductor" class="module">
-
-        <div class="title">Conductor</div>
-
+    <div class="module">
+        <div class="title">Player Controls</div>
         <div class="bordering">
+            <div>
+                <!-- range for maximum out gain value -->
+                <div>Master</div>
+                <input id="master-gain" type="number" placeholder="Out Gain" min="0" max="100" value="75">
+            </div>
             <div>
                 <div>
                     <button id="play-btn" type="button">run</button>
@@ -52,28 +54,81 @@
                 </div>
             </div>
         </div>
+    </div>
 
+    <!-- conductor module (macros) -->
+    <div id="conductor" class="module">
+
+        <div class="title">Conductor</div>
+        
         <div class="bordering">
             <div>
+                <div class="subtitle">Vertical Plane</div>
+
                 <div>
-                    <div>Predrive</div>
-                    <input id="osc-gain-in" type="number" placeholder="Pre-gain" min="0" max="100" value="50">
+                    <div>Major Forte-Piano</div>
+                    <!-- bipolar multiplier for oscs gain -->
+                    <input id="forte-piano" type="number" placeholder="input gain multiplier" min="-50" max="50" value="0">
                 </div>
+
                 <div>
-                    <div>Postdrive</div>
-                    <input id="osc-gain-out" type="number" placeholder="Post-gain" min="0" max="99" value="50">
-                </div>
-                <div>
-                    <div>Master</div>
-                    <input id="master-gain" type="number" placeholder="Master Gain" min="0" max="100" value="100">
-                </div>
-                <div>
-                    <div>Variability</div>
-                    <input id="variability" type="number" placeholder="variability" min="1" max="10" value="4">
+                    <div>Major Gusto</div>
+                    <input id="drive-multiplier" type="number" placeholder="drive multiplier" min="-10" max="30" value="0">
                 </div>
             </div>
-
         </div>
+        <div class="bordering">
+            <div>
+                <div class="subtitle">Horizontal Plane</div>
+
+                <!-- articulations translate to ASR envelope -->
+                <!-- (staccato, legato, tenuto) : (attack, release, sustain) -->
+
+                <div>
+                    <div>Staccato</div>
+                    <!-- argument scalar -->
+                    <input id="staccato" type="number" placeholder="staccato" min="1" max="10" value="2">
+                </div>
+
+                <div>
+                    <div>Legato</div>
+                    <!-- argument scalar -->
+                    <input id="legato" type="number" placeholder="legato" min="1" max="10" value="2">
+                </div>
+                
+                <div>
+                    <div>Tenuto</div>
+                    <!-- argument scalar -->
+                    <input id="tenuto" type="number" placeholder="tenuto" min="1" max="10" value="10">
+                </div>
+
+                <div>
+                    <div>Variability</div>
+                    <!-- argument scalar for the variability engine -->
+                    <input id="variability" type="number" placeholder="variability" min="1" max="10" value="4">
+                </div>
+
+            </div>
+        </div>
+        <div class="bordering">
+            <div>
+                <div class="subtitle">Saggital Plane</div>
+
+                <div>
+                    <div>Creciendo/Diminuendo</div>
+                    <!-- bipolar multiplier for intensity -->
+                    <input id="creciendo" type="number" placeholder="Intensity" min="-10" max="10" value="0">
+                </div>
+
+                <div>
+                    <div>Expressivity</div>
+                    <!-- bipolar adjustment for ammount of FX -->
+                    <input id="expressivity" type="number" placeholder="Envelope Multiplier" min="-10" max="10" value="0">
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
     <!-- Circuit module (modulation) -->
@@ -109,6 +164,7 @@
         </div>
     </div>
 
+    <!-- 261.63, 329.63, 392.00 -->
 
     <!-- orchestra module (oscilators) -->
     <div id="orchestra" class="module">
@@ -121,40 +177,48 @@
                 <div>
                     <div class="subtitle">Section 1</div>
                     <div>
-                        <div>Waveform</div>
+                        <div>Character</div>
                         <select name="type" class="type">
                             <option value="sine">sine</option>
                             <option value="triangle" selected>triangle</option>
-                            <option value="saw">saw</option>
+                            <option value="saw">sawtooth</option>
                             <option value="square">square</option>
-                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
+                            <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
+                            <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
                         </select>
                     </div>
                     <div>
-                        <div>Amplitude</div>
-                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="33">
+                        <div>Forte-Piano</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="50">
                     </div>
                     <div>
-                        <div>Drive</div>
-                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                        <div>Gusto</div>
+                        <input class="drive" type="number" placeholder="drive" min="1" max="10" value="4">
                     </div>
                     <div>
-                        <div>Frequency</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="261.63">
+                        <div>Gusto Flavor</div>
+                        <select name="flavor" class="drive-character">
+                            <option value="sigmoid1">Sigmoid 1</option>
+                            <option value="sigmoid2">Sigmoid 2</option>
+                            <option value="sigmoid3">Sigmoid 3</option>
+                        </select>
                     </div>
                     <div>
-                        <div>Voices</div>
+                        <div>Root</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                    </div>
+                    <div>
+                        <div>Plurals</div>
                         <input class="voices" type="number" placeholder="voices" min="1" max="4" value="3">
                     </div>
                     <div>
-                        <div>detune</div>
-                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="7">
+                        <div>Unison</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
                     </div>
                     <div>
-                        <div>Partials</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                        <div>Register</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
                     </div>
                 </div>
             </div>
@@ -164,40 +228,48 @@
                 <div>
                     <div class="subtitle">Section 2</div>
                     <div>
-                        <div>Waveform</div>
+                        <div>Character</div>
                         <select name="type" class="type">
                             <option value="sine">sine</option>
                             <option value="triangle" selected>triangle</option>
-                            <option value="saw">saw</option>
+                            <option value="saw">sawtooth</option>
                             <option value="square">square</option>
-                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
+                            <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
+                            <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
                         </select>
                     </div>
                     <div>
-                        <div>Amplitude</div>
-                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="33">
+                        <div>Forte-Piano</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
                     </div>
                     <div>
-                        <div>Drive</div>
-                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                        <div>Gusto</div>
+                        <input class="drive" type="number" placeholder="drive" min="1" max="10" value="1">
                     </div>
                     <div>
-                        <div>Frequency</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="329.63">
+                        <div>Gusto Flavor</div>
+                        <select name="flavor" class="drive-character">
+                            <option value="sigmoid1">Sigmoid 1</option>
+                            <option value="sigmoid2">Sigmoid 2</option>
+                            <option value="sigmoid3">Sigmoid 3</option>
+                        </select>
                     </div>
                     <div>
-                        <div>Voices</div>
+                        <div>Root</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                    </div>
+                    <div>
+                        <div>Plurals</div>
                         <input class="voices" type="number" placeholder="voices" min="1" max="4" value="3">
                     </div>
                     <div>
-                        <div>detune</div>
-                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="7">
+                        <div>Unison</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
                     </div>
                     <div>
-                        <div>Partials</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                        <div>Register</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
                     </div>
                 </div>
             </div>
@@ -211,36 +283,44 @@
                         <select name="type" class="type">
                             <option value="sine">sine</option>
                             <option value="triangle" selected>triangle</option>
-                            <option value="saw">saw</option>
+                            <option value="saw">sawtooth</option>
                             <option value="square">square</option>
-                            <option value="conv-geo-series-0.5">conv-geo-series-0.5</option>
-                            <option value="conv-geo-series-0.25">conv-geo-series-0.25</option>
-                            <option value="conv-geo-series-0.125">conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
+                            <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
+                            <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
                         </select>
                     </div>
                     <div>
-                        <div>Amplitude</div>
-                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="33">
+                        <div>Forte-Piano</div>
+                        <input class="amplitude" type="number" placeholder="amplitude" min="0" max="99" value="0">
                     </div>
                     <div>
-                        <div>Drive</div>
-                        <input class="drive" type="number" placeholder="drive" min="2" max="10" value="4">
+                        <div>Gusto</div>
+                        <input class="drive" type="number" placeholder="drive" min="1" max="10" value="1">
                     </div>
                     <div>
-                        <div>Frequency</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="24" max="20000" value="392.00">
+                        <div>Gusto Flavor</div>
+                        <select name="flavor" class="drive-character">
+                            <option value="sigmoid1">Sigmoid 1</option>
+                            <option value="sigmoid2">Sigmoid 2</option>
+                            <option value="sigmoid3">Sigmoid 3</option>
+                        </select>
                     </div>
                     <div>
-                        <div>Voices</div>
+                        <div>Root</div>
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                    </div>
+                    <div>
+                        <div>Plurals</div>
                         <input class="voices" type="number" placeholder="voices" min="1" max="4" value="3">
                     </div>
                     <div>
-                        <div>detune</div>
-                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="7">
+                        <div>Unison</div>
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
                     </div>
                     <div>
-                        <div>Partials</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="128">
+                        <div>Register</div>
+                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
                     </div>
                 </div>
             </div>
