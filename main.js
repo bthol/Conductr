@@ -12,13 +12,29 @@ const template = [
         click: () => { console.log('Open'); }
       },
       {
-        label: 'Overwrite',
-        click: () => { console.log('Overwrite'); }
+        label: 'Save New Preset',
+        click: () => { console.log('Save New Preset'); }
       },
       {
-        label: 'Save as',
-        click: () => { console.log('Save as'); }
-      }
+        label: 'Save New Circuit',
+        click: () => { console.log('Save New Circuit'); }
+      },
+      {
+        label: 'Save New Orchestra',
+        click: () => { console.log('Save New Orchestra'); }
+      },
+      {
+        label: 'Overwrite Preset',
+        click: () => { console.log('Overwrite Preset'); }
+      },
+      {
+        label: 'Overwrite Circuit',
+        click: () => { console.log('Overwrite Circuit'); }
+      },
+      {
+        label: 'Overwrite Orchestra',
+        click: () => { console.log('Overwrite Orchestra'); }
+      },
     ]
   },
   {
@@ -29,6 +45,10 @@ const template = [
         click: () => { console.log('settings'); }
       },
     ]
+  },
+  {
+    label: 'About',
+    click: () => { console.log('About'); }
   }
 ];
 const menu = Menu.buildFromTemplate(template);
@@ -50,8 +70,8 @@ app.whenReady().then(() => {
   win = new BrowserWindow({
     width: width,
     height: height,
-    minWidth: 350,
-    minHeight: 400,
+    minWidth: 572,
+    minHeight: 410,
     frame: true,
     icon: path.join(__dirname, 'assets', 'icon.ico'),
     webPreferences: {

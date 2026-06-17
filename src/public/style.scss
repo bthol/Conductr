@@ -1,5 +1,6 @@
 @use "./stylesheets/index.scss";
 @use "sass:color";
+@use "sass:math"; // Required for division
 
 // set defaults
 body {
@@ -9,14 +10,9 @@ body {
 }
 
 .panel {
-    padding: 8px;
-    margin: 10px 0px;
-    background-color: index.$background-color-2;
-    border: 1px solid index.$border-color;
-    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
-    @include index.break-corners;
     display: flex;
     align-items: center;
+    gap: 6px;
 }
 
 .module {
@@ -48,11 +44,57 @@ body {
     border: 8px solid transparent;
 }
 
+.second-border {
+    padding: 8px;
+    margin: 10px 0px;
+    border: 1.5px solid index.$detailing;
+    @include index.break-corners;
+}
+
 .section-layout {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 1vw;
+}
+
+.wire-layout {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 1vw;
+}
+
+// Levelver Style
+$lvl-bar-height: 120px; // total height of bar
+$lvl-number: 25; // number of levels in a bar
+
+.leveler-layout {
+    display: flex;
+    gap: 4px;
+}
+
+.leveler-background {
+    background: index.$background-color-2;
+}
+
+.leveler-level-bar-style {
+    height: $lvl-bar-height;
+    width: 24px;
+    background: color.adjust(index.$background-color-3, $lightness: 10%, $saturation: 10%);
+    border: 1.5px solid index.$shadow-color;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.leveler-level-bar-style > div {
+    height: math.div($lvl-bar-height, $lvl-number);
+}
+
+.level-style {
+    box-shadow: 1px 2px 2px 0px color.adjust(index.$shadow-color, $alpha: .1);
+    background: index.$detailing;
 }
 
 // font size control
@@ -62,6 +104,7 @@ body {
 
 .subtitle {
     font-size: index.$font-small;
+    margin-bottom: 8px;
 }
 
 .title {
@@ -82,11 +125,11 @@ body {
     justify-content: space-between;
     align-items: center;
     width: max-content;
-    margin-right: 3vw;
+    margin-right: 18px;
 }
 
 .light-label {
-    margin-right: .75vw;
+    margin: 0px 12px;
     font-size: index.$font-small;
     cursor: default;
 }
@@ -96,6 +139,16 @@ body {
     border-radius: 100px;
     height: 16px;
     width: 16px;
+}
+
+#indicator-lights {
+    background-color: index.$background-color-2;
+    border: 1px solid index.$border-color;
+    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
+    outline: 3px solid color.adjust(index.$background-color-3, $hue: 90deg);
+    padding: 8px;
+    margin: 10px 0px;
+    @include index.break-corners;
 }
 
 #run-light {

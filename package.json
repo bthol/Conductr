@@ -12,7 +12,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "devstart": "electron .",
-    "runpile": "npx sass src/public:build/public && npx tsc && electron .",
+    "runpile": "npx sass src/public:build/public && npx tsc && electron-forge start",
     "compile": "npx sass src/public:build/public && npx tsc",
     "compile-ts": "npx tsc",
     "watch-ts": "npx tsc --watch",

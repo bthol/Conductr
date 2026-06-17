@@ -10,30 +10,33 @@
 </head>
 <body id="root">
 
-    <h1 class="supertitle">ConductR</h1>
+    <h1 class="supertitle">ConductR &trade;</h1>
 
     <p class="subtitle">Ride the coattails of engineers with wires orchestrated by conductors</p>
 
     <div id="indicator-lights" class="panel dark-font">
-
-        <div class="indicator-light-label-layout">
-            <div class="light-label">Run</div>
-            <div id="run-light" class="indicator-light"></div>
+        <div>
+            <div class="indicator-light-label-layout">
+                <div class="light-label">Run</div>
+                <div id="run-light" class="indicator-light"></div>
+            </div>
         </div>
 
-        <div class="indicator-light-label-layout">
-            <div class="light-label">Sect 1</div>
-            <div id="osc1-light" class="indicator-light"></div>
-        </div>
-
-        <div class="indicator-light-label-layout">
-            <div class="light-label">Sect 2</div>
-            <div id="osc2-light" class="indicator-light"></div>
-        </div>
-
-        <div class="indicator-light-label-layout">
-            <div class="light-label">Sect 3</div>
-            <div id="osc3-light" class="indicator-light"></div>
+        <div>
+            <div class="indicator-light-label-layout">
+                <div id="osc1-light" class="indicator-light"></div>
+                <div class="light-label">Wire 1</div>
+            </div>
+    
+            <div class="indicator-light-label-layout">
+                <div id="osc2-light" class="indicator-light"></div>
+                <div class="light-label">Wire 2</div>
+            </div>
+    
+            <div class="indicator-light-label-layout">
+                <div id="osc3-light" class="indicator-light"></div>
+                <div class="light-label">Wire 3</div>
+            </div>
         </div>
 
     </div>
@@ -41,10 +44,17 @@
     <div class="module">
         <div class="title">Player Controls</div>
         <div class="bordering">
-            <div>
-                <!-- range for maximum out gain value -->
-                <div>Master</div>
-                <input id="master-gain" type="number" placeholder="Out Gain" min="0" max="100" value="75">
+            <div class="panel">
+                <div>
+                    <!-- maximum out gain value scalar -->
+                    <div>Master</div>
+                    <input id="master-gain" type="number" placeholder="Out Gain" min="0" max="100" value="75">
+                </div>
+                <div>
+                    <!-- Pan position modifier -->
+                    <div>Stereo Pan</div>
+                    <input id="master-pan" type="number" placeholder="stereo pan" min="-50" max="50" value="0">
+                </div>
             </div>
             <div>
                 <div>
@@ -61,71 +71,73 @@
 
         <div class="title">Conductor</div>
         
-        <div class="bordering">
-            <div>
-                <div class="subtitle">Vertical Plane</div>
-
+        <div class="section-layout">
+            <div class="bordering">
                 <div>
-                    <div>Major Forte-Piano</div>
-                    <!-- bipolar multiplier for oscs gain -->
-                    <input id="forte-piano" type="number" placeholder="input gain multiplier" min="-50" max="50" value="0">
-                </div>
-
-                <div>
-                    <div>Major Gusto</div>
-                    <input id="drive-multiplier" type="number" placeholder="drive multiplier" min="-10" max="30" value="0">
+                    <div class="subtitle">Vertical Plane</div>
+    
+                    <div>
+                        <div>Major Forte-Piano</div>
+                        <!-- bipolar multiplier for oscs gain -->
+                        <input id="forte-piano" type="number" placeholder="input gain multiplier" min="-50" max="50" value="0">
+                    </div>
+    
+                    <div>
+                        <div>Major Gusto</div>
+                        <input id="drive-multiplier" type="number" placeholder="drive multiplier" min="-10" max="30" value="0">
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="bordering">
-            <div>
-                <div class="subtitle">Horizontal Plane</div>
-
-                <!-- articulations translate to ASR envelope -->
-                <!-- (staccato, legato, tenuto) : (attack, release, sustain) -->
-
+            <div class="bordering">
                 <div>
-                    <div>Staccato</div>
-                    <!-- argument scalar -->
-                    <input id="staccato" type="number" placeholder="staccato" min="1" max="10" value="2">
+                    <div class="subtitle">Horizontal Plane</div>
+    
+                    <!-- articulations translate to ASR envelope -->
+                    <!-- (staccato, legato, tenuto) : (attack, release, sustain) -->
+    
+                    <div>
+                        <div>Staccato</div>
+                        <!-- argument scalar -->
+                        <input id="staccato" type="number" placeholder="staccato" min="1" max="10" value="2">
+                    </div>
+    
+                    <div>
+                        <div>Legato</div>
+                        <!-- argument scalar -->
+                        <input id="legato" type="number" placeholder="legato" min="1" max="10" value="2">
+                    </div>
+                    
+                    <div>
+                        <div>Tenuto</div>
+                        <!-- argument scalar -->
+                        <input id="tenuto" type="number" placeholder="tenuto" min="1" max="10" value="10">
+                    </div>
+    
+                    <div>
+                        <div>Variability</div>
+                        <!-- argument scalar for the variability engine -->
+                        <input id="variability" type="number" placeholder="variability" min="1" max="10" value="2">
+                    </div>
+    
                 </div>
-
-                <div>
-                    <div>Legato</div>
-                    <!-- argument scalar -->
-                    <input id="legato" type="number" placeholder="legato" min="1" max="10" value="2">
-                </div>
-                
-                <div>
-                    <div>Tenuto</div>
-                    <!-- argument scalar -->
-                    <input id="tenuto" type="number" placeholder="tenuto" min="1" max="10" value="10">
-                </div>
-
-                <div>
-                    <div>Variability</div>
-                    <!-- argument scalar for the variability engine -->
-                    <input id="variability" type="number" placeholder="variability" min="1" max="10" value="4">
-                </div>
-
             </div>
-        </div>
-        <div class="bordering">
-            <div>
-                <div class="subtitle">Saggital Plane</div>
-
+            <div class="bordering">
                 <div>
-                    <div>Creciendo/Diminuendo</div>
-                    <!-- bipolar multiplier for intensity -->
-                    <input id="creciendo" type="number" placeholder="Intensity" min="-10" max="10" value="0">
+                    <div class="subtitle">Saggital Plane</div>
+    
+                    <div>
+                        <div>Creciendo/Diminuendo</div>
+                        <!-- bipolar multiplier for intensity -->
+                        <input id="creciendo" type="number" placeholder="Intensity" min="-10" max="10" value="0">
+                    </div>
+    
+                    <div>
+                        <div>Expressivity</div>
+                        <!-- bipolar adjustment for ammount of FX -->
+                        <input id="expressivity" type="number" placeholder="Envelope Multiplier" min="-10" max="10" value="0">
+                    </div>
+    
                 </div>
-
-                <div>
-                    <div>Expressivity</div>
-                    <!-- bipolar adjustment for ammount of FX -->
-                    <input id="expressivity" type="number" placeholder="Envelope Multiplier" min="-10" max="10" value="0">
-                </div>
-
             </div>
         </div>
 
@@ -136,35 +148,1318 @@
 
         <div class="title">Circuit</div>
 
-        <div class="section-layout">
-            <!-- MOD1 -->
-            <div id="mod1" class="mods bordering">
+        <div>
+            <!-- SEQ1 -->
+            <div id="seq1" class="seqs bordering">
                 <div>
                     <div class="subtitle">Wire 1</div>
+                    <div class="wire-layout">
 
+                        <div>
+                            <div class="section-layout">
+                                <div>Sequence</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Stages -->
+                                <div>
+                                    <div>Stages</div>
+                                    <input class="stages" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                </div>
+
+                                <!-- Levels -->
+                                <div>
+                                    <div>Levels</div>
+                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="24" value="25" step="2">
+                                </div>
+
+                                <!-- Rates -->
+                                <div>
+                                    <div>Rate</div>
+                                    <select class="sequence-rate" name="sequence-rate">
+                                        <option value="1/32">1/32</option>
+                                        <option value="1/16">1/16</option>
+                                        <option value="1/8">1/8</option>
+                                        <option value="1/4" selected>1/4</option>
+                                        <option value="1/2">1/2</option>
+                                        <option value="1/1">1/1</option>
+                                        <option value="1/1">2/1</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Modifiers</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Amp mod -->
+                                <div>
+                                    <div>Amp</div>
+                                    <input class="amp-mod" type="number" placeholder="amp mod" min="0" max="10" value="0">
+                                </div>
+                                
+                                <!-- filter mod -->
+                                <div>
+                                    <div>Filter</div>
+                                    <input class="filt-mod" type="number" placeholder="filter mod" min="0" max="10" value="0">
+                                </div>
+        
+                                <!-- frequency mod -->
+                                <div>
+                                    <div>Frequency</div>
+                                    <input class="freq-mod" type="number" placeholder="frequency mod" min="-24" max="24" value="0"> <!-- -24 - 24 : 4 octave span-->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Amp Leveler</div>
+                            </div>
+
+                            <div class="amp-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter Leveler</div>
+                            </div>
+                            
+                            <div class="filt-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Frequency Leveler</div>
+                            </div>
+
+                            <div class="freq-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
 
-            <!-- MOD2 -->
-            <div id="mod2" class="mods bordering">
+            <!-- SEQ2 -->
+            <div id="seq2" class="seqs bordering">
                 <div>
                     <div class="subtitle">Wire 2</div>
+                    <div class="wire-layout">
 
+                        <div>
+                            <div class="section-layout">
+                                <div>Sequence</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Stages -->
+                                <div>
+                                    <div>Stages</div>
+                                    <input class="stages" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                </div>
+
+                                <!-- Levels -->
+                                <div>
+                                    <div>Levels</div>
+                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="24" value="25" step="2">
+                                </div>
+
+                                <!-- Rates -->
+                                <div>
+                                    <div>Rate</div>
+                                    <select class="sequence-rate" name="sequence-rate">
+                                        <option value="1/32">1/32</option>
+                                        <option value="1/16">1/16</option>
+                                        <option value="1/8">1/8</option>
+                                        <option value="1/4" selected>1/4</option>
+                                        <option value="1/2">1/2</option>
+                                        <option value="1/1">1/1</option>
+                                        <option value="1/1">2/1</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Modifiers</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Amp mod -->
+                                <div>
+                                    <div>Amp</div>
+                                    <input class="amp-mod" type="number" placeholder="amp mod" min="0" max="10" value="0">
+                                </div>
+                                
+                                <!-- filter mod -->
+                                <div>
+                                    <div>Filter</div>
+                                    <input class="filt-mod" type="number" placeholder="filter mod" min="0" max="10" value="0">
+                                </div>
+        
+                                <!-- frequency mod -->
+                                <div>
+                                    <div>Frequency</div>
+                                    <input class="freq-mod" type="number" placeholder="frequency mod" min="-24" max="24" value="0"> <!-- -24 - 24 : 4 octave span-->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Amp Leveler</div>
+                            </div>
+
+                            <div class="amp-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter Leveler</div>
+                            </div>
+                            
+                            <div class="filt-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Frequency Leveler</div>
+                            </div>
+
+                            <div class="freq-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
 
-            <!-- MOD3 -->
-            <div id="mod3" class="mods bordering">
+            <!-- SEQ3 -->
+            <div id="seq3" class="seqs bordering">
                 <div>
                     <div class="subtitle">Wire 3</div>
+                    <div class="wire-layout">
 
+                        <div>
+                            <div class="section-layout">
+                                <div>Sequence</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Stages -->
+                                <div>
+                                    <div>Stages</div>
+                                    <input class="stages" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                </div>
+
+                                <!-- Levels -->
+                                <div>
+                                    <div>Levels</div>
+                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="24" value="25" step="2">
+                                </div>
+
+                                <!-- Rates -->
+                                <div>
+                                    <div>Rate</div>
+                                    <select class="sequence-rate" name="sequence-rate">
+                                        <option value="1/32">1/32</option>
+                                        <option value="1/16">1/16</option>
+                                        <option value="1/8">1/8</option>
+                                        <option value="1/4" selected>1/4</option>
+                                        <option value="1/2">1/2</option>
+                                        <option value="1/1">1/1</option>
+                                        <option value="1/1">2/1</option>
+                                    </select>
+                                </div>
+
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Modifiers</div>
+                            </div>
+                            <div class="second-border">
+                                <!-- Amp mod -->
+                                <div>
+                                    <div>Amp</div>
+                                    <input class="amp-mod" type="number" placeholder="amp mod" min="0" max="10" value="0">
+                                </div>
+                                
+                                <!-- filter mod -->
+                                <div>
+                                    <div>Filter</div>
+                                    <input class="filt-mod" type="number" placeholder="filter mod" min="0" max="10" value="0">
+                                </div>
+        
+                                <!-- frequency mod -->
+                                <div>
+                                    <div>Frequency</div>
+                                    <input class="freq-mod" type="number" placeholder="frequency mod" min="-24" max="24" value="0"> <!-- -24 - 24 : 4 octave span-->
+                                </div>
+                            </div>
+                        </div>
+
+                       
+                        <div>
+                            <div class="section-layout">
+                                <div>Amp Leveler</div>
+                            </div>
+
+                            <div class="amp-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter Leveler</div>
+                            </div>
+                            
+                            <div class="filt-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="section-layout">
+                                <div>Frequency Leveler</div>
+                            </div>
+
+                            <div class="freq-sequence-leveler-container leveler-layout leveler-background second-border">
+                                
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                                <div class="leveler-level-bar-style">
+                                    <div class="level-style"></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                    <div></div>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
             </div>
 
         </div>
     </div>
 
-    <!-- 261.63, 329.63, 392.00 -->
+    <!--CMAJ: 261.63, 329.63, 392.00 -->
+    <!--CMAJ: 65.4075, 82.4075, 98.0 -->
 
     <!-- orchestra module (oscilators) -->
     <div id="orchestra" class="module">
@@ -175,7 +1470,7 @@
             <!-- OSC1 -->
             <div id="osc1" class="oscs bordering">
                 <div>
-                    <div class="subtitle">Section 1</div>
+                    <div class="subtitle">1<sup>st</sup> Section</div>
                     <div>
                         <div>Character</div>
                         <select name="type" class="type">
@@ -186,6 +1481,7 @@
                             <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
                             <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
                             <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.0625">inf-conv-geo-series-0.0625</option>
                         </select>
                     </div>
                     <div>
@@ -194,7 +1490,7 @@
                     </div>
                     <div>
                         <div>Gusto</div>
-                        <input class="drive" type="number" placeholder="drive" min="1" max="10" value="4">
+                        <input class="drive" type="number" placeholder="drive" min="1" max="10" value="1">
                     </div>
                     <div>
                         <div>Gusto Flavor</div>
@@ -206,19 +1502,19 @@
                     </div>
                     <div>
                         <div>Root</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="65.4075">
                     </div>
                     <div>
                         <div>Plurals</div>
-                        <input class="voices" type="number" placeholder="voices" min="1" max="4" value="3">
+                        <input class="voices" type="number" placeholder="voices" min="1" max="4" value="1">
                     </div>
                     <div>
                         <div>Unison</div>
-                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
+                        <input class="detune" type="number" placeholder="detune" min="-24" max="24" value="0">
                     </div>
                     <div>
                         <div>Register</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
+                        <input class="partials" type="number" placeholder="partials" min="4" max="4096" value="256">
                     </div>
                 </div>
             </div>
@@ -226,7 +1522,7 @@
             <!-- OSC2 -->
             <div id="osc2" class="oscs bordering">
                 <div>
-                    <div class="subtitle">Section 2</div>
+                    <div class="subtitle">2<sup>nd</sup> Section</div>
                     <div>
                         <div>Character</div>
                         <select name="type" class="type">
@@ -237,6 +1533,7 @@
                             <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
                             <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
                             <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.0625">inf-conv-geo-series-0.0625</option>
                         </select>
                     </div>
                     <div>
@@ -257,7 +1554,7 @@
                     </div>
                     <div>
                         <div>Root</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="82.4075">
                     </div>
                     <div>
                         <div>Plurals</div>
@@ -269,7 +1566,7 @@
                     </div>
                     <div>
                         <div>Register</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
+                        <input class="partials" type="number" placeholder="partials" min="4" max="4096" value="256">
                     </div>
                 </div>
             </div>
@@ -277,9 +1574,9 @@
             <!-- OSC3 -->
             <div id="osc3" class="oscs bordering">
                 <div>
-                    <div class="subtitle">Section 3</div>
+                    <div class="subtitle">3<sup>rd</sup> Section</div>
                     <div>
-                        <div>Waveform</div>
+                        <div>Character</div>
                         <select name="type" class="type">
                             <option value="sine">sine</option>
                             <option value="triangle" selected>triangle</option>
@@ -288,6 +1585,7 @@
                             <option value="inf-conv-geo-series-0.5">inf-conv-geo-series-0.5</option>
                             <option value="inf-conv-geo-series-0.25">inf-conv-geo-series-0.25</option>
                             <option value="inf-conv-geo-series-0.125">inf-conv-geo-series-0.125</option>
+                            <option value="inf-conv-geo-series-0.0625">inf-conv-geo-series-0.0625</option>
                         </select>
                     </div>
                     <div>
@@ -308,7 +1606,7 @@
                     </div>
                     <div>
                         <div>Root</div>
-                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="329.63">
+                        <input class="frequency" type="number" placeholder="frequency" min="20" max="20000" value="98.0">
                     </div>
                     <div>
                         <div>Plurals</div>
@@ -320,7 +1618,7 @@
                     </div>
                     <div>
                         <div>Register</div>
-                        <input class="partials" type="number" placeholder="partials" min="16" max="256" value="16">
+                        <input class="partials" type="number" placeholder="partials" min="4" max="4096" value="256">
                     </div>
                 </div>
             </div>

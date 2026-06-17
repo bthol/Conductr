@@ -6,20 +6,26 @@ window.electronAPI.res((data) => {
 });
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
-let playback = false;
+let macros = {
+    'master': .75,
+    'pan': 0,
+    'FortePiano': 1,
+    'creciendo': 5,
+    'expressivity': 4,
+    'variance': 4,
+    'driveMult': 1,
+    'Attack': 3,
+    'Sustain': 5,
+    'Release': 4,
+};
+let { master, pan, FortePiano, creciendo, expressivity, variance, driveMult, Attack, Sustain, Release } = macros;
 let oscillators = {};
+let sequencers = {};
+let playback = false;
 let voices = [];
 let analysis = {};
-let master = .75;
-let FortePiano = 1;
-let creciendo = 4;
-let expressivity = 4;
-let variance = 4;
-let driveMult = 1;
-let Attack = 1;
-let Release = 1;
-let Sustain = 1;
 const masterGain = document.getElementById('master-gain');
+const masterPan = document.getElementById('master-pan');
 const breakerBtn = document.getElementById('breaker');
 const playBtn = document.getElementById('play-btn');
 const stopBtn = document.getElementById('stop-btn');
@@ -31,6 +37,9 @@ const TControl = document.getElementById('tenuto');
 const VControl = document.getElementById('variability');
 const EControl = document.getElementById('expressivity');
 const CControl = document.getElementById('creciendo');
+const seq1 = document.getElementById('seq1');
+const seq2 = document.getElementById('seq2');
+const seq3 = document.getElementById('seq3');
 const osc1 = document.getElementById('osc1');
 const osc2 = document.getElementById('osc2');
 const osc3 = document.getElementById('osc3');
@@ -52,7 +61,6 @@ function sigmoid1(amount = 2) {
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
     const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
-    console.log(k);
     for (let i = 0; i < n_samples; ++i) {
         const x = (i * 2) / n_samples - 1;
         const output = Math.tanh(x * k) / Math.tanh(k);
@@ -145,6 +153,7 @@ function analyzePeak(node) {
                     clearTimeout(debounce);
                     node.getFloatTimeDomainData(data);
                     const peakVal = peak(data);
+                    console.log(peakVal);
                     requestAnimationFrame(loop);
                 }, 1000);
             }
@@ -187,23 +196,169 @@ function clamp(input) {
     return processor;
 }
 ;
-function shutup() {
-    oscillators = {};
-    voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
-    voices = [];
+function initMacros() {
+    master = .75;
+    pan = 0;
+    FortePiano = 1;
+    creciendo = 1;
+    expressivity = 4;
+    variance = 2;
+    driveMult = 1;
+    Attack = 3;
+    Sustain = 5;
+    Release = 4;
+    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) {
+        masterGain.value = '75';
+        masterPan.value = '0';
+        DMControl.value = '1';
+        FPControl.value = '1';
+        CControl.value = '0';
+        VControl.value = '2';
+    }
+    else {
+        console.log('macro display initialization failed');
+    }
 }
 ;
-async function sound() {
-    if (playback) {
-        shutup();
+function initOscillators() {
+    oscillators = {};
+    const oscsNodeList = document.querySelectorAll('.oscs');
+    for (const osc of oscsNodeList) {
+        const frequency = 32.7;
+        const detune = -3;
+        const partials = 256;
+        const ID = crypto.randomUUID().split('-')[0];
+        if (typeof ID === 'string') {
+            const v = (variance * (frequency / 20000));
+            const timbFactor = .1;
+            const stereoFactor = .15;
+            const stereoV = Math.random() * v * stereoFactor / 1.5;
+            const phi = (1 + stereoV * 30) * Math.PI / 180;
+            const phaze = Math.pow(Math.E, phi);
+            const real = new Float32Array(partials);
+            const imag = new Float32Array(partials);
+            let waveform;
+            for (let n = 1; n < partials + 1; n++) {
+                if (n % 2 !== 0) {
+                    const sign = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
+                    const partial = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
+                    const timbCalc = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign;
+                    const out = partial + timbCalc;
+                    imag[n] = out;
+                }
+                else {
+                    imag[n] = 0;
+                }
+                real[n] = 0;
+            }
+            waveform = audioContext.createPeriodicWave(real, imag);
+            oscillators[ID] = {
+                'gain': .5,
+                'drive': 1,
+                'driveCharacter': 'sigmoid1',
+                'oscVoices': 3,
+                'freq': frequency,
+                'detune': detune,
+                'waveform': waveform,
+            };
+        }
+        else {
+            console.log('Oscillator ID generation failed during initialization');
+        }
+        const oscGain = osc.querySelector('.amplitude');
+        const oscDriv = osc.querySelector('.drive');
+        const oscDrCh = osc.querySelector('.drive-character');
+        const oscVoic = osc.querySelector('.voices');
+        const oscFreq = osc.querySelector('.frequency');
+        const oscDetu = osc.querySelector('.detune');
+        const oscPart = osc.querySelector('.partials');
+        const oscType = osc.querySelector('.type');
+        if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+            oscGain.value = '50';
+            oscDriv.value = '1';
+            oscDrCh.value = 'sigmoid1';
+            oscVoic.value = '3';
+            oscFreq.value = `${frequency}`;
+            oscDetu.value = `${detune}`;
+            oscPart.value = `${partials}`;
+            oscType.value = 'triangle';
+        }
+        else {
+            console.log('parameter elements not found during initialization');
+        }
     }
-    if (masterGain && DMControl && FPControl && CControl && VControl) {
+}
+;
+function initSequencers() {
+    sequencers = {};
+    const seqNodeList = document.querySelectorAll('.seqs');
+    for (const seq of seqNodeList) {
+        const ID = crypto.randomUUID().split('-')[0];
+        if (typeof ID === 'string') {
+            sequencers[ID] = {
+                'stages': 4,
+                'levels': 25,
+                'seqRate': '1/4',
+                'ampMod': 0,
+                'filtMod': 0,
+                'freqMod': 0,
+                'ampLvlvs': [0, 0, 0, 0],
+                'filtLvls': [0, 0, 0, 0],
+                'freqLvls': [0, 0, 0, 0]
+            };
+        }
+        else {
+            console.log('Sequencer ID generation failed during initialization');
+        }
+        const stagesEl = seq.querySelector('.stages');
+        const levelsEl = seq.querySelector('.stage-levels');
+        const seqRateEl = seq.querySelector('.sequence-rate');
+        const ampModEl = seq.querySelector('.amp-mod');
+        const filtModEl = seq.querySelector('.filt-mod');
+        const freqModEl = seq.querySelector('.freq-mod');
+        const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+        const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+        const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+        if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+            stagesEl.value = '4';
+            levelsEl.value = '25';
+            seqRateEl.value = '1/4';
+            ampModEl.value = '0';
+            filtModEl.value = '0';
+            freqModEl.value = '0';
+            const ampList = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            ampList.forEach((stage) => {
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                stage.firstElementChild?.classList.add('level-style');
+            });
+            const filtList = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            filtList.forEach((stage) => {
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                stage.firstElementChild?.classList.add('level-style');
+            });
+            const freqList = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            freqList.forEach((stage) => {
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                stage.firstElementChild?.classList.add('level-style');
+            });
+        }
+        else {
+            console.log('Sequencer parameter not found during initialization');
+        }
+    }
+}
+;
+function updateMacros() {
+    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) {
         let masterVal = Number(masterGain.value);
         if (masterVal > 100) {
             masterVal = 100;
         }
         else if (masterVal < 0) {
             masterVal = 0;
+        }
+        else if (masterVal % 1 !== 0) {
+            masterVal = Math.ceil(masterVal);
         }
         master = masterVal / 100;
         let CreciendoVal = Number(CControl.value);
@@ -326,10 +481,28 @@ async function sound() {
             inVal = Math.ceil(inVal);
         }
         variance = vary;
+        return true;
     }
-    const oscs = document.querySelectorAll('.oscs');
-    let gotit = true;
-    for (const osc of oscs) {
+    else {
+        return false;
+    }
+}
+;
+function updateOscillator(oscID) {
+    if (osc1 && osc2 && osc3) {
+        const oscsNodeList = document.querySelectorAll('.oscs');
+        const oscsKeyArray = Object.keys(oscillators);
+        let osc = undefined;
+        for (let i = 0; i < oscsKeyArray.length; i++) {
+            const key = oscsKeyArray[i];
+            if (key && key === oscID) {
+                const result = oscsNodeList[i];
+                if (result) {
+                    osc = result;
+                }
+                break;
+            }
+        }
         if (osc) {
             const oscGain = osc.querySelector('.amplitude');
             const oscDriv = osc.querySelector('.drive');
@@ -339,8 +512,7 @@ async function sound() {
             const oscDetu = osc.querySelector('.detune');
             const oscPart = osc.querySelector('.partials');
             const oscType = osc.querySelector('.type');
-            const ID = crypto.randomUUID().split('-')[0];
-            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType && typeof ID === 'string') {
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
                 const gain = Number(oscGain.value);
                 const drive = Number(oscDriv.value);
                 const driveCharacter = oscDrCh.value;
@@ -357,28 +529,83 @@ async function sound() {
                 const freqV = Math.random() * v * freqFactor;
                 const freqCalc = freq - freqV;
                 const stereoFactor = .15;
-                const stereoV = Math.random() * v * stereoFactor;
+                const stereoV = Math.random() * v * stereoFactor / 1.5;
                 const timbFactor = .1;
-                const real = new Float32Array(partials);
-                const imag = new Float32Array(partials);
+                let gainVal = gainCalc;
+                if (gainCalc >= 1) {
+                    gainVal = 1 - gainV;
+                }
+                else if (gainCalc < 0) {
+                    gainVal = 0;
+                }
+                else if (gainVal % 1 !== 0) {
+                    gainVal = Math.ceil(gainVal);
+                }
+                let freqVal = freqCalc;
+                if (freqVal > 20000) {
+                    freqVal = 20000 - freqV;
+                }
+                else if (freqVal < 20) {
+                    freqVal = 20 + freqV;
+                }
+                let voiceVal = voices;
+                if (voiceVal > 4) {
+                    voiceVal = 4;
+                }
+                else if (voiceVal < 1) {
+                    voiceVal = 1;
+                }
+                else if (voiceVal % 1 !== 0) {
+                    voiceVal = Math.ceil(voiceVal);
+                }
+                let driveVal = drive;
+                if (driveVal > 10) {
+                    driveVal = 10;
+                }
+                else if (driveVal < 1) {
+                    driveVal = 1;
+                }
+                else if (driveVal % 1 !== 0) {
+                    driveVal = Math.ceil(driveVal);
+                }
+                let detuneVal = detune;
+                if (detuneVal > 24) {
+                    detuneVal = 24;
+                }
+                else if (detuneVal < -24) {
+                    detuneVal = -24;
+                }
+                else if (detuneVal % 1 !== 0) {
+                    detuneVal = Math.ceil(detuneVal);
+                }
+                let partialsVal = partials;
+                if (partialsVal > 4096) {
+                    partialsVal = 4096;
+                }
+                else if (partialsVal < 16) {
+                    partialsVal = 16;
+                }
+                else if (partialsVal % 1 !== 0) {
+                    partialsVal = Math.ceil(partials);
+                }
+                const phi = (1 + stereoV * 30) * Math.PI / 180;
+                const phaze = Math.pow(Math.E, phi);
+                const real = new Float32Array(partialsVal);
+                const imag = new Float32Array(partialsVal);
                 let waveform;
                 if (type === 'sine') {
-                    real[0] = 0;
-                    imag[0] = 0;
-                    imag[1] = 1;
+                    real[1] = 1 * Math.cos(phaze);
+                    imag[1] = 1 * Math.sin(phaze);
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'triangle') {
-                    real[0] = 0;
-                    imag[0] = 0;
-                    for (let n = 1; n < partials + 1; n++) {
+                    for (let n = 1; n < partialsVal + 1; n++) {
                         if (n % 2 !== 0) {
                             const sign = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                             const partial = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
-                            const cutoff = 500 / 20000;
-                            const adjust = partial / cutoff;
-                            const timbCalc = (adjust * ((Math.random() * (variance - 1) + 1) * timbFactor));
-                            imag[n] = partial + timbCalc;
+                            const timbCalc = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign;
+                            const out = partial + timbCalc;
+                            imag[n] = out;
                         }
                         else {
                             imag[n] = 0;
@@ -388,27 +615,21 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'saw') {
-                    real[0] = 0;
-                    imag[0] = 0;
-                    for (let n = 1; n < partials + 1; n++) {
+                    for (let n = 1; n < partialsVal + 1; n++) {
                         const partial = 1 / (n * Math.PI);
-                        const cutoff = 10000 / 20000;
-                        const adjust = partial / cutoff;
-                        const timbCalc = (adjust * ((Math.random() * (variance - 1) + 1) * timbFactor));
-                        imag[n] = partial + timbCalc;
+                        const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01;
+                        const out = partial - timbCalc;
+                        imag[n] = out;
                     }
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'square') {
-                    real[0] = 0;
-                    imag[0] = 0;
-                    for (let n = 0; n < partials; n++) {
+                    for (let n = 0; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial = 4 / (n * Math.PI);
-                            const cutoff = 1000 / 20000;
-                            const adjust = partial / cutoff;
-                            const timbCalc = (adjust * ((Math.random() * (variance - 1) + 1) * timbFactor));
-                            imag[n] = partial + timbCalc;
+                            const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01;
+                            const out = partial - timbCalc;
+                            imag[n] = out;
                         }
                         else {
                             imag[n] = 0;
@@ -417,38 +638,50 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.5') {
-                    real[0] = 0;
-                    imag[0] = 0;
                     let a = 0;
                     let b = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01;
+                        const out = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .5;
                     }
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.25') {
-                    real[0] = 0;
-                    imag[0] = 0;
                     let a = 0;
                     let b = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01;
+                        const out = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .25;
                     }
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.125') {
-                    real[0] = 0;
-                    imag[0] = 0;
                     let a = 0;
                     let b = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01;
+                        const out = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .125;
+                    }
+                    waveform = audioContext.createPeriodicWave(real, imag);
+                }
+                else if (type === 'inf-conv-geo-series-0.0625') {
+                    let a = 0;
+                    let b = 1;
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01;
+                        const out = b - timbCalc;
+                        real[i] = a;
+                        imag[i] = out;
+                        b *= .0625;
                     }
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
@@ -458,176 +691,297 @@ async function sound() {
                     imag[1] = 1;
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
-                let gainVal = gainCalc;
-                if (gainCalc >= 1) {
-                    gainVal = 1 - gainV;
-                }
-                else if (gainCalc < 0) {
-                    gainVal = 0;
-                }
-                let freqVal = freqCalc;
-                if (freqVal > 20000) {
-                    freqVal = 20000;
-                }
-                else if (freqVal < 20) {
-                    freqVal = 20;
-                }
-                let voiceVal = voices;
-                if (voiceVal > 4) {
-                    voiceVal = 4;
-                }
-                else if (voiceVal < 1) {
-                    voiceVal = 1;
-                }
-                let driveVal = drive;
-                if (driveVal > 10) {
-                    driveVal = 10;
-                }
-                else if (driveVal < 1) {
-                    driveVal = 1;
-                }
-                let detuneVal = detune;
-                if (detuneVal > 24) {
-                    detuneVal = 24;
-                }
-                else if (detuneVal < -24) {
-                    detuneVal = -24;
-                }
-                const osc = { 'waveform': waveform, 'oscVoices': voiceVal, 'gain': gainVal, 'drive': driveVal, 'driveCharacter': driveCharacter, 'freq': freqVal, 'detune': detuneVal };
-                oscillators[ID] = osc;
-                gotit = true;
+                oscillators[oscID]['waveform'] = waveform;
+                oscillators[oscID]['oscVoices'] = voiceVal;
+                oscillators[oscID]['gain'] = gainVal;
+                oscillators[oscID]['drive'] = driveVal;
+                oscillators[oscID]['driveCharacter'] = driveCharacter;
+                oscillators[oscID]['freq'] = freqVal;
+                oscillators[oscID]['detune'] = detuneVal;
+                return true;
             }
             else {
                 console.log('parameter elements not found');
-                gotit = false;
+                return false;
             }
         }
         else {
             console.log('oscillator element not found');
-            gotit = false;
-        }
-        if (!gotit) {
-            console.log('failed to set oscillator parameters');
-            break;
+            return false;
         }
     }
-    if (gotit) {
-        const dry = audioContext.createGain();
-        const wet = audioContext.createGain();
-        const keys = Object.keys(oscillators);
-        for (const key of keys) {
-            const oscil = oscillators[key];
-            const waveform = oscil['waveform'];
-            const oscVoic = oscil['oscVoices'];
-            const oscFreq = oscil['freq'];
-            const oscDetu = oscil['detune'];
-            const oscVol = oscil['gain'];
-            const oscDrive = oscil['drive'];
-            const oscDriCh = oscil['driveCharacter'];
-            const gainNode = audioContext.createGain();
-            gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic;
-            for (let v = 0; v < oscVoic; v++) {
-                const osc = audioContext.createOscillator();
-                osc.setPeriodicWave(waveform);
-                osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
-                osc.detune.value = v * oscDetu;
-                osc.connect(gainNode);
-                voices.push(osc);
+    else {
+        console.log('oscillator element integrity degraded');
+        return false;
+    }
+}
+;
+function updateSequence(seqID) {
+    if (seq1 && seq2 && seq3) {
+        const seqs = document.querySelectorAll('.seqs');
+        const seqsKeyArray = Object.keys(sequencers);
+        let seq = undefined;
+        for (let i = 0; i < seqsKeyArray.length; i++) {
+            const key = seqsKeyArray[i];
+            if (key && key === seqID) {
+                const result = seqs[i];
+                if (result) {
+                    seq = result;
+                }
+                break;
             }
-            const preAnalyzer = audioContext.createAnalyser();
-            analysis[key] = [];
-            analysis[key].push(preAnalyzer);
-            gainNode.connect(preAnalyzer);
-            const makeupGainNode = audioContext.createGain();
-            console.log('drive');
-            console.log(oscDrive);
-            if (oscDrive > 1) {
-                const waveshaper = audioContext.createWaveShaper();
-                const oversample = '2x';
-                let waveshaperCurve;
-                if (oscDriCh === 'sigmoid1') {
-                    waveshaperCurve = sigmoid1(oscDrive * driveMult);
+        }
+        if (seq) {
+            const stagesEl = seq.querySelector('.stages');
+            const levelsEl = seq.querySelector('.stage-levels');
+            const seqRateEl = seq.querySelector('.sequence-rate');
+            const ampModEl = seq.querySelector('.amp-mod');
+            const filtModEl = seq.querySelector('.filt-mod');
+            const freqModEl = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+            if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                const stages = Number(stagesEl.value);
+                const levels = Number(levelsEl.value);
+                const seqRate = Number(seqRateEl.value);
+                const ampMod = Number(ampModEl.value);
+                const filtMod = Number(filtModEl.value);
+                const freqMod = Number(freqModEl.value);
+                const ampLvlsStageList = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const filtLvlsStageList = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const freqLvlsStageList = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                let ampLvls = [];
+                let filtLvls = [];
+                let freqLvls = [];
+                for (let stage = 0; stage < stages; stage++) {
+                    const ampStageLevelList = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    if (ampStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                                ampLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        ampLvls.push(NaN);
+                    }
+                    if (filtStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                                filtLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        filtLvls.push(NaN);
+                    }
+                    if (freqStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                                freqLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        freqLvls.push(NaN);
+                    }
                 }
-                else if (oscDriCh === 'sigmoid2') {
-                    waveshaperCurve = sigmoid2(oscDrive * driveMult);
-                }
-                else if (oscDriCh === 'sigmoid3') {
-                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
-                }
-                else {
-                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
-                }
-                waveshaper.curve = waveshaperCurve;
-                waveshaper.oversample = oversample;
-                const referenceLine = linear();
-                const initialPower = integrateNumericalTrapezoidal(referenceLine);
-                const finalPower = integrateNumericalTrapezoidal(waveshaperCurve);
-                const powerFactor = 1 / (1 + ((finalPower - initialPower) / initialPower));
-                makeupGainNode.gain.value = powerFactor;
-                gainNode.connect(waveshaper);
-                waveshaper.connect(makeupGainNode);
+                sequencers[seqID]['stages'] = stages;
+                sequencers[seqID]['levels'] = levels;
+                sequencers[seqID]['seqRate'] = seqRate;
+                sequencers[seqID]['ampMod'] = ampMod;
+                sequencers[seqID]['filtMod'] = filtMod;
+                sequencers[seqID]['freqMod'] = freqMod;
+                sequencers[seqID]['ampLvlvs'] = ampLvls;
+                sequencers[seqID]['filtLvls'] = filtLvls;
+                sequencers[seqID]['freqLvls'] = freqLvls;
+                return true;
             }
             else {
-                gainNode.connect(makeupGainNode);
-                makeupGainNode.gain.value = 1;
+                console.log('Sequencer parameter not found');
+                return false;
             }
-            const postAnalyzer = audioContext.createAnalyser();
-            analysis[key].push(postAnalyzer);
-            makeupGainNode.connect(postAnalyzer);
-            makeupGainNode.connect(dry);
-            makeupGainNode.connect(wet);
         }
-        let dryVal = 0;
-        let wetVal = 1;
-        dry.gain.value = keys.length === 0 ? 0 : dryVal / keys.length;
-        wet.gain.value = keys.length === 0 ? 0 : wetVal / keys.length;
-        const FX = audioContext.createGain();
-        FX.gain.value = 1;
-        const preAnalysis = audioContext.createAnalyser();
-        analysis['FX'] = [];
-        analysis['FX'].push(preAnalysis);
-        wet.connect(preAnalysis);
-        const postAnalysis = audioContext.createAnalyser();
-        analysis['FX'].push(postAnalysis);
-        FX.connect(postAnalysis);
-        wet.connect(FX);
-        const compressor = audioContext.createDynamicsCompressor();
-        compressor.threshold.value = -12;
-        compressor.knee.value = 9;
-        compressor.ratio.value = 3;
-        compressor.attack.value = 0.05;
-        compressor.release.value = 0.1;
-        dry.connect(compressor);
-        FX.connect(compressor);
-        const limiter = audioContext.createDynamicsCompressor();
-        limiter.threshold.value = -6;
-        limiter.knee.value = 3;
-        limiter.ratio.value = 2;
-        limiter.attack.value = 0.05;
-        limiter.release.value = 0.05;
-        compressor.connect(limiter);
-        const brickwall = audioContext.createDynamicsCompressor();
-        brickwall.threshold.value = -2.8;
-        brickwall.knee.value = 0;
-        brickwall.ratio.value = 3.4;
-        brickwall.attack.value = 0;
-        brickwall.release.value = 0.1;
-        limiter.connect(brickwall);
-        const masterGainNode = audioContext.createGain();
-        masterGainNode.gain.value = Number(masterGain.value) / 100;
-        brickwall.connect(masterGainNode);
-        const clampOut = clamp(masterGainNode);
-        clampOut.connect(audioContext.destination);
-        for (const v of voices) {
-            v.start(0);
+        else {
+            console.log('Sequencer element not found');
+            return false;
         }
     }
-    if (gotit) {
-        const keys = Object.keys(analysis);
-        const key = keys[0];
-        if (typeof key === 'string') {
-            const nodeList = analysis[key];
-            if (nodeList) {
+    else {
+        console.log('sequencer element integrity degraded');
+        return false;
+    }
+}
+;
+function shutup() {
+    voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
+    voices = [];
+}
+;
+async function sound() {
+    console.log('sounded');
+    if (playback) {
+        shutup();
+    }
+    if (updateMacros()) {
+        const oscKeys = Object.keys(oscillators);
+        let gotit = true;
+        console.log(oscKeys);
+        if (oscKeys.length > 0) {
+            for (const key of oscKeys) {
+                if (!updateOscillator(key)) {
+                    gotit = false;
+                    break;
+                }
+            }
+        }
+        else {
+            gotit = false;
+            console.log('Failed to get oscillator keys during update');
+        }
+        if (gotit) {
+            const seqKeys = Object.keys(sequencers);
+            if (seqKeys.length > 0) {
+                for (const key of seqKeys) {
+                    if (!updateSequence(key)) {
+                        gotit = false;
+                        break;
+                    }
+                }
+            }
+            else {
+                gotit = false;
+                console.log('Failed to get sequencer keys during update');
+            }
+        }
+        if (gotit) {
+            console.log(macros);
+            console.log(oscillators);
+            console.log(sequencers);
+            const dry = audioContext.createGain();
+            const wet = audioContext.createGain();
+            const oscKeys = Object.keys(oscillators);
+            const oscKeysLength = oscKeys.length;
+            for (const key of oscKeys) {
+                const oscil = oscillators[key];
+                const oscVoic = oscil['oscVoices'];
+                const oscFreq = oscil['freq'];
+                const oscDetu = oscil['detune'];
+                const oscVol = oscil['gain'];
+                const oscDrive = oscil['drive'];
+                const oscDriCh = oscil['driveCharacter'];
+                const waveform = oscil['waveform'];
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic;
+                for (let v = 0; v < oscVoic; v++) {
+                    const osc = audioContext.createOscillator();
+                    osc.setPeriodicWave(waveform);
+                    osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
+                    osc.detune.value = oscDetu / oscVoic * v;
+                    osc.connect(gainNode);
+                    voices.push(osc);
+                }
+                const preAnalyzer = audioContext.createAnalyser();
+                analysis[key] = [];
+                analysis[key].push(preAnalyzer);
+                gainNode.connect(preAnalyzer);
+                const makeupGainNode = audioContext.createGain();
+                if (oscDrive > 1) {
+                    const waveshaper = audioContext.createWaveShaper();
+                    const oversample = '2x';
+                    let waveshaperCurve;
+                    console.log(oscDrive);
+                    if (oscDriCh === 'sigmoid1') {
+                        waveshaperCurve = sigmoid1(oscDrive * driveMult);
+                    }
+                    else if (oscDriCh === 'sigmoid2') {
+                        waveshaperCurve = sigmoid2(oscDrive * driveMult);
+                    }
+                    else if (oscDriCh === 'sigmoid3') {
+                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                    }
+                    else {
+                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                    }
+                    waveshaper.curve = waveshaperCurve;
+                    waveshaper.oversample = oversample;
+                    const referenceLine = linear();
+                    const initialPower = integrateNumericalTrapezoidal(referenceLine);
+                    const finalPower = integrateNumericalTrapezoidal(waveshaperCurve);
+                    const powerFactor = 1 / (1 + ((finalPower - initialPower) / initialPower));
+                    makeupGainNode.gain.value = powerFactor;
+                    gainNode.connect(waveshaper);
+                    waveshaper.connect(makeupGainNode);
+                }
+                else {
+                    gainNode.connect(makeupGainNode);
+                    makeupGainNode.gain.value = 1;
+                }
+                const postAnalyzer = audioContext.createAnalyser();
+                analysis[key].push(postAnalyzer);
+                makeupGainNode.connect(postAnalyzer);
+                makeupGainNode.connect(dry);
+                makeupGainNode.connect(wet);
+            }
+            let dryVal = 0;
+            let wetVal = 1;
+            dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength;
+            wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength;
+            const FX = audioContext.createGain();
+            FX.gain.value = 1;
+            const preAnalysis = audioContext.createAnalyser();
+            analysis['FX'] = [];
+            analysis['FX'].push(preAnalysis);
+            wet.connect(preAnalysis);
+            const postAnalysis = audioContext.createAnalyser();
+            analysis['FX'].push(postAnalysis);
+            FX.connect(postAnalysis);
+            wet.connect(FX);
+            const compressor = audioContext.createDynamicsCompressor();
+            compressor.threshold.value = -12;
+            compressor.knee.value = 9;
+            compressor.ratio.value = 3;
+            compressor.attack.value = 0.05;
+            compressor.release.value = 0.1;
+            dry.connect(compressor);
+            FX.connect(compressor);
+            const limiter = audioContext.createDynamicsCompressor();
+            limiter.threshold.value = -6;
+            limiter.knee.value = 3;
+            limiter.ratio.value = 2;
+            limiter.attack.value = 0.05;
+            limiter.release.value = 0.05;
+            compressor.connect(limiter);
+            const brickwall = audioContext.createDynamicsCompressor();
+            brickwall.threshold.value = -2.8;
+            brickwall.knee.value = 0;
+            brickwall.ratio.value = 3.4;
+            brickwall.attack.value = 0;
+            brickwall.release.value = 0.1;
+            limiter.connect(brickwall);
+            const masterGainNode = audioContext.createGain();
+            masterGainNode.gain.value = Number(masterGain.value) / 100;
+            brickwall.connect(masterGainNode);
+            const clampOut = clamp(masterGainNode);
+            clampOut.connect(audioContext.destination);
+            for (const voice of voices) {
+                voice.start();
+            }
+        }
+        if (gotit) { }
+        if (gotit) {
+            const keys = Object.keys(analysis);
+            const key = keys[0];
+            if (typeof key === 'string') {
+                const nodeList = analysis[key];
+                if (nodeList) {
+                }
             }
         }
     }
@@ -635,8 +989,11 @@ async function sound() {
 ;
 let cache = setTimeout(() => { }, 0);
 async function setup() {
-    if (playBtn && stopBtn && breakerBtn && masterGain && FPControl && CControl && VControl && osc1 && osc2 && osc3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3) {
         await getProcessorModules();
+        initMacros();
+        initOscillators();
+        initSequencers();
         const latency = 150;
         let listening = true;
         playBtn.addEventListener('click', () => {
@@ -656,7 +1013,9 @@ async function setup() {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
+                    listening = false;
                     shutup();
+                    listening = true;
                     playback = false;
                 }, latency);
             }
@@ -667,7 +1026,20 @@ async function setup() {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
+                    listening = false;
                     sound();
+                    listening = true;
+                }, latency);
+            }
+        });
+        masterPan.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound();
+                    listening = true;
                 }, latency);
             }
         });
@@ -698,10 +1070,15 @@ async function setup() {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
+                    listening = false;
                     sound();
+                    listening = true;
                 }, latency);
             }
         });
+    }
+    else {
+        console.log('Element Integrity Degraded on setup');
     }
 }
 ;

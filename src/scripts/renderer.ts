@@ -40,39 +40,43 @@ window.electronAPI.res((data) => {
 
 // use Web Audio API
 // look into tone.js: https://tonejs.github.io/
-// channelCountMode, AnalyserNode.getFloatTimeDomainData()
+// channelCountMode, ConstantSourceNode, AudioBufferSourceNode
 
 
 // setup audio context
 const options: Object = {'sampleRate': 44100.0, 'latencyHint': 'interactive'};
 const audioContext: AudioContext = new AudioContext(options);
 
-// declare global structures
+// Preset structures
+let macros: { [key: string]: any} = {
+    // player control macros
+    'master': .75, // 0 - 0.99
+    'pan': 0, // -50 - 50
+    // Conductor Macros
+    'FortePiano': 1, // 0 - 2
+    'creciendo': 5, // 1 - 10
+    'expressivity': 4, // 1 - 10
+    'variance': 4, // 1 - 10
+    'driveMult': 1, // 1 - 10
+    // dynamic modifiers
+    'Attack': 3, // 1 - 10
+    'Sustain': 5, // 1 - 10
+    'Release': 4, // 1 - 1
+}; // stores the parameters for each macro from user parameters; data for preset
+let { master, pan, FortePiano, creciendo, expressivity, variance, driveMult, Attack, Sustain, Release } = macros; // destructure for ease of access
+let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
+let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
+
+// Playback structures
 let playback: boolean = false; // stores the program run state (run: true, off: false)
-let oscillators: { [key: string]: any } = {}; // stores parameters for each oscilator from user parameters
-let voices: Array<OscillatorNode> = []; // stores voices generated with parameter values
+let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
 let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator, second index = analyzer node for that oscillator
-
-// parameter for master volume control
-
-// 0.5 output == -6 dB
-let master: number = .75; // 0 - 0.99
-let FortePiano: number = 1; // 0 - 2
-let creciendo: number = 4; // 1 - 10
-let expressivity: number = 4; // 1 - 10
-let variance: number = 4; // 1 - 10
-
-let driveMult: number = 1; // 
-
-// global dynamic modifiers
-let Attack: number = 1; // 1 - 10
-let Release: number = 1; // 1 - 10
-let Sustain: number = 1; // 1 - 10
 
 // DOM elements
 
 // Player Controls
 const masterGain = document.getElementById('master-gain') as HTMLInputElement; // Master Gain out
+const masterPan = document.getElementById('master-pan') as HTMLInputElement; // Master Gain out
 
 const breakerBtn: HTMLElement | null = document.getElementById('breaker');
 const playBtn: HTMLElement | null = document.getElementById('play-btn');
@@ -94,15 +98,26 @@ const VControl = document.getElementById('variability') as HTMLInputElement; // 
 const EControl = document.getElementById('expressivity') as HTMLInputElement; // dry-wet FX control
 const CControl = document.getElementById('creciendo') as HTMLInputElement; // intensity control
 
+// Circuit
+
+// wire 1
+const seq1: HTMLElement | null = document.getElementById('seq1');
+
+// wire 2
+const seq2: HTMLElement | null = document.getElementById('seq2');
+
+// wire 3
+const seq3: HTMLElement | null = document.getElementById('seq3');
+
 // Orchestra
 
-// Section 1
+// 1st Section
 const osc1: HTMLElement | null = document.getElementById('osc1');
 
-// Section 2
+// 2nd Section
 const osc2: HTMLElement | null = document.getElementById('osc2');
 
-// Section 3
+// 3rd Section
 const osc3: HTMLElement | null = document.getElementById('osc3');
 
 // waveshaper functions
@@ -181,7 +196,7 @@ function sigmoid3(amount = 1): Float32Array<ArrayBuffer> {
 
 // custom processors
 // I/O processor type convention: input type GainNode and output type GainNode
-async function getProcessorModules() {
+async function getProcessorModules(): Promise<void> {
     // collects all processor scripts by adding their modules to the global audio context
     await audioContext.audioWorklet.addModule('./build/scripts/processors/clamp-processor.js');
     await audioContext.audioWorklet.addModule('./build/scripts/processors/LUFS-processor.js');
@@ -240,7 +255,7 @@ function peak(data: Float32Array<ArrayBuffer>): number {
     return peak;
 };
 
-// analysis for peak levels
+// setup peak level analysis on node
 function analyzePeak(node: AnalyserNode | undefined) {
     // performs real-time analysis on peak value of data stream from analyser node
     if (node) {
@@ -279,7 +294,7 @@ function analyzePeak(node: AnalyserNode | undefined) {
     }
 };
 
-// general analysis
+// setup general analysis on node
 function analyze(node: AnalyserNode | undefined) {
     // performs real-time analysis on analyser node
     // gets:
@@ -339,32 +354,223 @@ function clamp(input: AudioNode): AudioWorkletNode {
     return processor;
 };
 
-// audio functions
-function shutup() {
-    oscillators = {}; // clear oscilator data
-    voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
-    voices = []; // clear voices data
+// data initialization
+function initMacros(): void {
+    // model
+    // player control macros
+    master = .75; // 0 - 0.99
+    pan = 0; // -50 - 50
+    // Conductor Macros
+    FortePiano = 1; // 0 - 2
+    creciendo = 1; // 0 - 10
+    expressivity = 4; // 1 - 10
+    variance = 2; // 1 - 10
+    driveMult = 1; // 1 - 10
+    // dynamic modifiers
+    Attack = 3; // 1 - 10
+    Sustain = 5; // 1 - 10
+    Release = 4; // 1 - 1
+
+    // display
+    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) { // test element integrity
+        masterGain.value = '75'; // 0 - 100
+        masterPan.value = '0'; // -50 - 50
+        DMControl.value = '1'; // -10 - 30
+        FPControl.value = '1'; // -50 - 50
+        CControl.value = '0'; // -10 - 10
+        VControl.value = '2'; // 1 - 10
+    } else {
+        console.log('macro display initialization failed');
+    }
 };
 
-async function sound() {
-    // generates voices from oscillators
+function initOscillators(): void {
+    oscillators = {}; // delete old data
+    const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+    for (const osc of oscsNodeList) {
 
-    // clear your throat
-    if (playback) {
-        shutup();
+        // Model parameters
+        const frequency: number = 32.7;
+        const detune: number = -3;
+        const partials: number = 256;
+
+        // Generate a unique Oscillator ID
+        const ID: string | undefined = crypto.randomUUID().split('-')[0];
+        if (typeof ID === 'string') {
+            // generate default waveform
+            const v: number = (variance * (frequency / 20000)); // maximum possible variation
+            const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
+            const stereoFactor: number = .15 // 20:3 variation to stereo
+            const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
+            const phi: number = (1 + stereoV * 30) * Math.PI/180; // 1 - 46 deg => radians
+            const phaze: number = Math.pow(Math.E, phi); // (vertical phaze; k-phase; k-scalar) stereo varation => % max degrees => radian phaze shift
+            const real: Float32Array = new Float32Array(partials); // real coefficients
+            const imag: Float32Array = new Float32Array(partials); // imaginary coefficients
+            let waveform: PeriodicWave; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
+            
+            // DC offset (horizontal phaze)
+            // automatically set to 0 by setPeriodicWave method
+            // real[0] = 0;
+            // imag[0] = 0;
+
+            // generate partials
+            for (let n = 1; n < partials + 1; n++) {
+                if (n % 2 !== 0) {
+                    // Triangle wave uses only odd harmonics
+                    // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
+                    const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
+                    const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
+                    const timbCalc: number = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                    // const out: number = partial * phaze + timbCalc;
+                    const out: number = partial + timbCalc;
+                    imag[n] = out;
+                } else {
+                    // Even harmonics are zero
+                    imag[n] = 0;
+                }
+                // Cosine terms are zero
+                real[n] = 0;
+            }
+
+            // use partial data to create custom waveform
+            waveform = audioContext.createPeriodicWave(real, imag);
+
+            // structure
+            oscillators[ID] = {
+                'gain':.5, // 0 - 1
+                'drive':1, // 1 - 10
+                'driveCharacter':'sigmoid1', // option value string
+                'oscVoices':3, // 1 - 4
+                'freq':frequency, // 20 - 20,000
+                'detune':detune, // -24 - 24
+                'waveform':waveform, // periodic waveform
+            };
+
+        } else {
+            console.log('Oscillator ID generation failed during initialization');
+        }
+
+        // Display
+        
+        // oscillator elements
+        const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+        const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+        const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
+        const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
+        const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+        const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
+        const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
+        const oscType: HTMLInputElement | null = osc.querySelector('.type');
+
+        // test oscilator element integrity + OSC ID
+        if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+            // set Oscillator parameters to default
+            oscGain.value = '50'; // 0 - 99
+            oscDriv.value = '1'; // 1 - 10, 1 == bypass
+            oscDrCh.value = 'sigmoid1';
+            oscVoic.value = '3'; // 1 - 4
+            oscFreq.value = `${frequency}`; // 20 - 20,000
+            oscDetu.value = `${detune}`; // -24 - 24
+            oscPart.value = `${partials}`; // 4 - 4096
+            oscType.value = 'triangle';
+
+        } else {
+            console.log('parameter elements not found during initialization');
+        }
+    }
+};
+
+function initSequencers(): void {
+    sequencers = {}; // delete old data
+    const seqNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+    for (const seq of seqNodeList) {
+        
+        // Model
+
+        // Generate a unique Sequencer ID
+        const ID: string | undefined = crypto.randomUUID().split('-')[0];
+        if (typeof ID === 'string') {
+            sequencers[ID] = {
+                'stages':4,
+                'levels':25,
+                'seqRate':'1/4',
+                'ampMod':0,
+                'filtMod':0,
+                'freqMod':0,
+                'ampLvlvs':[0, 0, 0, 0],
+                'filtLvls':[0, 0, 0, 0],
+                'freqLvls':[0, 0, 0, 0]
+            };
+        } else {
+            console.log('Sequencer ID generation failed during initialization');
+        }
+
+        // Display
+
+        // Sequencer Elements
+        const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+        const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+        const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+        const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+        const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+        const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+        const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+        const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+        const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
+
+        if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+            stagesEl.value = '4';
+            levelsEl.value = '25';
+            seqRateEl.value = '1/4';
+            ampModEl.value = '0';
+            filtModEl.value = '0';
+            freqModEl.value = '0';
+
+            const ampList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            ampList.forEach((stage: Element) => {
+                // remove current level
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                // add default level
+                stage.firstElementChild?.classList.add('level-style');
+            });
+
+            const filtList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            filtList.forEach((stage: Element) => {
+                // remove current level
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                // add default level
+                stage.firstElementChild?.classList.add('level-style');
+            });
+
+            const freqList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            freqList.forEach((stage: Element) => {
+                // remove current level
+                stage.querySelector('.level-style')?.classList.remove('level-style');
+                // add default level
+                stage.firstElementChild?.classList.add('level-style');
+            });
+
+        } else {
+            console.log('Sequencer parameter not found during initialization');
+        }    
     }
 
-    // handle macros
-    if (masterGain && DMControl && FPControl && CControl && VControl) {
+};
 
-        // obtain and sanitize user values from conductor module
+// data update from user input
+function updateMacros(): boolean {
+    // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
+    
+    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) { // test element integrity
 
         // Master Gain
         let masterVal: number = Number(masterGain.value);
-        if (masterVal > 100) {
+        if (masterVal > 100) { // above max
             masterVal = 100;
-        } else if (masterVal < 0) {
+        } else if (masterVal < 0) { // below min
             masterVal = 0;
+        } else if (masterVal % 1 !== 0) { // round + fractions up
+            masterVal = Math.ceil(masterVal);
         }
         master = masterVal/100;
 
@@ -480,12 +686,31 @@ async function sound() {
             inVal = Math.ceil(inVal);
         }
         variance = vary;
-    }
 
-    // get user data + add data to oscillators structure
-    const oscs: NodeListOf<Element> = document.querySelectorAll('.oscs');
-    let gotit: boolean = true;
-    for (const osc of oscs) {
+        return true;
+
+    } else {
+        return false;
+    }
+};
+
+function updateOscillator(oscID: string): boolean {
+    // collects, validates, structures and stores oscillator data
+    
+    if (osc1 && osc2 && osc3) { // test element integrity
+
+        // get user data + add data to oscillators structure
+        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+        const oscsKeyArray: Array<string> = Object.keys(oscillators);
+        let osc: Element | undefined = undefined;
+        for (let i = 0; i < oscsKeyArray.length; i++) {
+            const key: string | undefined = oscsKeyArray[i];
+            if (key && key === oscID) {
+                const result: Element | undefined = oscsNodeList[i];
+                if (result) { osc = result }
+                break;
+            }
+        }
         if (osc) {
             // oscillator elements
             const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
@@ -496,14 +721,11 @@ async function sound() {
             const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
             const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
             const oscType: HTMLInputElement | null = osc.querySelector('.type');
-
-            // oscillator ID
-            const ID: string | undefined = crypto.randomUUID().split('-')[0]; // generate a unique Oscillator ID
-
-            // test oscilator element integrity
-            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType && typeof ID === 'string') {
+            
+            // test oscilator element integrity + OSC ID
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
                 
-                // oscillator properties
+                // Oscillator properties
                 const gain: number = Number(oscGain.value);
                 const drive: number = Number(oscDriv.value);
                 const driveCharacter: string = oscDrCh.value;
@@ -556,43 +778,100 @@ async function sound() {
 
                 // stereo varation
                 const stereoFactor: number = .15 // 20:3 variation to stereo
-                const stereoV: number = Math.random() * v*stereoFactor; // variation ammount for stereo
+                const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
 
                 // timbral variation
-                const timbFactor: number = .1; // 10:1 variation to timbre
+                const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
+
+                // enforce ranges to validate user input and prevent variability engine from causing trouble
+                
+                // varied properties
+                let gainVal: number = gainCalc;
+                if (gainCalc >= 1) { // above max
+                    gainVal = 1 - gainV;
+                } else if (gainCalc < 0) { // below min
+                    gainVal = 0;
+                } else if (gainVal % 1 !== 0) { // round fraction up
+                    gainVal = Math.ceil(gainVal);
+                }
+                let freqVal: number = freqCalc;
+                if (freqVal > 20000) {
+                    freqVal = 20000 - freqV;
+                } else if (freqVal < 20) {
+                    freqVal = 20 + freqV;
+                }
+
+                // unvaried properties
+                let voiceVal: number = voices;
+                if (voiceVal > 4) { // above max
+                    voiceVal = 4;
+                } else if (voiceVal < 1) { // below min
+                    voiceVal = 1;
+                } else if (voiceVal % 1 !== 0) { // round fraction up
+                    voiceVal = Math.ceil(voiceVal);
+                }
+                let driveVal: number = drive;
+                if (driveVal > 10) { // above max
+                    driveVal = 10;
+                } else if (driveVal < 1) { // below min
+                    driveVal = 1;
+                } else if (driveVal % 1 !== 0) { // round fraction up
+                    driveVal = Math.ceil(driveVal);
+                }
+                let detuneVal: number = detune;
+                if (detuneVal > 24) { // above max
+                    detuneVal = 24;
+                } else if (detuneVal < -24) { // below min
+                    detuneVal = -24;
+                } else if (detuneVal % 1 !== 0) { // round fraction up
+                    detuneVal = Math.ceil(detuneVal);
+                }
+                let partialsVal: number = partials;
+                if (partialsVal > 4096) { // above max
+                    partialsVal = 4096;
+                } else if (partialsVal < 16) { // below min
+                    partialsVal = 16;
+                } else if (partialsVal % 1 !== 0) { // round fractions up
+                    partialsVal = Math.ceil(partials);
+                }
 
                 // generate waveform
-                const real: Float32Array = new Float32Array(partials); // real coefficients
-                const imag: Float32Array = new Float32Array(partials); // imaginary coefficients
+                // e^i*phi
+                const phi: number = (1 + stereoV * 30) * Math.PI/180; // 1 - 46 deg => radians
+                const phaze: number = Math.pow(Math.E, phi); // (vertical phaze; k-phase; k-scalar) stereo varation => % max degrees => radian phaze shift
+                const real: Float32Array = new Float32Array(partialsVal); // real coefficients
+                const imag: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
                 let waveform: PeriodicWave; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
                 if (type === 'sine') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // set partial
-                    imag[1] = 1;
+                    real[1] = 1 * Math.cos(phaze);
+                    imag[1] = 1 * Math.sin(phaze);
 
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
 
                 } else if (type === 'triangle') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
-                    for (let n = 1; n < partials + 1; n++) {
+                    for (let n = 1; n < partialsVal + 1; n++) {
                         if (n % 2 !== 0) {
                             // Triangle wave uses only odd harmonics
                             // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
                             const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
-                            const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
-                            const cutoff: number = 500/20000; // percent hertz
-                            const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
-                            const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
-                            imag[n] = partial + timbCalc; // account for variation on each partial
-                            // imag[n] = partial;
+                            const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
+                            const timbCalc: number = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                            // const out: number = partial * phaze + timbCalc;
+                            const out: number = partial + timbCalc;
+                            imag[n] = out;
                         } else {
                             // Even harmonics are zero
                             imag[n] = 0;
@@ -605,35 +884,35 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
 
                 } else if (type === 'saw') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
-                    for (let n = 1; n < partials + 1; n++) {
+                    for (let n = 1; n < partialsVal + 1; n++) {
                         const partial: number = 1 / (n * Math.PI);
-                        const cutoff: number = 10000/20000; // percent hertz
-                        const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
-                        const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
-                        imag[n] = partial + timbCalc;
+                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const out: number = partial - timbCalc;
+                        imag[n] = out;
                     }
 
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
 
                 } else if (type === 'square') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
-                    for (let n = 0; n < partials; n++) {
+                    for (let n = 0; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial: number = 4 / (n * Math.PI); // Fourier series coefficient for square wave
-                            const cutoff: number = 1000/20000; // percent hertz
-                            const adjust: number = partial/cutoff; // adjust: variation increases above cutoff and decreases below
-                            const timbCalc: number = (adjust * ( (Math.random() * (variance - 1) + 1) * timbFactor) );
-                            imag[n] = partial + timbCalc;
+                            const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor -.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                            const out: number = partial - timbCalc;
+                            imag[n] = out;
                         } else {
                             imag[n] = 0;
                         }
@@ -643,16 +922,19 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                     
                 } else if (type === 'inf-conv-geo-series-0.5') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const out: number = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .5;
                     }
 
@@ -660,33 +942,59 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 
                 } else if (type === 'inf-conv-geo-series-0.25') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const out: number = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .25;
                     }
 
                     // use partial data to create custom waveform
                     waveform = audioContext.createPeriodicWave(real, imag);
                 } else if (type === 'inf-conv-geo-series-0.125') {
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
 
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
-                    for (let i = 1; i < partials; i++) {
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const out: number = b - timbCalc;
                         real[i] = a;
-                        imag[i] = b;
+                        imag[i] = out;
                         b *= .125;
+                    }
+
+                    // use partial data to create custom waveform
+                    waveform = audioContext.createPeriodicWave(real, imag);
+
+                } else if (type === 'inf-conv-geo-series-0.0625') {
+                    // DC offset (horizontal phaze)
+                    // automatically set to 0 by setPeriodicWave method
+                    // real[0] = 0;
+                    // imag[0] = 0;
+
+                    // generate partials
+                    let a: number = 0;
+                    let b: number = 1;
+                    for (let i = 1; i < partialsVal; i++) {
+                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const out: number = b - timbCalc;
+                        real[i] = a;
+                        imag[i] = out;
+                        b *= .0625;
                     }
 
                     // use partial data to create custom waveform
@@ -706,303 +1014,433 @@ async function sound() {
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
 
-                // apply stereo variation via phazing
-
-
-                // enforce ranges to validate user input and prevent variability engine from causing trouble
-                
-                // varied properties
-                let gainVal: number = gainCalc;
-                if (gainCalc >= 1) {
-                    gainVal = 1 - gainV;
-                } else if (gainCalc < 0) {
-                    gainVal = 0;
-                }
-                let freqVal: number = freqCalc;
-                if (freqVal > 20000) {
-                    freqVal = 20000;
-                } else if (freqVal < 20) {
-                    freqVal = 20;
-                }
-
-                // unvaried properties
-                let voiceVal: number = voices;
-                if (voiceVal > 4) {
-                    voiceVal = 4;
-                } else if (voiceVal < 1) {
-                    voiceVal = 1;
-                }
-                let driveVal: number = drive;
-                if (driveVal > 10) {
-                    driveVal = 10;
-                } else if (driveVal < 1) {
-                    driveVal = 1;
-                }
-                let detuneVal: number = detune;
-                if (detuneVal > 24) {
-                    detuneVal = 24;
-                } else if (detuneVal < -24) {
-                    detuneVal = -24;
-                }
-                // add oscillator to oscillators object
-                const osc: {[key:string]: any} = {'waveform':waveform, 'oscVoices':voiceVal, 'gain':gainVal, 'drive':driveVal, 'driveCharacter': driveCharacter, 'freq':freqVal, 'detune':detuneVal};
-                oscillators[ID] = osc;
-                gotit = true;
+                // assign new oscillator data to initialized structure
+                oscillators[oscID]['waveform'] = waveform;
+                oscillators[oscID]['oscVoices'] = voiceVal;
+                oscillators[oscID]['gain'] = gainVal;
+                oscillators[oscID]['drive'] = driveVal;
+                oscillators[oscID]['driveCharacter'] = driveCharacter;
+                oscillators[oscID]['freq'] = freqVal;
+                oscillators[oscID]['detune'] = detuneVal;
+                return true;
 
             } else {
                 console.log('parameter elements not found');
-                gotit = false;
+                return false;
             }
         } else {
             console.log('oscillator element not found');
-            gotit = false;
+            return false;
         }
-
-        if (!gotit) {
-            console.log('failed to set oscillator parameters');
-            break;
-        }
+    } else {
+        console.log('oscillator element integrity degraded');
+        return false;
     }
+};
 
-    // generate voices
-    if (gotit) {
-
-        // create out nodes to route to after each voice generation
-        const dry: GainNode = audioContext.createGain(); // no FX
-        const wet: GainNode = audioContext.createGain(); // FX
-
-        // iterate over every oscillator
-        const keys: Array<string> = Object.keys(oscillators);
-        for (const key of keys) {
-    
-            // collect oscillator properties
-            const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
-            const waveform: PeriodicWave = oscil['waveform'];
-            const oscVoic: number = oscil['oscVoices'];
-            const oscFreq: number = oscil['freq'];
-            const oscDetu: number = oscil['detune'];
-            const oscVol: number = oscil['gain'];
-            const oscDrive: number = oscil['drive'];
-            const oscDriCh: string = oscil['driveCharacter'];
+function updateSequence(seqID: string): boolean {
+    // collects, validates, structures and stores sequencer data
+    if (seq1 && seq2 && seq3) {
             
-            // generator process route map
-            // oscillator: voice > gain > waveshaper > makeup > dry
-            //             voice >      > preAnalyzer         > postAnalyzer
-            //             voice >                            > wet
-            //             voice >
-            
-            // create gain node to apply pre gain value
-            const gainNode: GainNode = audioContext.createGain();
-            gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
-            
-            // create voices for oscilator
-            for (let v = 0; v < oscVoic; v++) {
-                // each voice from oscillator
-                const osc: OscillatorNode = audioContext.createOscillator();
-                // set waveform
-                osc.setPeriodicWave(waveform);
-                // set frequency
-                osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
-                // set detune
-                osc.detune.value = v * oscDetu;
-                // connect each voice from the oscillator to pre gain node
-                osc.connect(gainNode);
-                // store pointer to oscillator in structure for global reference
-                voices.push(osc);
+        // get user data + add to sequencers structure
+        const seqs: NodeListOf<Element> = document.querySelectorAll('.seqs');
+        const seqsKeyArray: Array<string> = Object.keys(sequencers);
+        let seq: Element | undefined = undefined;
+        for (let i = 0; i < seqsKeyArray.length; i++) {
+            const key: string | undefined = seqsKeyArray[i];
+            if (key && key === seqID) {
+                const result: Element | undefined = seqs[i];
+                if (result) { seq = result }
+                break;
             }
-            
-            // pre-analysis
-            const preAnalyzer: AnalyserNode =  audioContext.createAnalyser();
-            // store in global structure
-            analysis[key] = []; // init key for osc in structure
-            analysis[key].push(preAnalyzer); // add node to array at key in structure
-            gainNode.connect(preAnalyzer);
+        }
+        
+        // node itegrity
+        if (seq) {
+            // Sequencer Elements
+            const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+            const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+            const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+            const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+            const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+            const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
 
-            // sigmoid curve waveshaper distortion
-            const makeupGainNode: GainNode = audioContext.createGain();
-            console.log('drive');
-            console.log(oscDrive);
-            if (oscDrive > 1) {
-                // build
-                const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-                const oversample: OverSampleType = '2x';
-                let waveshaperCurve: Float32Array<ArrayBuffer>;
-                if (oscDriCh === 'sigmoid1') {
-                    waveshaperCurve = sigmoid1(oscDrive * driveMult);
-                } else if (oscDriCh === 'sigmoid2') {
-                    waveshaperCurve = sigmoid2(oscDrive * driveMult);
-                } else if (oscDriCh === 'sigmoid3') {
-                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
-                } else {
-                    // default to sigmoid 3 if faulty string is provided
-                    waveshaperCurve = sigmoid3(oscDrive * driveMult);
+            if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+
+                // Sequencer Parameters
+                const stages: number = Number(stagesEl.value);
+                const levels: number = Number(levelsEl.value);
+                const seqRate: number = Number(seqRateEl.value);
+                const ampMod: number = Number(ampModEl.value);
+                const filtMod: number = Number(filtModEl.value);
+                const freqMod: number = Number(freqModEl.value);
+
+                // collect Amp level from each bar
+                // collect Filter level from each bar
+                // collect Frequency level from each bar
+                const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                let ampLvls: Array<number> = []; // store levels
+                let filtLvls: Array<number> = []; // store levels
+                let freqLvls: Array<number> = []; // store levels
+                for (let stage = 0; stage < stages; stage++) { // number of levels (stages) should be equal between amp, filt, and freq
+                    const ampStageLevelList: NodeListOf<Element> | undefined = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList: NodeListOf<Element> | undefined = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList: NodeListOf<Element> | undefined = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    if (ampStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                            ampLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        ampLvls.push(NaN);
+                    }
+                    if (filtStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                            filtLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        filtLvls.push(NaN);
+                    }
+                    if (freqStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                            freqLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        freqLvls.push(NaN);
+                    }
                 }
-                waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
-                waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
-                const referenceLine: Float32Array<ArrayBuffer> = linear();
-                // Calculate the power difference and set makeup gain value to a corrective factor
-                // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
-                // f = total output power = integration of the waveshaper curve
-                // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
-                // reciprocal of factor: 1/(1+(f-i)/i)
-                const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
-                const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
-                const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
-                makeupGainNode.gain.value = powerFactor;
 
-                // route
-                gainNode.connect(waveshaper);
-                waveshaper.connect(makeupGainNode);
+                // assign new sequencer data to initialized structure
+                sequencers[seqID]['stages'] = stages;
+                sequencers[seqID]['levels'] = levels;
+                sequencers[seqID]['seqRate'] = seqRate;
+                sequencers[seqID]['ampMod'] = ampMod;
+                sequencers[seqID]['filtMod'] = filtMod;
+                sequencers[seqID]['freqMod'] = freqMod;
+                sequencers[seqID]['ampLvlvs'] = ampLvls;
+                sequencers[seqID]['filtLvls'] = filtLvls;
+                sequencers[seqID]['freqLvls'] = freqLvls;
+                return true;
 
             } else {
-
-                // bypass drive
-                gainNode.connect(makeupGainNode);
-                makeupGainNode.gain.value = 1;
+                console.log('Sequencer parameter not found');
+                return false;
             }
-            
-            // post-analysis
-            const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
-            analysis[key].push(postAnalyzer) // store in global structure
-            makeupGainNode.connect(postAnalyzer);
-
-            // route to dry and wet gain nodes for FX chain
-            makeupGainNode.connect(dry);
-            makeupGainNode.connect(wet);
-
+        } else {
+            console.log('Sequencer element not found');
+            return false;
         }
+    } else {
+        console.log('sequencer element integrity degraded');
+        return false;
+    }
+};
 
-        // FX Process Route Map
-        // Dry              > out
-        // Wet > chain > FX > out
+// playback functions
+// playback functions should only perform audio from stored data
+function shutup() {
+    voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
+    voices = []; // clear voices data
+};
 
-        // dry and wet ammount should combine to 1
-        
-        let dryVal: number = 0; // store dry ammount
-        let wetVal: number = 1; // store wet ammount
-        dry.gain.value = keys.length === 0 ? 0 : dryVal / keys.length; // adjust ammount by number of oscilators
-        wet.gain.value = keys.length === 0 ? 0 : wetVal / keys.length; // adjust ammount by number of oscilators
+async function sound() {
+    // generates voices from oscillators
 
-        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
-        FX.gain.value = 1; // ensure level is not affected
-
-        // before FX
-        const preAnalysis: AnalyserNode = audioContext.createAnalyser();
-        analysis['FX'] = []; // init key for osc in structure
-        analysis['FX'].push(preAnalysis) // store in global structure
-        wet.connect(preAnalysis);
-
-        // after FX
-        const postAnalysis: AnalyserNode = audioContext.createAnalyser();
-        analysis['FX'].push(postAnalysis) // store in global structure
-        FX.connect(postAnalysis);
-
-        // FX Chain
-
-        // Modulations
-        //  - Ring Modulation (RM)
-        //  - Pulse Width Modulation (PWM)
-        //  - Frequency Modulation (FM)
-
-        // Stereoizations
-        //  - Stereo Multiplier (doubler)
-        //  - Haas Effect (stereo delay)
-        //  - Stereo Panner
-
-        // Spatializations
-        //  - Dymanic Delay Line (DDL)
-        //  - Rverberation Module
-
-        wet.connect(FX); // bypass FX chain
-
-        // Master Process Route Map
-        // Dry > 3Comp > Master Gain > clamp > out
-        // FX  > 
-
-        // 3Comp: generator dynamics system
-        // -12 dB - -3 dB total range before brickwall
-        // 3X compressors affecting that range
-        // 3X 3 dB ranges in total range
-        //  -12 dB - -9 dB -- 1:1.1 ratio
-        //      - comp1: applies 1/3 of 1:3 ratio
-        //  -9 dB - -6 dB  -- 1:4 ratio
-        //      - comp1: applies 2/3 of 1:3 ratio
-        //      - comp2: applies 1/2 of 1:2 ratio
-        //  -6 dB - -3 dB  -- 1.6 ratio
-        //      - comp1: applies 3/3 of 1:3 ratio
-        //      - comp2: applies 2/2 of 1:2 ratio
-        //  -3 dB - 0 dB   -- 1:20 ratio
-        //      - comp1: applies 3/3 of 1:3 ratio
-        //      - comp2: applies 2/2 of 1:2 ratio
-        //      - comp3: applies 1/1 of 1:3.4 ratio
-
-        // compress to put dynamics on a curve
-        const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-        compressor.threshold.value = -12; // Start compressing at -12 dB
-        compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
-        compressor.ratio.value = 3;       // 1:3 ratio
-        compressor.attack.value = 0.05;   // 1:2 with release
-        compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-        dry.connect(compressor);
-        FX.connect(compressor);
-        
-        // soft limit before critical range
-        const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-        limiter.threshold.value = -6;    // limit at -9 dB
-        limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
-        limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
-        limiter.attack.value = 0.05;     // 1:1 with release
-        limiter.release.value = 0.05;
-        compressor.connect(limiter);
-        
-        // brickwall at maximum value
-        const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-        brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
-        brickwall.knee.value = 0;         // 0 dB knee for immediate effect
-        brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
-        brickwall.attack.value = 0;       // allow peaks
-        brickwall.release.value = 0.1;
-        limiter.connect(brickwall);
-
-        // master gain control
-        const masterGainNode: GainNode = audioContext.createGain();
-        masterGainNode.gain.value = Number(masterGain.value)/100;
-        brickwall.connect(masterGainNode);
-        
-        // clamp for 0 dB hard-clipping peak-elimination
-        const clampOut: AudioWorkletNode = clamp(masterGainNode);
-        clampOut.connect(audioContext.destination);
-        
-        // run voices
-        for (const v of voices) {
-            v.start(0);
-        }
-
+    // clear your throat
+    if (playback) {
+        shutup();
     }
 
-    // get data from analyser nodes
-    if (gotit) {
-        const keys: Array<string> = Object.keys(analysis);
-        // start with first oscillator
-        const key: string | undefined = keys[0];
-        if (typeof key === 'string') {
-            const nodeList: AnalyserNode[] | undefined = analysis[key];
-            if (nodeList) {
-                // control which analyzers log data here
+    // update macros
+    if (updateMacros()) {
 
-                // analyze(nodeList[0]) // preAnalysis for osc1
-                // analyze(nodeList[1]) // postAnalysis for osc1
+        // update oscillator model
+        const oscKeys: Array<string> = Object.keys(oscillators);
+        let gotit: boolean = true;
+        console.log(oscKeys);
+        if (oscKeys.length > 0) {
+            for (const key of oscKeys) {
+                if (!updateOscillator(key)) {
+                    gotit = false;
+                    break;
+                }
+            }
+        } else {
+            gotit = false;
+            console.log('Failed to get oscillator keys during update');
+        }
 
-                // analyze(nodeList[0]) // preAnalysis for osc2
-                // analyze(nodeList[1]) // postAnalysis for osc2
+        // update sequencer model
+        if (gotit) {
+            const seqKeys: Array<string> = Object.keys(sequencers);
+            if (seqKeys.length > 0) {
+                for (const key of seqKeys) {
+                    if (!updateSequence(key)) {
+                        gotit = false;
+                        break;
+                    }
+                }
+            } else {
+                gotit = false;
+                console.log('Failed to get sequencer keys during update');
+            }
+        }
+    
+        // generate voices
+        if (gotit) {
 
-                // analyze(nodeList[0]) // preAnalysis for osc3
-                // analyze(nodeList[1]) // postAnalysis for osc3
+            // console.log(macros);
+            // console.log(oscillators);
+    
+            // create out nodes to route to after each voice generation
+            const dry: GainNode = audioContext.createGain(); // no FX
+            const wet: GainNode = audioContext.createGain(); // FX
+    
+            // iterate over every oscillator
+            const oscKeys: Array<string> = Object.keys(oscillators);
+            const oscKeysLength: number = oscKeys.length;
+            for (const key of oscKeys) {
+        
+                // collect oscillator properties
+                const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
+                const oscVoic: number = oscil['oscVoices'];
+                const oscFreq: number = oscil['freq'];
+                const oscDetu: number = oscil['detune'];
+                const oscVol: number = oscil['gain'];
+                const oscDrive: number = oscil['drive'];
+                const oscDriCh: string = oscil['driveCharacter'];
+                const waveform: PeriodicWave = oscil['waveform'];
                 
-                // allstream logging (not reccomended; mixes data streams)
-                // for (const node of nodeList) {
-                //     analyze(node);
-                // }
+                // generator process route map
+                // oscillator: voice > gain > waveshaper > makeup > dry
+                //             voice >      > preAnalyzer         > postAnalyzer
+                //             voice >                            > wet
+                //             voice >
+                
+                // create gain node to apply pre gain value
+                const gainNode: GainNode = audioContext.createGain();
+                gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
+                
+                // create voices for oscilator
+                for (let v = 0; v < oscVoic; v++) {
+                    // each voice from oscillator
+                    const osc: OscillatorNode = audioContext.createOscillator();
+                    // set waveform
+                    osc.setPeriodicWave(waveform);
+                    // set frequency
+                    osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
+                    // set detune
+                    osc.detune.value = oscDetu/oscVoic * v;
+                    // connect each voice from the oscillator to pre gain node
+                    osc.connect(gainNode);
+                    // store pointer to oscillator in structure for global reference
+                    voices.push(osc);
+                }
+                
+                // pre-analysis
+                const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
+                // store in global structure
+                analysis[key] = []; // init key for osc in structure
+                analysis[key].push(preAnalyzer); // add node to array at key in structure
+                gainNode.connect(preAnalyzer);
+    
+                // sigmoid curve waveshaper distortion
+                const makeupGainNode: GainNode = audioContext.createGain();
+                if (oscDrive > 1) {
+                    // build
+                    const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
+                    const oversample: OverSampleType = '2x';
+                    let waveshaperCurve: Float32Array<ArrayBuffer>;
+                    console.log(oscDrive);
+                    if (oscDriCh === 'sigmoid1') {
+                        waveshaperCurve = sigmoid1(oscDrive * driveMult);
+                    } else if (oscDriCh === 'sigmoid2') {
+                        waveshaperCurve = sigmoid2(oscDrive * driveMult);
+                    } else if (oscDriCh === 'sigmoid3') {
+                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                    } else {
+                        // default to sigmoid 3 if faulty string is provided
+                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
+                    }
+                    waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
+                    waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
+                    const referenceLine: Float32Array<ArrayBuffer> = linear();
+                    // Calculate the power difference and set makeup gain value to a corrective factor
+                    // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
+                    // f = total output power = integration of the waveshaper curve
+                    // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
+                    // reciprocal of factor: 1/(1+(f-i)/i)
+                    const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
+                    const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
+                    const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
+                    makeupGainNode.gain.value = powerFactor;
+    
+                    // route
+                    gainNode.connect(waveshaper);
+                    waveshaper.connect(makeupGainNode);
+    
+                } else {
+    
+                    // bypass drive
+                    gainNode.connect(makeupGainNode);
+                    makeupGainNode.gain.value = 1;
+                }
+                
+                // post-analysis
+                const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
+                analysis[key].push(postAnalyzer) // store in global structure
+                makeupGainNode.connect(postAnalyzer);
+    
+                // route to dry and wet gain nodes for FX chain
+                makeupGainNode.connect(dry);
+                makeupGainNode.connect(wet);
+    
+            }
+    
+            // FX Process Route Map
+            // Dry              > out
+            // Wet > chain > FX > out
+    
+            // dry and wet ammount should combine to 1
+            
+            let dryVal: number = 0; // store dry ammount
+            let wetVal: number = 1; // store wet ammount
+            dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength; // adjust ammount by number of oscilators
+            wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength; // adjust ammount by number of oscilators
+    
+            const FX: GainNode = audioContext.createGain(); // FX chain endpoint
+            FX.gain.value = 1; // ensure level is not affected
+    
+            // before FX
+            const preAnalysis: AnalyserNode = audioContext.createAnalyser();
+            analysis['FX'] = []; // init key for osc in structure
+            analysis['FX'].push(preAnalysis) // store in global structure
+            wet.connect(preAnalysis);
+    
+            // after FX
+            const postAnalysis: AnalyserNode = audioContext.createAnalyser();
+            analysis['FX'].push(postAnalysis) // store in global structure
+            FX.connect(postAnalysis);
+    
+            // FX Chain
+    
+            // Modulations
+            //  - Ring Modulation (RM)
+            //  - Pulse Width Modulation (PWM)
+            //  - Frequency Modulation (FM)
+    
+            // Stereoizations
+            //  - Stereo Multiplier (doubler)
+            //  - Haas Effect (stereo delay)
+            //  - Stereo Panner
+    
+            // Spatializations
+            //  - Dymanic Delay Line (DDL)
+            //  - Rverberation Module
+    
+            wet.connect(FX); // bypass FX chain
+    
+            // Master Process Route Map
+            // Dry > 3Comp > Master Gain > clamp > out
+            // FX  > 
+    
+            // 3Comp: generator dynamics system
+            // -12 dB - -3 dB total range before brickwall
+            // 3X compressors affecting that range
+            // 3X 3 dB ranges in total range
+            //  -12 dB - -9 dB -- 1:1.1 ratio
+            //      - comp1: applies 1/3 of 1:3 ratio
+            //  -9 dB - -6 dB  -- 1:4 ratio
+            //      - comp1: applies 2/3 of 1:3 ratio
+            //      - comp2: applies 1/2 of 1:2 ratio
+            //  -6 dB - -3 dB  -- 1.6 ratio
+            //      - comp1: applies 3/3 of 1:3 ratio
+            //      - comp2: applies 2/2 of 1:2 ratio
+            //  -3 dB - 0 dB   -- 1:20 ratio
+            //      - comp1: applies 3/3 of 1:3 ratio
+            //      - comp2: applies 2/2 of 1:2 ratio
+            //      - comp3: applies 1/1 of 1:3.4 ratio
+    
+            // compress to put dynamics on a curve
+            const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            compressor.threshold.value = -12; // Start compressing at -12 dB
+            compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
+            compressor.ratio.value = 3;       // 1:3 ratio
+            compressor.attack.value = 0.05;   // 1:2 with release
+            compressor.release.value = 0.1;   // slows release to bring up lower dynamics
+            dry.connect(compressor);
+            FX.connect(compressor);
+            
+            // soft limit before critical range
+            const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            limiter.threshold.value = -6;    // limit at -9 dB
+            limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
+            limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
+            limiter.attack.value = 0.05;     // 1:1 with release
+            limiter.release.value = 0.05;
+            compressor.connect(limiter);
+            
+            // brickwall at maximum value
+            const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
+            brickwall.knee.value = 0;         // 0 dB knee for immediate effect
+            brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
+            brickwall.attack.value = 0;       // allow peaks
+            brickwall.release.value = 0.1;
+            limiter.connect(brickwall);
+    
+            // master gain control
+            const masterGainNode: GainNode = audioContext.createGain();
+            masterGainNode.gain.value = Number(masterGain.value)/100;
+            brickwall.connect(masterGainNode);
+            
+            // clamp for 0 dB hard-clipping peak-elimination
+            const clampOut: AudioWorkletNode = clamp(masterGainNode);
+            clampOut.connect(audioContext.destination);
+
+            // play voices
+            for (const voice of voices) {
+                voice.start();
+            }
+    
+        }
+
+        // setup sequencer
+        if (gotit) {
+            // console.log(sequencers);
+        }
+    
+        // setup analysis
+        if (gotit) {
+            const keys: Array<string> = Object.keys(analysis);
+            // start with first oscillator
+            const key: string | undefined = keys[0];
+            if (typeof key === 'string') {
+                const nodeList: AnalyserNode[] | undefined = analysis[key];
+                if (nodeList) {
+                    // control which analyzers log data here
+    
+                    // analyze(nodeList[0]) // preAnalysis for osc1
+                    // analyze(nodeList[1]) // postAnalysis for osc1
+    
+                    // analyze(nodeList[0]) // preAnalysis for osc2
+                    // analyze(nodeList[1]) // postAnalysis for osc2
+    
+                    // analyze(nodeList[0]) // preAnalysis for osc3
+                    // analyze(nodeList[1]) // postAnalysis for osc3
+                    
+                    // allstream logging (not reccomended; mixes data streams)
+                    // for (const node of nodeList) {
+                    //     analyze(node);
+                    // }
+                }
             }
         }
     }
@@ -1013,11 +1451,20 @@ let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && masterGain && FPControl && CControl && VControl && osc1 && osc2 && osc3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3) {
 
         // load processor modules
         await getProcessorModules();
-        
+
+        // initialize structures
+        initMacros();
+        initOscillators();
+        initSequencers();
+
+        // console.log(macros);
+        // console.log(oscillators);
+        // console.log(sequencers);
+
         // setup listeners for user controls
         const latency: number = 150; // millisecs
         let listening: boolean = true;
@@ -1044,7 +1491,9 @@ async function setup(): Promise<void> {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
-                    shutup();
+                    listening = false;
+                    shutup(); // don't listen until shutup is done
+                    listening = true;
                     playback = false;
                 }, latency)
             }
@@ -1061,7 +1510,22 @@ async function setup(): Promise<void> {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
-                    sound();
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+        
+        // controls master pan position
+        masterPan.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
                 }, latency);
             }
         });
@@ -1098,11 +1562,15 @@ async function setup(): Promise<void> {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
-                    sound();
+                    listening = false;
+                    sound(); // don't listen until sound is done
+                    listening = true;
                 }, latency);
             }
         });
 
+    } else {
+        console.log('Element Integrity Degraded on setup');
     }
 };
 setup();

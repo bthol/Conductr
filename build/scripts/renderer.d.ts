@@ -6,24 +6,23 @@ interface Window {
 }
 declare const options: Object;
 declare const audioContext: AudioContext;
-declare let playback: boolean;
+declare let macros: {
+    [key: string]: any;
+};
+declare let master: any, pan: any, FortePiano: any, creciendo: any, expressivity: any, variance: any, driveMult: any, Attack: any, Sustain: any, Release: any;
 declare let oscillators: {
     [key: string]: any;
 };
+declare let sequencers: {
+    [key: string]: any;
+};
+declare let playback: boolean;
 declare let voices: Array<OscillatorNode>;
 declare let analysis: {
     [key: string]: Array<AnalyserNode>;
 };
-declare let master: number;
-declare let FortePiano: number;
-declare let creciendo: number;
-declare let expressivity: number;
-declare let variance: number;
-declare let driveMult: number;
-declare let Attack: number;
-declare let Release: number;
-declare let Sustain: number;
 declare const masterGain: HTMLInputElement;
+declare const masterPan: HTMLInputElement;
 declare const breakerBtn: HTMLElement | null;
 declare const playBtn: HTMLElement | null;
 declare const stopBtn: HTMLElement | null;
@@ -35,6 +34,9 @@ declare const TControl: HTMLInputElement;
 declare const VControl: HTMLInputElement;
 declare const EControl: HTMLInputElement;
 declare const CControl: HTMLInputElement;
+declare const seq1: HTMLElement | null;
+declare const seq2: HTMLElement | null;
+declare const seq3: HTMLElement | null;
 declare const osc1: HTMLElement | null;
 declare const osc2: HTMLElement | null;
 declare const osc3: HTMLElement | null;
@@ -48,6 +50,12 @@ declare function peak(data: Float32Array<ArrayBuffer>): number;
 declare function analyzePeak(node: AnalyserNode | undefined): void;
 declare function analyze(node: AnalyserNode | undefined): void;
 declare function clamp(input: AudioNode): AudioWorkletNode;
+declare function initMacros(): void;
+declare function initOscillators(): void;
+declare function initSequencers(): void;
+declare function updateMacros(): boolean;
+declare function updateOscillator(oscID: string): boolean;
+declare function updateSequence(seqID: string): boolean;
 declare function shutup(): void;
 declare function sound(): Promise<void>;
 declare let cache: ReturnType<typeof setTimeout>;

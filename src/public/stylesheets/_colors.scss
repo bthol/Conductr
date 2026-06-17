@@ -9,13 +9,15 @@ $title-color-border: hsl(240, 2%, 40%);
 // default theme
 $text-color-1: hsl(66, 100%, 50%);
 $text-color-2: hsl(0, 4%, 20%);
-$background-color-1: hsl(250, 71%, 47%);
+// $background-color-1: hsl(250, 71%, 47%);
+$background-color-1: hsl(250, 51%, 32%);
 $background-color-2: hsl(242, 16%, 63%);
 $background-color-3: hsl(235, 31%, 33%);
 $border-color: hsl(240, 95%, 22%);
-$shadow-color: hsl(244, 50%, 7%);
+$shadow-color: hsl(244, 50%, 9%);
 
-$color-on: rgb(17, 224, 17);
+// $color-on: rgb(17, 224, 17);
+$color-on: hsl(62, 86%, 47%);
 $color-off: rgb(96, 104, 82);
 
 // detailing
@@ -23,13 +25,13 @@ $grad-deg-spread: 30deg;
 $grad-deg-2: calc(30deg + $grad-deg-spread);
 $grad-deg-1: calc(30deg - $grad-deg-spread);
 $grad-deg-3: calc(30deg - $grad-deg-spread);
-$detailing: hsl(58, 94%, 48%);
 $detailing-gradient-fallback: color.adjust($background-color-3, $hue: -$grad-deg-spread);
 // $detailing-gradient-fallback: hsl(253, 60%, 47%);
 // $detailing-gradient-fallback: #fc4545;
-$detailing-gradient-1: hsl(276, 60%, 47%);
-$detailing-gradient-2: hsl(0, 60%, 55%);
-$detailing-gradient-3: hsl(35, 60%, 63%);
+// $detailing-gradient-1: hsl(276, 60%, 47%);
+// $detailing-gradient-2: hsl(0, 60%, 55%);
+// $detailing-gradient-3: hsl(35, 60%, 63%);
+$detailing: hsl(58, 94%, 48%);
 
 // srgb or oklab color-spaces
 $detailing-gradient-solid-cover: color.adjust(color.mix(color.mix(color.adjust($detailing-gradient-fallback, $hue: $grad-deg-2), color.adjust($detailing-gradient-fallback, $hue: $grad-deg-3)), color.adjust($detailing-gradient-fallback, $hue: $grad-deg-1)), $alpha: -.1, $saturation: 20%);

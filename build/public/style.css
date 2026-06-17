@@ -1,18 +1,13 @@
 body {
-  background: hsl(250, 71%, 47%);
+  background: hsl(250, 51%, 32%);
   color: hsl(66, 100%, 50%);
   font-size: medium;
 }
 
 .panel {
-  padding: 8px;
-  margin: 10px 0px;
-  background-color: hsl(242, 16%, 63%);
-  border: 1px solid hsl(240, 95%, 22%);
-  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 7%);
-  border-radius: 3px;
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 
 .module {
@@ -23,7 +18,7 @@ body {
   background: -moz-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   background: linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   border: 1.5px solid hsl(240, 95%, 22%);
-  box-shadow: inset 0px 0px 5px 0px hsl(244, 50%, 7%);
+  box-shadow: inset 0px 0px 5px 0px hsl(244, 50%, 9%);
   border-radius: 3px;
 }
 
@@ -44,11 +39,53 @@ body {
   border: 8px solid transparent;
 }
 
+.second-border {
+  padding: 8px;
+  margin: 10px 0px;
+  border: 1.5px solid hsl(58, 94%, 48%);
+  border-radius: 3px;
+}
+
 .section-layout {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 1vw;
+}
+
+.wire-layout {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 1vw;
+}
+
+.leveler-layout {
+  display: flex;
+  gap: 4px;
+}
+
+.leveler-background {
+  background: hsl(242, 16%, 63%);
+}
+
+.leveler-level-bar-style {
+  height: 120px;
+  width: 24px;
+  background: hsl(235, 41%, 43%);
+  border: 1.5px solid hsl(244, 50%, 9%);
+  display: flex;
+  flex-direction: column-reverse;
+}
+
+.leveler-level-bar-style > div {
+  height: 4.8px;
+}
+
+.level-style {
+  box-shadow: 1px 2px 2px 0px hsl(244, 50%, 9%);
+  background: hsl(58, 94%, 48%);
 }
 
 .supertitle {
@@ -57,6 +94,7 @@ body {
 
 .subtitle {
   font-size: large;
+  margin-bottom: 8px;
 }
 
 .title {
@@ -69,8 +107,8 @@ body {
 
 @keyframes blink {
   from {
-    background-color: rgb(17, 224, 17);
-    box-shadow: 0px 0px 4px 1px rgb(17, 224, 17);
+    background-color: hsl(62, 86%, 47%);
+    box-shadow: 0px 0px 4px 1px hsl(62, 86%, 47%);
   }
   to {
     background-color: rgb(96, 104, 82);
@@ -82,11 +120,11 @@ body {
   justify-content: space-between;
   align-items: center;
   width: max-content;
-  margin-right: 3vw;
+  margin-right: 18px;
 }
 
 .light-label {
-  margin-right: 0.75vw;
+  margin: 0px 12px;
   font-size: large;
   cursor: default;
 }
@@ -96,6 +134,16 @@ body {
   border-radius: 100px;
   height: 16px;
   width: 16px;
+}
+
+#indicator-lights {
+  background-color: hsl(242, 16%, 63%);
+  border: 1px solid hsl(240, 95%, 22%);
+  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
+  outline: 3px solid hsl(325, 31%, 33%);
+  padding: 8px;
+  margin: 10px 0px;
+  border-radius: 3px;
 }
 
 #run-light {
