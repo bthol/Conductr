@@ -70,7 +70,7 @@ body {
   background: hsl(242, 16%, 63%);
 }
 
-.leveler-level-bar-style {
+.leveler-stage-style {
   height: 120px;
   width: 24px;
   background: hsl(235, 41%, 43%);
@@ -79,7 +79,7 @@ body {
   flex-direction: column-reverse;
 }
 
-.leveler-level-bar-style > div {
+.leveler-stage-style > div {
   height: 4.8px;
 }
 

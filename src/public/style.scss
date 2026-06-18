@@ -79,7 +79,7 @@ $lvl-number: 25; // number of levels in a bar
     background: index.$background-color-2;
 }
 
-.leveler-level-bar-style {
+.leveler-stage-style {
     height: $lvl-bar-height;
     width: 24px;
     background: color.adjust(index.$background-color-3, $lightness: 10%, $saturation: 10%);
@@ -88,7 +88,7 @@ $lvl-number: 25; // number of levels in a bar
     flex-direction: column-reverse;
 }
 
-.leveler-level-bar-style > div {
+.leveler-stage-style > div {
     height: math.div($lvl-bar-height, $lvl-number);
 }
 

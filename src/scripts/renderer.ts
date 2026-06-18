@@ -256,7 +256,7 @@ function peak(data: Float32Array<ArrayBuffer>): number {
 };
 
 // setup peak level analysis on node
-function analyzePeak(node: AnalyserNode | undefined) {
+function analyzePeak(node: AnalyserNode | undefined): void {
     // performs real-time analysis on peak value of data stream from analyser node
     if (node) {
         
@@ -295,7 +295,7 @@ function analyzePeak(node: AnalyserNode | undefined) {
 };
 
 // setup general analysis on node
-function analyze(node: AnalyserNode | undefined) {
+function analyze(node: AnalyserNode | undefined): void {
     // performs real-time analysis on analyser node
     // gets:
     //  - peak value
@@ -490,6 +490,10 @@ function initSequencers(): void {
         // Generate a unique Sequencer ID
         const ID: string | undefined = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
+            // apply ID to HTML element
+            seq.id = ID;
+
+            // default model features
             sequencers[ID] = {
                 'stages':4,
                 'levels':25,
@@ -497,7 +501,7 @@ function initSequencers(): void {
                 'ampMod':0,
                 'filtMod':0,
                 'freqMod':0,
-                'ampLvlvs':[0, 0, 0, 0],
+                'ampLvls':[0, 0, 0, 0],
                 'filtLvls':[0, 0, 0, 0],
                 'freqLvls':[0, 0, 0, 0]
             };
@@ -526,7 +530,7 @@ function initSequencers(): void {
             filtModEl.value = '0';
             freqModEl.value = '0';
 
-            const ampList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const ampList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             ampList.forEach((stage: Element) => {
                 // remove current level
                 stage.querySelector('.level-style')?.classList.remove('level-style');
@@ -534,7 +538,7 @@ function initSequencers(): void {
                 stage.firstElementChild?.classList.add('level-style');
             });
 
-            const filtList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const filtList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             filtList.forEach((stage: Element) => {
                 // remove current level
                 stage.querySelector('.level-style')?.classList.remove('level-style');
@@ -542,7 +546,7 @@ function initSequencers(): void {
                 stage.firstElementChild?.classList.add('level-style');
             });
 
-            const freqList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const freqList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             freqList.forEach((stage: Element) => {
                 // remove current level
                 stage.querySelector('.level-style')?.classList.remove('level-style');
@@ -1081,9 +1085,9 @@ function updateSequence(seqID: string): boolean {
                 // collect Amp level from each bar
                 // collect Filter level from each bar
                 // collect Frequency level from each bar
-                const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
-                const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
-                const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
                 let ampLvls: Array<number> = []; // store levels
                 let filtLvls: Array<number> = []; // store levels
                 let freqLvls: Array<number> = []; // store levels
@@ -1145,12 +1149,12 @@ function updateSequence(seqID: string): boolean {
 
 // playback functions
 // playback functions should only perform audio from stored data
-function shutup() {
+function shutup(): void {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
     voices = []; // clear voices data
 };
 
-async function sound() {
+function soundAll(): void {
     // generates voices from oscillators
 
     // clear your throat
@@ -1446,6 +1450,119 @@ async function sound() {
     }
 };
 
+function sequencerEvent(event: Event): void {
+    // determine functionality by taraget of event
+    const target = event.target as HTMLElement;
+    const parent: HTMLElement | null = target.parentElement;
+    if (parent) {
+        // determine sequencer ID
+        const seqID: string | undefined = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+        if (seqID) {
+            // sequencer[seqID] == sequencer in which the event occured
+
+            // determine sequence control type
+            if (parent.classList.contains('leveler-stage-style')) {
+                // is leveler control type
+                if (!target.classList.contains('level-style')) {
+                    // not a repeated level
+        
+                    // determine leveler type
+                    const leveler: HTMLElement | null = parent.parentElement;
+                    if (leveler) {
+                        if (leveler.classList.contains('amp-sequence-leveler-container')) {
+                            // determine which stage is being leveled
+                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                            const stage: number = stageNum === undefined ? 0 : stageNum;
+
+                            // determine new level
+                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                            let level: number = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    // remove previous level
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    // add current level
+                                    el.classList.add('level-style');
+                                    break;
+                                } else {
+                                    level += 1;
+                                }
+                            }
+
+                            // apply change to model
+                            sequencers[seqID]['ampLvls'][stage] = level;
+
+                            // play sound with change
+                            if (playback) {
+                                soundAll();
+                            }
+                            
+                        } else if (leveler.classList.contains('filt-sequence-leveler-container')) {
+                            // determine which stage is being leveled
+                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                            const stage: number = stageNum === undefined ? 0 : stageNum;
+
+                            // determine new level
+                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                            let level: number = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    // remove previous level
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    // add current level
+                                    el.classList.add('level-style');
+                                    break;
+                                } else {
+                                    level += 1;
+                                }
+                            }
+
+                            // apply change
+                            sequencers[seqID]['filtLvls'][stage] = level;
+                            
+                            // play sound with change
+                            if (playback) {
+                                soundAll();
+                            }
+                            
+                        } else if (leveler.classList.contains('freq-sequence-leveler-container')) {
+                            // determine which stage is being leveled
+                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                            const stage: number = stageNum === undefined ? 0 : stageNum;
+
+                            // determine new level
+                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                            let level: number = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    // remove previous level
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    // add current level
+                                    el.classList.add('level-style');
+                                    break;
+                                } else {
+                                    level += 1;
+                                }
+                            }
+
+                            // apply change
+                            sequencers[seqID]['freqLvls'][stage] = level;
+
+                            // play sound with change
+                            if (playback) {
+                                soundAll();
+                            }
+                        }
+                    }
+                }
+    
+            }
+
+        }
+
+    }
+};
+
 // test UI integrity, load processor modules, and setup listeners for user controls
 let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
@@ -1478,7 +1595,7 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                     playback = true;
                 }, latency)
@@ -1511,7 +1628,7 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                 }, latency);
             }
@@ -1524,7 +1641,7 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                 }, latency);
             }
@@ -1537,7 +1654,7 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                 }, latency);
             }
@@ -1550,7 +1667,7 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                 }, latency);
             }
@@ -1563,14 +1680,41 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound(); // don't listen until sound is done
+                    soundAll(); // don't listen until sound is done
                     listening = true;
                 }, latency);
             }
         });
 
+        const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+        if (seqsNodeList.length > 0) {
+            for (const seqEl of seqsNodeList) {
+                if (seqEl) {
+                    seqEl.addEventListener('click', (event) => {
+                        cache = setTimeout(() => {
+                            clearTimeout(cache);
+                            listening = false;
+                            sequencerEvent(event);
+                            listening = true;
+                        }, latency);
+                        // if (playback) {
+                        //     cache = setTimeout(() => {
+                        //         clearTimeout(cache);
+                        //         listening = false;
+                        //         sequencerEvent(event);
+                        //         listening = true;
+                        //     }, latency);
+                        // }
+                    });
+                }
+            }
+        } else {
+            console.log('sequencer elements not found during setup');
+        }
+        
+
     } else {
-        console.log('Element Integrity Degraded on setup');
+        console.log('Element Integrity Degraded during setup');
     }
 };
 setup();

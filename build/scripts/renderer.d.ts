@@ -57,7 +57,8 @@ declare function updateMacros(): boolean;
 declare function updateOscillator(oscID: string): boolean;
 declare function updateSequence(seqID: string): boolean;
 declare function shutup(): void;
-declare function sound(): Promise<void>;
+declare function soundAll(): void;
+declare function sequencerEvent(event: Event): void;
 declare let cache: ReturnType<typeof setTimeout>;
 declare function setup(): Promise<void>;
 //# sourceMappingURL=renderer.d.ts.map

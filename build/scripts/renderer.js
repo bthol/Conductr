@@ -295,6 +295,7 @@ function initSequencers() {
     for (const seq of seqNodeList) {
         const ID = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
+            seq.id = ID;
             sequencers[ID] = {
                 'stages': 4,
                 'levels': 25,
@@ -302,7 +303,7 @@ function initSequencers() {
                 'ampMod': 0,
                 'filtMod': 0,
                 'freqMod': 0,
-                'ampLvlvs': [0, 0, 0, 0],
+                'ampLvls': [0, 0, 0, 0],
                 'filtLvls': [0, 0, 0, 0],
                 'freqLvls': [0, 0, 0, 0]
             };
@@ -326,17 +327,17 @@ function initSequencers() {
             ampModEl.value = '0';
             filtModEl.value = '0';
             freqModEl.value = '0';
-            const ampList = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const ampList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             ampList.forEach((stage) => {
                 stage.querySelector('.level-style')?.classList.remove('level-style');
                 stage.firstElementChild?.classList.add('level-style');
             });
-            const filtList = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const filtList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             filtList.forEach((stage) => {
                 stage.querySelector('.level-style')?.classList.remove('level-style');
                 stage.firstElementChild?.classList.add('level-style');
             });
-            const freqList = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+            const freqList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
             freqList.forEach((stage) => {
                 stage.querySelector('.level-style')?.classList.remove('level-style');
                 stage.firstElementChild?.classList.add('level-style');
@@ -748,9 +749,9 @@ function updateSequence(seqID) {
                 const ampMod = Number(ampModEl.value);
                 const filtMod = Number(filtModEl.value);
                 const freqMod = Number(freqModEl.value);
-                const ampLvlsStageList = ampSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
-                const filtLvlsStageList = filtSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
-                const freqLvlsStageList = freqSeqLvlsContEl.querySelectorAll('.leveler-level-bar-style');
+                const ampLvlsStageList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
                 let ampLvls = [];
                 let filtLvls = [];
                 let freqLvls = [];
@@ -824,8 +825,7 @@ function shutup() {
     voices = [];
 }
 ;
-async function sound() {
-    console.log('sounded');
+function soundAll() {
     if (playback) {
         shutup();
     }
@@ -861,9 +861,6 @@ async function sound() {
             }
         }
         if (gotit) {
-            console.log(macros);
-            console.log(oscillators);
-            console.log(sequencers);
             const dry = audioContext.createGain();
             const wet = audioContext.createGain();
             const oscKeys = Object.keys(oscillators);
@@ -974,13 +971,91 @@ async function sound() {
                 voice.start();
             }
         }
-        if (gotit) { }
+        if (gotit) {
+        }
         if (gotit) {
             const keys = Object.keys(analysis);
             const key = keys[0];
             if (typeof key === 'string') {
                 const nodeList = analysis[key];
                 if (nodeList) {
+                }
+            }
+        }
+    }
+}
+;
+function sequencerEvent(event) {
+    const target = event.target;
+    const parent = target.parentElement;
+    if (parent) {
+        const seqID = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+        if (seqID) {
+            if (parent.classList.contains('leveler-stage-style')) {
+                if (!target.classList.contains('level-style')) {
+                    const leveler = parent.parentElement;
+                    if (leveler) {
+                        if (leveler.classList.contains('amp-sequence-leveler-container')) {
+                            const stageNum = Number(parent.classList[1]?.split('-')[1]);
+                            const stage = stageNum === undefined ? 0 : stageNum;
+                            const levelList = parent.querySelectorAll('div');
+                            let level = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    el.classList.add('level-style');
+                                    break;
+                                }
+                                else {
+                                    level += 1;
+                                }
+                            }
+                            sequencers[seqID]['ampLvls'][stage] = level;
+                            if (playback) {
+                                soundAll();
+                            }
+                        }
+                        else if (leveler.classList.contains('filt-sequence-leveler-container')) {
+                            const stageNum = Number(parent.classList[1]?.split('-')[1]);
+                            const stage = stageNum === undefined ? 0 : stageNum;
+                            const levelList = parent.querySelectorAll('div');
+                            let level = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    el.classList.add('level-style');
+                                    break;
+                                }
+                                else {
+                                    level += 1;
+                                }
+                            }
+                            sequencers[seqID]['filtLvls'][stage] = level;
+                            if (playback) {
+                                soundAll();
+                            }
+                        }
+                        else if (leveler.classList.contains('freq-sequence-leveler-container')) {
+                            const stageNum = Number(parent.classList[1]?.split('-')[1]);
+                            const stage = stageNum === undefined ? 0 : stageNum;
+                            const levelList = parent.querySelectorAll('div');
+                            let level = 0;
+                            for (const el of levelList) {
+                                if (el === target) {
+                                    parent.querySelector('.level-style')?.classList.remove('level-style');
+                                    el.classList.add('level-style');
+                                    break;
+                                }
+                                else {
+                                    level += 1;
+                                }
+                            }
+                            sequencers[seqID]['freqLvls'][stage] = level;
+                            if (playback) {
+                                soundAll();
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1002,7 +1077,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                     playback = true;
                 }, latency);
@@ -1027,7 +1102,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                 }, latency);
             }
@@ -1038,7 +1113,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                 }, latency);
             }
@@ -1049,7 +1124,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                 }, latency);
             }
@@ -1060,7 +1135,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                 }, latency);
             }
@@ -1071,14 +1146,32 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    sound();
+                    soundAll();
                     listening = true;
                 }, latency);
             }
         });
+        const seqsNodeList = document.querySelectorAll('.seqs');
+        if (seqsNodeList.length > 0) {
+            for (const seqEl of seqsNodeList) {
+                if (seqEl) {
+                    seqEl.addEventListener('click', (event) => {
+                        cache = setTimeout(() => {
+                            clearTimeout(cache);
+                            listening = false;
+                            sequencerEvent(event);
+                            listening = true;
+                        }, latency);
+                    });
+                }
+            }
+        }
+        else {
+            console.log('sequencer elements not found during setup');
+        }
     }
     else {
-        console.log('Element Integrity Degraded on setup');
+        console.log('Element Integrity Degraded during setup');
     }
 }
 ;
