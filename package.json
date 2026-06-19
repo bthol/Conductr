@@ -1,9 +1,9 @@
 {
-  "name": "desktop1",
+  "name": "ConductR",
   "version": "1.0.0",
-  "description": "",
+  "description": "ConductR is a standalone software synthesizer.",
   "license": "ISC",
-  "author": "blake thollaug",
+  "author": "Blake Thollaug",
   "type": "commonjs",
   "main": "main.js",
   "scripts": {
@@ -20,12 +20,22 @@
     "watch-sass": "sass --watch ./src/public/:./build/public/"
   },
   "devDependencies": {
-    "@electron-forge/cli": "^7.11.1",
+    "@electron-forge/cli": "^7.11.2",
+    "@electron-forge/maker-deb": "^7.11.2",
+    "@electron-forge/maker-rpm": "^7.11.2",
+    "@electron-forge/maker-squirrel": "^7.11.2",
+    "@electron-forge/maker-zip": "^7.11.2",
+    "@electron-forge/plugin-auto-unpack-natives": "^7.11.2",
+    "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron-forge/publisher-github": "^7.11.1",
+    "@electron/fuses": "^1.8.0",
     "@types/audioworklet": "^0.0.100",
     "@types/node": "^25.9.1",
     "electron": "^42.1.0",
     "sass": "^1.99.0",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
   }
 }

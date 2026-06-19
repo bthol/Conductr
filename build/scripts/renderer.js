@@ -967,9 +967,6 @@ function soundAll() {
             brickwall.connect(masterGainNode);
             const clampOut = clamp(masterGainNode);
             clampOut.connect(audioContext.destination);
-            for (const voice of voices) {
-                voice.start();
-            }
         }
         if (gotit) {
         }
@@ -980,6 +977,9 @@ function soundAll() {
                 const nodeList = analysis[key];
                 if (nodeList) {
                 }
+            }
+            for (const voice of voices) {
+                voice.start();
             }
         }
     }
@@ -1156,12 +1156,9 @@ async function setup() {
             for (const seqEl of seqsNodeList) {
                 if (seqEl) {
                     seqEl.addEventListener('click', (event) => {
-                        cache = setTimeout(() => {
-                            clearTimeout(cache);
-                            listening = false;
-                            sequencerEvent(event);
-                            listening = true;
-                        }, latency);
+                        listening = false;
+                        sequencerEvent(event);
+                        listening = true;
                     });
                 }
             }

@@ -1408,17 +1408,13 @@ function soundAll(): void {
             // clamp for 0 dB hard-clipping peak-elimination
             const clampOut: AudioWorkletNode = clamp(masterGainNode);
             clampOut.connect(audioContext.destination);
-
-            // play voices
-            for (const voice of voices) {
-                voice.start();
-            }
     
         }
 
         // setup sequencer
         if (gotit) {
             // console.log(sequencers);
+
         }
     
         // setup analysis
@@ -1445,6 +1441,11 @@ function soundAll(): void {
                     //     analyze(node);
                     // }
                 }
+            }
+            
+            // play voices
+            for (const voice of voices) {
+                voice.start();
             }
         }
     }
@@ -1691,20 +1692,18 @@ async function setup(): Promise<void> {
             for (const seqEl of seqsNodeList) {
                 if (seqEl) {
                     seqEl.addEventListener('click', (event) => {
-                        cache = setTimeout(() => {
-                            clearTimeout(cache);
-                            listening = false;
-                            sequencerEvent(event);
-                            listening = true;
-                        }, latency);
-                        // if (playback) {
-                        //     cache = setTimeout(() => {
-                        //         clearTimeout(cache);
-                        //         listening = false;
-                        //         sequencerEvent(event);
-                        //         listening = true;
-                        //     }, latency);
-                        // }
+                        // cache = setTimeout(() => {
+                        //     clearTimeout(cache);
+                        //     listening = false;
+                        //     sequencerEvent(event);
+                        //     listening = true;
+                        // }, latency);
+
+                        // no added latency on gui events
+                        listening = false;
+                        sequencerEvent(event);
+                        listening = true;
+
                     });
                 }
             }

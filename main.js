@@ -54,7 +54,6 @@ const template = [
 const menu = Menu.buildFromTemplate(template);
 Menu.setApplicationMenu(menu);
 
-
 // open
 let win; // globally store window
 app.whenReady().then(() => {
@@ -73,7 +72,7 @@ app.whenReady().then(() => {
     minWidth: 572,
     minHeight: 410,
     frame: true,
-    icon: path.join(__dirname, 'assets', 'icon.ico'),
+    icon: path.join(__dirname, 'assets', 'icons', 'win', 'icon.ico'),
     webPreferences: {
       preload: path.join(__dirname, 'build', 'scripts', 'preload.js'),
       contextIsolation: true,
