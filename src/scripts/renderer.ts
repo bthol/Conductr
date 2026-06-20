@@ -66,10 +66,16 @@ let macros: { [key: string]: any} = {
 let { master, pan, FortePiano, creciendo, expressivity, variance, driveMult, Attack, Sustain, Release } = macros; // destructure for ease of access
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
 let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
+let macrosInitialized: boolean = false; // boolean for testing initialization status
+let oscillatorsInitialized: boolean = false; // boolean for testing initialization status
+let sequencersInitialized: boolean = false; // boolean for testing initialization status
 
 // Playback structures
 let playback: boolean = false; // stores the program run state (run: true, off: false)
+let tempo: number = 128; // Beats per Minute (BPM) tempo controls the rate of clocked events
+let beatsPerMeasure: number = 4; // controls number of beats per measure, always give beat to 1/4th
 let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
+let sequences: {[key:string]: ReturnType<typeof setInterval> } = {}; // stores cache for sequencer schedule caches
 let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator, second index = analyzer node for that oscillator
 
 // DOM elements
@@ -382,6 +388,9 @@ function initMacros(): void {
     } else {
         console.log('macro display initialization failed');
     }
+    
+    // update status
+    macrosInitialized = true;
 };
 
 function initOscillators(): void {
@@ -478,6 +487,9 @@ function initOscillators(): void {
             console.log('parameter elements not found during initialization');
         }
     }
+
+    // update status
+    oscillatorsInitialized = true;
 };
 
 function initSequencers(): void {
@@ -493,17 +505,24 @@ function initSequencers(): void {
             // apply ID to HTML element
             seq.id = ID;
 
+            // setup and clear sequence schedule cache
+            sequencers[ID] = setInterval(() => {}, 1000);
+            clearInterval(sequences[ID]);
+
             // default model features
             sequencers[ID] = {
                 'stages':4,
                 'levels':25,
                 'seqRate':'1/4',
+                'type': 'lowpass',
+                'cutoff': 1000,
+                'resonance': 1,
                 'ampMod':0,
                 'filtMod':0,
                 'freqMod':0,
                 'ampLvls':[0, 0, 0, 0],
                 'filtLvls':[0, 0, 0, 0],
-                'freqLvls':[0, 0, 0, 0]
+                'freqLvls':[0, 0, 0, 0],
             };
         } else {
             console.log('Sequencer ID generation failed during initialization');
@@ -515,6 +534,9 @@ function initSequencers(): void {
         const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
         const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
         const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+        const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+        const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+        const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
         const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
         const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
         const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
@@ -522,10 +544,13 @@ function initSequencers(): void {
         const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
         const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
 
-        if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+        if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
             stagesEl.value = '4';
             levelsEl.value = '25';
             seqRateEl.value = '1/4';
+            filterTypeEL.value = 'lowpass';
+            filterCutoffEL.value = '1000';
+            filterResonanceEl.value = '1';
             ampModEl.value = '0';
             filtModEl.value = '0';
             freqModEl.value = '0';
@@ -559,6 +584,8 @@ function initSequencers(): void {
         }    
     }
 
+    // update status
+    sequencersInitialized = true;
 };
 
 // data update from user input
@@ -1065,6 +1092,9 @@ function updateSequence(seqID: string): boolean {
             const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
             const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
             const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+            const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+            const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
             const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
             const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
             const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
@@ -1072,12 +1102,15 @@ function updateSequence(seqID: string): boolean {
             const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
             const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
 
-            if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
 
                 // Sequencer Parameters
                 const stages: number = Number(stagesEl.value);
                 const levels: number = Number(levelsEl.value);
-                const seqRate: number = Number(seqRateEl.value);
+                const seqRate: string = seqRateEl.value;
+                const filtType: string = ['allpass', 'bandpass', 'highpass', 'highshelf', 'lowpass', 'lowshelf', 'notch', 'peaking'].includes(filterTypeEL.value) ? filterTypeEL.value : 'lowpass';
+                const cutoff: number = Number(filterCutoffEL.value);
+                const resonance: number = Number(filterResonanceEl.value);
                 const ampMod: number = Number(ampModEl.value);
                 const filtMod: number = Number(filtModEl.value);
                 const freqMod: number = Number(freqModEl.value);
@@ -1125,6 +1158,9 @@ function updateSequence(seqID: string): boolean {
                 sequencers[seqID]['stages'] = stages;
                 sequencers[seqID]['levels'] = levels;
                 sequencers[seqID]['seqRate'] = seqRate;
+                sequencers[seqID]['filtType'] = filtType;
+                sequencers[seqID]['cutoff'] = cutoff;
+                sequencers[seqID]['resonance'] = resonance;
                 sequencers[seqID]['ampMod'] = ampMod;
                 sequencers[seqID]['filtMod'] = filtMod;
                 sequencers[seqID]['freqMod'] = freqMod;
@@ -1147,11 +1183,144 @@ function updateSequence(seqID: string): boolean {
     }
 };
 
+// setup functions
+function setupSequencer(seqID:string, oscs:Array<OscillatorNode>): BiquadFilterNode | boolean {
+    if (sequencersInitialized) {
+        // setup sequencer
+
+        // measures per minute  = beats per minute / beats per measure
+        // minutes per measure = 1 / measures per minute
+        // millisecs per measure = minutes per measure * (60 seconds / 1 minute) * (1000 millisecs / 1 second)
+        const measureDuration: number = 1 / (tempo / beatsPerMeasure) * 60 * 1000; // measureDuration = milliseconds per measure
+
+        // 1 sequencer stage is a sequencer beat
+        // 1 sequencer beat is a rate 
+
+        // get sequencer data
+        const seq = sequencers[seqID]; // sequencer object
+        const levels: number = seq['stages']; // default = 25
+        const type: BiquadFilterType = seq['filtType']; // default lowpass
+        const cutoff: number = seq['cutoff']; // defualt 1000
+        const resonance: number = seq['resonance']; // default 1
+        let ampMod: number = seq['ampMod']; // 0 - 10
+        let filtMod: number = seq['filtMod']; // 0 - 10
+        let freqMod: number = seq['freqMod']; // -24 - 24
+        const ampLvls: Array<number> = seq['ampLvls']; // amplitude control levels
+        const filtLvls: Array<number> = seq['filtLvls']; // filter control levels
+        const freqLvls: Array<number> = seq['freqLvls']; // frequency control levels
+        const stages: number = Number(seq['stages']); // stages property of sequence object, number of stage durations per sequence
+        const rate: number = Number(seq['seqRate'].split('/')[0]) / Number(seq['seqRate'].split('/')[1]); // rate = percentage of measure per stage
+        const stageDuration: number = measureDuration * rate; // measureDuration adjusted by rate
+        const sequenceDuration: number = stageDuration * stages; // duration of entire sequence
+
+        // handle modifiers
+
+        // enforce range
+        if (ampMod > 10) { // above maximum
+            ampMod = 10;
+        } else if (ampMod < 0) { // below minimum
+            ampMod = 0;
+        } else if (ampMod % 1 !== 0) { // round fractions up
+            ampMod = Math.ceil(ampMod);
+        }
+        // scale range
+        ampMod = ampMod / 10; // 0 - 1
+
+        // enforce range
+        if (filtMod > 10) { // above maximum
+            filtMod = 10;
+        } else if (filtMod < 0) { // below minimum
+            filtMod = 0;
+        } else if (filtMod % 1 !== 0) { // round fractions up
+            filtMod = Math.ceil(filtMod);
+        }
+        // scale range
+        filtMod = (cutoff - 20) * (filtMod/10); // percentage down to min frequency
+
+        // enforce range
+        if (freqMod > 24) { // above maximum
+            freqMod = 24;
+        } else if (freqMod < -24) { // below minimum
+            freqMod = -24;
+        }
+        // scale range
+        freqMod = freqMod
+        
+
+        // create and configure sequencer nodes
+        const gainNode: GainNode = audioContext.createGain(); // node to control amp leveling
+        const filterNode: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+            type: type,
+            frequency: cutoff,
+            Q: resonance
+        }); // node to control filter leveling
+        oscs.forEach((osc) => { osc.connect(gainNode) });
+        gainNode.connect(filterNode);
+
+        
+        // prime data for sequence performance
+        for (let i = 0; i < stages; i++) {
+            const amp: number | undefined = ampLvls[i]; // 0 - 25
+            const filter: number | undefined = filtLvls[i]; // 0 - 25
+            const frequency: number | undefined = freqLvls[i]; // 0 - 25
+            if (amp && filter && frequency) {
+                // level percent of modifier scaled within property range
+                ampLvls[i] = amp / levels * ampMod;
+                filtLvls[i] = filter / levels * filtMod;
+                freqLvls[i] = frequency / levels * freqMod;
+            }
+        }
+
+        console.log('amp');
+        console.log(ampLvls);
+        console.log('filter');
+        console.log(filtLvls);
+        console.log('note');
+        console.log(freqLvls);
+        
+        // schedule sequence events using primed data
+        clearInterval(sequences[seqID]); // clear last sequence
+        sequences[seqID] = setInterval( () => { // start new sequence
+            for (let i = 0; i < stages; i++) { // each stage
+                const amp: number | undefined = ampLvls[i];
+                const filter: number | undefined = filtLvls[i];
+                const frequency: number | undefined = freqLvls[i];
+                if (amp && filter && frequency) {
+                    const time: number = audioContext.currentTime + (stageDuration*i); // schedule
+                    // set amp
+                    gainNode.gain.setValueAtTime(gainNode.gain.value * amp, time);
+
+                    // set filter
+                    filterNode.frequency.setValueAtTime(cutoff - filter, time);
+
+                    // voice frequency change spread
+                    let voiceDelay: number = 0; // millisecs
+                    let index: number = 0;
+                    oscs.forEach((osc) => {
+                        osc.frequency.setValueAtTime(frequency, time + (voiceDelay * index));
+                        index += 1;
+                    })
+                    
+                }
+            }
+            
+        }, sequenceDuration);
+
+        return filterNode;
+
+    } else {
+        console.log(`cannot setup sequence ${seqID} before initialization`);
+        return false;
+    }
+};
+
 // playback functions
 // playback functions should only perform audio from stored data
 function shutup(): void {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
     voices = []; // clear voices data
+    const sequenceKeys: Array<string> = Object.keys(sequences);
+    for (const seq of sequenceKeys) {clearInterval(seq)} // stop sequences
 };
 
 function soundAll(): void {
@@ -1168,7 +1337,6 @@ function soundAll(): void {
         // update oscillator model
         const oscKeys: Array<string> = Object.keys(oscillators);
         let gotit: boolean = true;
-        console.log(oscKeys);
         if (oscKeys.length > 0) {
             for (const key of oscKeys) {
                 if (!updateOscillator(key)) {
@@ -1202,7 +1370,8 @@ function soundAll(): void {
 
             // console.log(macros);
             // console.log(oscillators);
-    
+            // console.log(sequencers);
+
             // create out nodes to route to after each voice generation
             const dry: GainNode = audioContext.createGain(); // no FX
             const wet: GainNode = audioContext.createGain(); // FX
@@ -1210,6 +1379,8 @@ function soundAll(): void {
             // iterate over every oscillator
             const oscKeys: Array<string> = Object.keys(oscillators);
             const oscKeysLength: number = oscKeys.length;
+            const seqKeys: Array<string> = Object.keys(sequencers);
+            let seqKeyIndex: number = 0;
             for (const key of oscKeys) {
         
                 // collect oscillator properties
@@ -1233,7 +1404,7 @@ function soundAll(): void {
                 gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
                 
                 // create voices for oscilator
-                for (let v = 0; v < oscVoic; v++) {
+                for (let v = 0; v < oscVoic; v++) { // each oscillator
                     // each voice from oscillator
                     const osc: OscillatorNode = audioContext.createOscillator();
                     // set waveform
@@ -1247,7 +1418,7 @@ function soundAll(): void {
                     // store pointer to oscillator in structure for global reference
                     voices.push(osc);
                 }
-                
+
                 // pre-analysis
                 const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
                 // store in global structure
@@ -1301,11 +1472,35 @@ function soundAll(): void {
                 const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
                 analysis[key].push(postAnalyzer) // store in global structure
                 makeupGainNode.connect(postAnalyzer);
-    
-                // route to dry and wet gain nodes for FX chain
-                makeupGainNode.connect(dry);
-                makeupGainNode.connect(wet);
-    
+
+                // get sequence data
+                const seqID: string | undefined = seqKeys[seqKeyIndex];
+                if (seqID) {
+                    // get voices for sequencer
+                    let oscsNodes: Array<OscillatorNode> = [];
+                    for (let voice = voices.length - oscVoic; voice < voices.length; voice++) {
+                        const v: OscillatorNode | undefined = voices[voice];
+                        if (v) { oscsNodes.push(v) };
+                    }
+                    const seqNode: BiquadFilterNode | boolean = setupSequencer(seqID, oscsNodes);
+                    if (typeof seqNode !== "boolean") {
+                        // route to dry and wet gain nodes for FX chain through sequencer
+                        makeupGainNode.connect(seqNode);
+                        seqNode.connect(dry);
+                        seqNode.connect(wet);
+                    } else { // sequencer setup failed => bypass
+                        // route to dry and wet gain nodes for FX chain bypassing sequencer
+                        console.log('sequencer setup failed');
+                        makeupGainNode.connect(dry);
+                        makeupGainNode.connect(wet);
+                    }
+                } else {
+                    // route to dry and wet gain nodes for FX chain bypassing sequencer
+                    console.log('sequencer not found during setup');
+                    makeupGainNode.connect(dry);
+                    makeupGainNode.connect(wet);
+                }
+                seqKeyIndex += 1;
             }
     
             // FX Process Route Map
@@ -1409,12 +1604,6 @@ function soundAll(): void {
             const clampOut: AudioWorkletNode = clamp(masterGainNode);
             clampOut.connect(audioContext.destination);
     
-        }
-
-        // setup sequencer
-        if (gotit) {
-            // console.log(sequencers);
-
         }
     
         // setup analysis

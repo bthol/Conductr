@@ -57,8 +57,13 @@
                 </div>
                 <div>
                     <!-- Tempo Setter -->
-                    <div>Tempo</div>
+                    <div>Beats/Minute</div>
                     <input id="master-tempo" type="number" placeholder="tempo" min="1" max="200" value="128">
+                </div>
+                <div>
+                    <!-- Time Signature Setter -->
+                    <div>Beats/Measure</div>
+                    <input id="master-beat-per-measure" type="number" placeholder="beats per measure" min="1" max="100" value="4">
                 </div>
             </div>
             <div>
@@ -191,6 +196,32 @@
                                     </select>
                                 </div>
 
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter</div>
+                            </div>
+                            <div class="second-border">
+                                <div>
+                                    <div>Filter Type</div>
+                                    <select class="filter-type" name="filter-type">
+                                        <option value="lowpass" selected>low pass</option>
+                                        <option value="highpass">high pass</option>
+                                        <option value="bandpass">band pass</option>
+                                        <option value="lowshelf">low shelf</option>
+                                        <option value="highshelf">high shelf</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div>Cutoff</div>
+                                    <input class="filter-cutoff" type="number" placeholder="filter cutoff" min="20" max="20000" value="1000">
+                                </div>
+                                <div>
+                                    <div>Resonance</div>
+                                    <input class="filter-resonance" type="number" placeholder="filter resonance" min="0.1" max="100" value="1">
+                                </div>
                             </div>
                         </div>
 
@@ -609,7 +640,7 @@
                                 <!-- Levels -->
                                 <div>
                                     <div>Levels</div>
-                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="24" value="25" step="2">
+                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="96" value="25" step="2">
                                 </div>
 
                                 <!-- Rates -->
@@ -626,6 +657,32 @@
                                     </select>
                                 </div>
 
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter</div>
+                            </div>
+                            <div class="second-border">
+                                <div>
+                                    <div>Filter Type</div>
+                                    <select class="filter-type" name="filter-type">
+                                        <option value="lowpass" selected>low pass</option>
+                                        <option value="highpass">high pass</option>
+                                        <option value="bandpass">band pass</option>
+                                        <option value="lowshelf">low shelf</option>
+                                        <option value="highshelf">high shelf</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div>Cutoff</div>
+                                    <input class="filter-cutoff" type="number" placeholder="filter cutoff" min="20" max="20000" value="1000">
+                                </div>
+                                <div>
+                                    <div>Resonance</div>
+                                    <input class="filter-resonance" type="number" placeholder="filter resonance" min="0.1" max="100" value="1">
+                                </div>
                             </div>
                         </div>
 
@@ -1044,7 +1101,7 @@
                                 <!-- Levels -->
                                 <div>
                                     <div>Levels</div>
-                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="24" value="25" step="2">
+                                    <input class="stage-levels" type="number" placeholder="stage levels" min="2" max="96" value="25" step="2">
                                 </div>
 
                                 <!-- Rates -->
@@ -1061,6 +1118,32 @@
                                     </select>
                                 </div>
 
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="section-layout">
+                                <div>Filter</div>
+                            </div>
+                            <div class="second-border">
+                                <div>
+                                    <div>Filter Type</div>
+                                    <select class="filter-type" name="filter-type">
+                                        <option value="lowpass" selected>low pass</option>
+                                        <option value="highpass">high pass</option>
+                                        <option value="bandpass">band pass</option>
+                                        <option value="lowshelf">low shelf</option>
+                                        <option value="highshelf">high shelf</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <div>Cutoff</div>
+                                    <input class="filter-cutoff" type="number" placeholder="filter cutoff" min="20" max="20000" value="1000">
+                                </div>
+                                <div>
+                                    <div>Resonance</div>
+                                    <input class="filter-resonance" type="number" placeholder="filter resonance" min="0.1" max="100" value="1">
+                                </div>
                             </div>
                         </div>
 

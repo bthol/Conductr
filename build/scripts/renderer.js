@@ -21,8 +21,14 @@ let macros = {
 let { master, pan, FortePiano, creciendo, expressivity, variance, driveMult, Attack, Sustain, Release } = macros;
 let oscillators = {};
 let sequencers = {};
+let macrosInitialized = false;
+let oscillatorsInitialized = false;
+let sequencersInitialized = false;
 let playback = false;
+let tempo = 128;
+let beatsPerMeasure = 4;
 let voices = [];
+let sequences = {};
 let analysis = {};
 const masterGain = document.getElementById('master-gain');
 const masterPan = document.getElementById('master-pan');
@@ -218,6 +224,7 @@ function initMacros() {
     else {
         console.log('macro display initialization failed');
     }
+    macrosInitialized = true;
 }
 ;
 function initOscillators() {
@@ -287,6 +294,7 @@ function initOscillators() {
             console.log('parameter elements not found during initialization');
         }
     }
+    oscillatorsInitialized = true;
 }
 ;
 function initSequencers() {
@@ -296,16 +304,21 @@ function initSequencers() {
         const ID = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
             seq.id = ID;
+            sequencers[ID] = setInterval(() => { }, 1000);
+            clearInterval(sequences[ID]);
             sequencers[ID] = {
                 'stages': 4,
                 'levels': 25,
                 'seqRate': '1/4',
+                'type': 'lowpass',
+                'cutoff': 1000,
+                'resonance': 1,
                 'ampMod': 0,
                 'filtMod': 0,
                 'freqMod': 0,
                 'ampLvls': [0, 0, 0, 0],
                 'filtLvls': [0, 0, 0, 0],
-                'freqLvls': [0, 0, 0, 0]
+                'freqLvls': [0, 0, 0, 0],
             };
         }
         else {
@@ -314,16 +327,22 @@ function initSequencers() {
         const stagesEl = seq.querySelector('.stages');
         const levelsEl = seq.querySelector('.stage-levels');
         const seqRateEl = seq.querySelector('.sequence-rate');
+        const filterTypeEL = seq.querySelector('.filter-type');
+        const filterCutoffEL = seq.querySelector('.filter-cutoff');
+        const filterResonanceEl = seq.querySelector('.filter-resonance');
         const ampModEl = seq.querySelector('.amp-mod');
         const filtModEl = seq.querySelector('.filt-mod');
         const freqModEl = seq.querySelector('.freq-mod');
         const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
         const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
         const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
-        if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+        if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
             stagesEl.value = '4';
             levelsEl.value = '25';
             seqRateEl.value = '1/4';
+            filterTypeEL.value = 'lowpass';
+            filterCutoffEL.value = '1000';
+            filterResonanceEl.value = '1';
             ampModEl.value = '0';
             filtModEl.value = '0';
             freqModEl.value = '0';
@@ -347,6 +366,7 @@ function initSequencers() {
             console.log('Sequencer parameter not found during initialization');
         }
     }
+    sequencersInitialized = true;
 }
 ;
 function updateMacros() {
@@ -736,16 +756,22 @@ function updateSequence(seqID) {
             const stagesEl = seq.querySelector('.stages');
             const levelsEl = seq.querySelector('.stage-levels');
             const seqRateEl = seq.querySelector('.sequence-rate');
+            const filterTypeEL = seq.querySelector('.filter-type');
+            const filterCutoffEL = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl = seq.querySelector('.filter-resonance');
             const ampModEl = seq.querySelector('.amp-mod');
             const filtModEl = seq.querySelector('.filt-mod');
             const freqModEl = seq.querySelector('.freq-mod');
             const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
             const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
             const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
-            if (stagesEl && levelsEl && seqRateEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
                 const stages = Number(stagesEl.value);
                 const levels = Number(levelsEl.value);
-                const seqRate = Number(seqRateEl.value);
+                const seqRate = seqRateEl.value;
+                const filtType = ['allpass', 'bandpass', 'highpass', 'highshelf', 'lowpass', 'lowshelf', 'notch', 'peaking'].includes(filterTypeEL.value) ? filterTypeEL.value : 'lowpass';
+                const cutoff = Number(filterCutoffEL.value);
+                const resonance = Number(filterResonanceEl.value);
                 const ampMod = Number(ampModEl.value);
                 const filtMod = Number(filtModEl.value);
                 const freqMod = Number(freqModEl.value);
@@ -796,6 +822,9 @@ function updateSequence(seqID) {
                 sequencers[seqID]['stages'] = stages;
                 sequencers[seqID]['levels'] = levels;
                 sequencers[seqID]['seqRate'] = seqRate;
+                sequencers[seqID]['filtType'] = filtType;
+                sequencers[seqID]['cutoff'] = cutoff;
+                sequencers[seqID]['resonance'] = resonance;
                 sequencers[seqID]['ampMod'] = ampMod;
                 sequencers[seqID]['filtMod'] = filtMod;
                 sequencers[seqID]['freqMod'] = freqMod;
@@ -820,9 +849,109 @@ function updateSequence(seqID) {
     }
 }
 ;
+function setupSequencer(seqID, oscs) {
+    if (sequencersInitialized) {
+        const measureDuration = 1 / (tempo / beatsPerMeasure) * 60 * 1000;
+        const seq = sequencers[seqID];
+        const levels = seq['stages'];
+        const type = seq['filtType'];
+        const cutoff = seq['cutoff'];
+        const resonance = seq['resonance'];
+        let ampMod = seq['ampMod'];
+        let filtMod = seq['filtMod'];
+        let freqMod = seq['freqMod'];
+        const ampLvls = seq['ampLvls'];
+        const filtLvls = seq['filtLvls'];
+        const freqLvls = seq['freqLvls'];
+        const stages = Number(seq['stages']);
+        const rate = Number(seq['seqRate'].split('/')[0]) / Number(seq['seqRate'].split('/')[1]);
+        const stageDuration = measureDuration * rate;
+        const sequenceDuration = stageDuration * stages;
+        if (ampMod > 10) {
+            ampMod = 10;
+        }
+        else if (ampMod < 0) {
+            ampMod = 0;
+        }
+        else if (ampMod % 1 !== 0) {
+            ampMod = Math.ceil(ampMod);
+        }
+        ampMod = ampMod / 10;
+        if (filtMod > 10) {
+            filtMod = 10;
+        }
+        else if (filtMod < 0) {
+            filtMod = 0;
+        }
+        else if (filtMod % 1 !== 0) {
+            filtMod = Math.ceil(filtMod);
+        }
+        filtMod = (cutoff - 20) * (filtMod / 10);
+        if (freqMod > 24) {
+            freqMod = 24;
+        }
+        else if (freqMod < -24) {
+            freqMod = -24;
+        }
+        freqMod = freqMod;
+        const gainNode = audioContext.createGain();
+        const filterNode = new BiquadFilterNode(audioContext, {
+            type: type,
+            frequency: cutoff,
+            Q: resonance
+        });
+        oscs.forEach((osc) => { osc.connect(gainNode); });
+        gainNode.connect(filterNode);
+        for (let i = 0; i < stages; i++) {
+            const amp = ampLvls[i];
+            const filter = filtLvls[i];
+            const frequency = freqLvls[i];
+            if (amp && filter && frequency) {
+                ampLvls[i] = amp / levels * ampMod;
+                filtLvls[i] = filter / levels * filtMod;
+                freqLvls[i] = frequency / levels * freqMod;
+            }
+        }
+        console.log('amp');
+        console.log(ampLvls);
+        console.log('filter');
+        console.log(filtLvls);
+        console.log('note');
+        console.log(freqLvls);
+        clearInterval(sequences[seqID]);
+        sequences[seqID] = setInterval(() => {
+            for (let i = 0; i < stages; i++) {
+                const amp = ampLvls[i];
+                const filter = filtLvls[i];
+                const frequency = freqLvls[i];
+                if (amp && filter && frequency) {
+                    const time = audioContext.currentTime + (stageDuration * i);
+                    gainNode.gain.setValueAtTime(gainNode.gain.value * amp, time);
+                    filterNode.frequency.setValueAtTime(cutoff - filter, time);
+                    let voiceDelay = 0;
+                    let index = 0;
+                    oscs.forEach((osc) => {
+                        osc.frequency.setValueAtTime(frequency, time + (voiceDelay * index));
+                        index += 1;
+                    });
+                }
+            }
+        }, sequenceDuration);
+        return filterNode;
+    }
+    else {
+        console.log(`cannot setup sequence ${seqID} before initialization`);
+        return false;
+    }
+}
+;
 function shutup() {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
     voices = [];
+    const sequenceKeys = Object.keys(sequences);
+    for (const seq of sequenceKeys) {
+        clearInterval(seq);
+    }
 }
 ;
 function soundAll() {
@@ -832,7 +961,6 @@ function soundAll() {
     if (updateMacros()) {
         const oscKeys = Object.keys(oscillators);
         let gotit = true;
-        console.log(oscKeys);
         if (oscKeys.length > 0) {
             for (const key of oscKeys) {
                 if (!updateOscillator(key)) {
@@ -865,6 +993,8 @@ function soundAll() {
             const wet = audioContext.createGain();
             const oscKeys = Object.keys(oscillators);
             const oscKeysLength = oscKeys.length;
+            const seqKeys = Object.keys(sequencers);
+            let seqKeyIndex = 0;
             for (const key of oscKeys) {
                 const oscil = oscillators[key];
                 const oscVoic = oscil['oscVoices'];
@@ -923,8 +1053,34 @@ function soundAll() {
                 const postAnalyzer = audioContext.createAnalyser();
                 analysis[key].push(postAnalyzer);
                 makeupGainNode.connect(postAnalyzer);
-                makeupGainNode.connect(dry);
-                makeupGainNode.connect(wet);
+                const seqID = seqKeys[seqKeyIndex];
+                if (seqID) {
+                    let oscsNodes = [];
+                    for (let voice = voices.length - oscVoic; voice < voices.length; voice++) {
+                        const v = voices[voice];
+                        if (v) {
+                            oscsNodes.push(v);
+                        }
+                        ;
+                    }
+                    const seqNode = setupSequencer(seqID, oscsNodes);
+                    if (typeof seqNode !== "boolean") {
+                        makeupGainNode.connect(seqNode);
+                        seqNode.connect(dry);
+                        seqNode.connect(wet);
+                    }
+                    else {
+                        console.log('sequencer setup failed');
+                        makeupGainNode.connect(dry);
+                        makeupGainNode.connect(wet);
+                    }
+                }
+                else {
+                    console.log('sequencer not found during setup');
+                    makeupGainNode.connect(dry);
+                    makeupGainNode.connect(wet);
+                }
+                seqKeyIndex += 1;
             }
             let dryVal = 0;
             let wetVal = 1;
@@ -967,8 +1123,6 @@ function soundAll() {
             brickwall.connect(masterGainNode);
             const clampOut = clamp(masterGainNode);
             clampOut.connect(audioContext.destination);
-        }
-        if (gotit) {
         }
         if (gotit) {
             const keys = Object.keys(analysis);

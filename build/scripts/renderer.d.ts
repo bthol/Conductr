@@ -16,8 +16,16 @@ declare let oscillators: {
 declare let sequencers: {
     [key: string]: any;
 };
+declare let macrosInitialized: boolean;
+declare let oscillatorsInitialized: boolean;
+declare let sequencersInitialized: boolean;
 declare let playback: boolean;
+declare let tempo: number;
+declare let beatsPerMeasure: number;
 declare let voices: Array<OscillatorNode>;
+declare let sequences: {
+    [key: string]: ReturnType<typeof setInterval>;
+};
 declare let analysis: {
     [key: string]: Array<AnalyserNode>;
 };
@@ -56,6 +64,7 @@ declare function initSequencers(): void;
 declare function updateMacros(): boolean;
 declare function updateOscillator(oscID: string): boolean;
 declare function updateSequence(seqID: string): boolean;
+declare function setupSequencer(seqID: string, oscs: Array<OscillatorNode>): BiquadFilterNode | boolean;
 declare function shutup(): void;
 declare function soundAll(): void;
 declare function sequencerEvent(event: Event): void;
