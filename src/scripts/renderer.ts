@@ -1,4 +1,4 @@
-// rerender file/ main process
+// renderer file/ main process
 
 // handles element navigation events
 console.log("linked script");
@@ -52,6 +52,8 @@ let macros: { [key: string]: any} = {
     // player control macros
     'master': .75, // 0 - 0.99
     'pan': 0, // -50 - 50
+    'tempo': 128, // 1 - 200
+    'beatsPerMeasure': 4, // 1 - 100
     // Conductor Macros
     'FortePiano': 1, // 0 - 2
     'creciendo': 5, // 1 - 10
@@ -63,26 +65,27 @@ let macros: { [key: string]: any} = {
     'Sustain': 5, // 1 - 10
     'Release': 4, // 1 - 1
 }; // stores the parameters for each macro from user parameters; data for preset
-let { master, pan, FortePiano, creciendo, expressivity, variance, driveMult, Attack, Sustain, Release } = macros; // destructure for ease of access
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
 let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
-let macrosInitialized: boolean = false; // boolean for testing initialization status
-let oscillatorsInitialized: boolean = false; // boolean for testing initialization status
-let sequencersInitialized: boolean = false; // boolean for testing initialization status
 
 // Playback structures
-let playback: boolean = false; // stores the program run state (run: true, off: false)
-let tempo: number = 128; // Beats per Minute (BPM) tempo controls the rate of clocked events
-let beatsPerMeasure: number = 4; // controls number of beats per measure, always give beat to 1/4th
 let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
 let sequences: {[key:string]: ReturnType<typeof setTimeout> } = {}; // stores cache for sequencer schedule caches
 let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator, second index = analyzer node for that oscillator
+
+// Status Booleans
+let playback: boolean = false; // stores the program run state (run: true, off: false)
+let macrosInitialized: boolean = false; // boolean for testing initialization status
+let oscillatorsInitialized: boolean = false; // boolean for testing initialization status
+let sequencersInitialized: boolean = false; // boolean for testing initialization status
 
 // DOM elements
 
 // Player Controls
 const masterGain = document.getElementById('master-gain') as HTMLInputElement; // Master Gain out
-const masterPan = document.getElementById('master-pan') as HTMLInputElement; // Master Gain out
+const masterPan = document.getElementById('master-pan') as HTMLInputElement; // Master Stereo Pan
+const masterTempo = document.getElementById('master-tempo') as HTMLInputElement; // Tempo = Beats per Minute
+const masterMeasure = document.getElementById('master-beat-per-measure') as HTMLInputElement; // Time Signature = Beats per Measure
 
 const breakerBtn: HTMLElement | null = document.getElementById('breaker');
 const playBtn: HTMLElement | null = document.getElementById('play-btn');
@@ -364,18 +367,20 @@ function clamp(input: AudioNode): AudioWorkletNode {
 function initMacros(): void {
     // model
     // player control macros
-    master = .75; // 0 - 0.99
-    pan = 0; // -50 - 50
+    macros['master'] = .75; // 0 - 0.99
+    macros['pan'] = 0; // -50 - 50
+    macros['tempo'] = 128; // 1 - 200
+    macros['beatsPerMeasure'] = 4; // 1 - 100
     // Conductor Macros
-    FortePiano = 1; // 0 - 2
-    creciendo = 1; // 0 - 10
-    expressivity = 4; // 1 - 10
-    variance = 2; // 1 - 10
-    driveMult = 1; // 1 - 10
+    macros['FortePiano'] = 1; // 0 - 2
+    macros['creciendo'] = 1; // 0 - 10
+    macros['expressivity'] = 4; // 1 - 10
+    macros['variance'] = 2; // 1 - 10
+    macros['driveMult'] = 1; // 1 - 10
     // dynamic modifiers
-    Attack = 3; // 1 - 10
-    Sustain = 5; // 1 - 10
-    Release = 4; // 1 - 1
+    macros['Attack'] = 3; // 1 - 10
+    macros['Sustain'] = 5; // 1 - 10
+    macros['Release'] = 4; // 1 - 1
 
     // display
     if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) { // test element integrity
@@ -407,7 +412,7 @@ function initOscillators(): void {
         const ID: string | undefined = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
             // generate default waveform
-            const v: number = (variance * (frequency / 20000)); // maximum possible variation
+            const v: number = (macros['variance'] * (frequency / 20000)); // maximum possible variation
             const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
             const stereoFactor: number = .15 // 20:3 variation to stereo
             const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
@@ -429,7 +434,7 @@ function initOscillators(): void {
                     // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
                     const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                     const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
-                    const timbCalc: number = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                    const timbCalc: number = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
                     // const out: number = partial * phaze + timbCalc;
                     const out: number = partial + timbCalc;
                     imag[n] = out;
@@ -515,7 +520,7 @@ function initSequencers(): void {
                 'levels':25,
                 'seqRate':'1/4',
                 'type': 'lowpass',
-                'cutoff': 1000,
+                'cutoff': 1400,
                 'resonance': 1,
                 'ampMod':0,
                 'filtMod':0,
@@ -549,7 +554,7 @@ function initSequencers(): void {
             levelsEl.value = '25';
             seqRateEl.value = '1/4';
             filterTypeEL.value = 'lowpass';
-            filterCutoffEL.value = '1000';
+            filterCutoffEL.value = '1400';
             filterResonanceEl.value = '1';
             ampModEl.value = '0';
             filtModEl.value = '0';
@@ -592,10 +597,11 @@ function initSequencers(): void {
 function updateMacros(): boolean {
     // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
     
-    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) { // test element integrity
+    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && CControl && VControl) { // test element integrity
 
         // Master Gain
         let masterVal: number = Number(masterGain.value);
+        // enforce range
         if (masterVal > 100) { // above max
             masterVal = 100;
         } else if (masterVal < 0) { // below min
@@ -603,7 +609,47 @@ function updateMacros(): boolean {
         } else if (masterVal % 1 !== 0) { // round + fractions up
             masterVal = Math.ceil(masterVal);
         }
-        master = masterVal/100;
+        // convert scale
+        macros['master'] = masterVal/100;
+
+        // Master Pan
+        let masterPanVal: number = Number(masterPan.value);
+        // enforce range
+        if (masterPanVal > 50) { // above maximum
+            masterPanVal = 50;
+        } else if (masterPanVal < -50) { // below minimum
+            masterPanVal = -50;
+        } else if (masterPanVal % 1 !== 0) { // round fractions up
+            masterPanVal = Math.ceil(masterPanVal);
+        }
+        // convert scale
+        macros['pan'] = masterPanVal; // no conversion necessary
+
+        // Master Tempo
+        let tempoVal: number = Number(masterTempo.value);
+        // enforce range
+        if (tempoVal > 200) { // above maximum
+            tempoVal = 200;
+        } else if (tempoVal < 1) { // below minimum
+            tempoVal = 1;
+        } else if (tempoVal % 1 !== 0) { // round fractions up
+            tempoVal = Math.ceil(tempoVal);
+        }
+        // convert scale
+        macros['tempo'] = tempoVal; // no conversion necessary
+
+        // Beats per Measure (Time Signature)
+        let measureVal: number = Number(masterMeasure.value);
+        // enforce range
+        if (measureVal > 200) { // above maximum
+            measureVal = 200;
+        } else if (measureVal < 1) { // below minimum
+            measureVal = 1;
+        } else if (measureVal % 1 !== 0) { // round fractions up
+            measureVal = Math.ceil(measureVal);
+        }
+        // convert scale
+        macros['beatsPerMeasure'] = measureVal; // no conversion necessary
 
         // Creciendo/Diminuendo = Intensity control
         let CreciendoVal: number = Number(CControl.value);
@@ -620,13 +666,13 @@ function updateMacros(): boolean {
         }
         // convert scale
         if (CreciendoVal === 0) { // bypass
-            creciendo = 1;
+            macros['creciendo'] = 1;
         } else if (CreciendoVal > 0) { // +
-            creciendo = 1 + CreciendoVal/CreciendoRange;
+            macros['creciendo'] = 1 + CreciendoVal/CreciendoRange;
         } else if (CreciendoVal < 0) { // -
-            creciendo = 1 + CreciendoVal/CreciendoRange;
+            macros['creciendo'] = 1 + CreciendoVal/CreciendoRange;
         } else { // bypass
-            creciendo = 1;
+            macros['creciendo'] = 1;
             console.log('macro range error: creciendo/diminuendo');
         }
 
@@ -645,19 +691,19 @@ function updateMacros(): boolean {
         }
         // convert scale
         if (expVal === 0) { // bypass
-            FortePiano = 1;
+            macros['FortePiano'] = 1;
         } else if (expVal > 0) { // +
-            FortePiano = 1 + expVal/expRange;
+            macros['FortePiano'] = 1 + expVal/expRange;
         } else if (expVal < 0) { // -
-            FortePiano = 1 + expVal/expRange;
+            macros['FortePiano'] = 1 + expVal/expRange;
         } else { // bypass
-            FortePiano = 1;
+            macros['FortePiano'] = 1;
             console.log('macro range error: Expressivity');
         }
 
         // Major Gusto = Drive Multiplier
         let driveMultiplier: number = Number(DMControl.value); // control range: -10 - 0 | 0 - 30, converted range: 0 - 1 | 1 - 5, mult range: 0.1X - 5X 
-        const driveMultRange: number = 3 * creciendo; // range of multiplication
+        const driveMultRange: number = 3 * macros['creciendo']; // range of multiplication
         const driveMultGran: number = 10; // granularity per unit
         // enforce range
         if (driveMultiplier > driveMultGran * driveMultRange) { // above max
@@ -671,13 +717,13 @@ function updateMacros(): boolean {
         }
         // convert scale
         if (driveMultiplier === 0) { // bypass
-            driveMult = 1;
+            macros['driveMult'] = 1;
         } else if (driveMultiplier > 0) { // +
-            driveMult = 1 + driveMultiplier/driveMultGran * creciendo; // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
+            macros['driveMult'] = 1 + driveMultiplier/driveMultGran * macros['creciendo']; // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
         } else if (driveMultiplier < 0) { // -
-            driveMult = 1 + driveMultiplier/driveMultGran * creciendo;
+            macros['driveMult'] = 1 + driveMultiplier/driveMultGran * macros['creciendo'];
         } else { // bypass
-            driveMult = 1;
+            macros['driveMult'] = 1;
             console.log('macro range error: Drive Multiplier');
         }
 
@@ -696,13 +742,13 @@ function updateMacros(): boolean {
         }
         // convert scale
         if (inVal === 0) { // bypass
-            FortePiano = 1;
+            macros['FortePiano'] = 1;
         } else if (inVal > 0) { // +
-            FortePiano = 1 + inVal/inRange;
+            macros['FortePiano'] = 1 + inVal/inRange;
         } else if (inVal < 0) { // -
-            FortePiano = 1 + inVal/inRange;
+            macros['FortePiano'] = 1 + inVal/inRange;
         } else { // bypass
-            FortePiano = 1;
+            macros['FortePiano'] = 1;
             console.log('macro range error: Forte Piano');
         }
 
@@ -716,7 +762,7 @@ function updateMacros(): boolean {
         } else if (inVal % 1 !== 0) { // round + fractions up
             inVal = Math.ceil(inVal);
         }
-        variance = vary;
+        macros['variance'] = vary;
 
         return true;
 
@@ -795,12 +841,12 @@ function updateOscillator(oscID: string): boolean {
 
                 // random ammount of possible variance applied, adjusted by frequency
                 // each property has a factor of variation, which when all are summed euqals 1
-                const v: number = (variance * (freq / 20000)); // maximum possible variation
+                const v: number = (macros['variance'] * (freq / 20000)); // maximum possible variation
                 
                 // gain variation
                 const gainFactor: number = .25; // 4:1  variation to gain
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
-                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * FortePiano : (-Math.log10(-(gain/100) + 1)/2 + gainV) * FortePiano;
+                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * macros['FortePiano'] : (-Math.log10(-(gain/100) + 1)/2 + gainV) * macros['FortePiano'];
                 
                 // frequency variation
                 const freqFactor: number = .5; // 2:1  variation to frequency
@@ -905,7 +951,7 @@ function updateOscillator(oscID: string): boolean {
                             // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
                             const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                             const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
-                            const timbCalc: number = ((Math.random() * (variance - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                            const timbCalc: number = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
                             // const out: number = partial * phaze + timbCalc;
                             const out: number = partial + timbCalc;
                             imag[n] = out;
@@ -929,7 +975,7 @@ function updateOscillator(oscID: string): boolean {
                     // generate partials
                     for (let n = 1; n < partialsVal + 1; n++) {
                         const partial: number = 1 / (n * Math.PI);
-                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                         const out: number = partial - timbCalc;
                         imag[n] = out;
                     }
@@ -947,7 +993,7 @@ function updateOscillator(oscID: string): boolean {
                     for (let n = 0; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial: number = 4 / (n * Math.PI); // Fourier series coefficient for square wave
-                            const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor -.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                            const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor -.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                             const out: number = partial - timbCalc;
                             imag[n] = out;
                         } else {
@@ -968,7 +1014,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -988,7 +1034,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1007,7 +1053,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1027,7 +1073,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (variance - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1169,7 +1215,7 @@ function updateSequence(seqID: string): boolean {
                 sequencers[seqID]['resonance'] = resonance > 25 ? 25 : resonance < 0.1 ? 0.1 : resonance;
                 sequencers[seqID]['ampMod'] = ampMod > 10 ? 10 : ampMod < 0 ? 0 : ampMod;
                 sequencers[seqID]['filtMod'] = filtMod > 10 ? 10 : filtMod < -10 ? -10 : filtMod;
-                sequencers[seqID]['freqMod'] = freqMod > 10 ? 10 : freqMod < -24 ? -24 : freqMod;
+                sequencers[seqID]['freqMod'] = freqMod > 24 ? 24 : freqMod < -24 ? -24 : freqMod;
                 sequencers[seqID]['ampLvls'] = ampLvls;
                 sequencers[seqID]['filtLvls'] = filtLvls;
                 sequencers[seqID]['freqLvls'] = freqLvls;
@@ -1194,11 +1240,6 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
     if (sequencersInitialized) {
         // setup sequencer
 
-        // measures per minute  = beats per minute / beats per measure
-        // minutes per measure = 1 / measures per minute
-        // millisecs per measure = minutes per measure * (60 seconds / 1 minute) * (1000 millisecs / 1 second)
-        const measureDuration: number = 1 / (tempo / beatsPerMeasure) * 60 * 1000; // measureDuration = milliseconds per measure
-
         // 1 sequencer stage is a sequencer beat
         // 1 sequencer beat is a rate 
 
@@ -1215,10 +1256,14 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const filtLvls: Array<number> = seq['filtLvls']; // filter control levels
         const freqLvls: Array<number> = seq['freqLvls']; // frequency control levels
         const stages: number = Number(seq['stages']); // stages property of sequence object, number of stage durations per sequence
+        // measures per minute  = beats per minute / beats per measure
+        // minutes per measure = 1 / measures per minute
+        // millisecs per measure = minutes per measure * (60 seconds / 1 minute) * (1000 millisecs / 1 second)
+        const measureDuration: number = 1 / (macros['tempo'] / macros['beatsPerMeasure']) * 60 * 1000; // milliseconds per measure
         const rate: number = Number(seq['seqRate'].split('/')[0]) / Number(seq['seqRate'].split('/')[1]); // rate = percentage of measure per stage
         const stageDuration: number = measureDuration * rate; // measureDuration adjusted by rate
         // const sequenceDuration: number = stageDuration * stages; // duration of entire sequence
-        
+
         // handle modifiers
 
         // enforce range
@@ -1287,9 +1332,21 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 
             if (frequency !== undefined) {
                 // add ratio to 1 for pitch up and subtract ratio from 1 for pitch down and assign 1 to 0 values
+                // l = leveler level (zero based)
+                // n = number of values for level
+                // k = number of maximum cents
+                
+                // f = ceil| l / (n - 1) * k |
+                // f represents percentage of maximum cents for the level of a stage
+                // r = {
+                //     f > 0 : 1 + (f / 12)
+                //     f < 0 : 1 + (f / 24 * .75)
+                //     f = 0 : 1
+                // }
+                // r represents a ratio with a root frequency, whose product is a new frequency modified by f ammount
                 const freq: number = Math.ceil(frequency / (levels - 1) * freqMod);
-                const ratio: number = freq > 0 ? 1 + freq / 12 : freq < 0 ? 1 + (freq / 24 * .25) : 1;
-                freqLvls[i] = ratio;
+                const ratio: number = freq > 0 ? 1 + freq / 12 : freq < 0 ? 1 + (freq / 24 * .75) : 1;
+                freqLvls[i] = ratio > 3 ? 3 : ratio < .25 ? .25 : ratio;
             }
         }
 
@@ -1345,7 +1402,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         // schedule sequence events using primed data
         let stage: number = 1; // start on second stage
         sequences[seqID] = setInterval(() => {
-            console.log('sequence');
+            // console.log('sequence');
             
             // set amp
             if (ampMod !== 0) {
@@ -1361,7 +1418,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                 const filter: number | undefined = filtLvls[stage];
                 if (filter !== undefined) {
                     filterNode.frequency.value = cutoff + filter;
-                    console.log(cutoff + filter);
+                    // console.log(cutoff + filter);
                 }
             }
             
@@ -1396,39 +1453,66 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 // playback functions
 function shutup(): void {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
-    voices = []; // clear voices data
     const sequenceKeys: Array<string> = Object.keys(sequences);
-    for (const seqID of sequenceKeys) {clearInterval(sequences[seqID])} // stop sequences
+    for (const seqID of sequenceKeys) {clearInterval(sequences[seqID])} // stop each sequences
+    voices = []; // clear voices data
+    analysis = {}; // clear analysis data
 };
 
-function soundAll(): void {
-    // generates voices from oscillators
+function soundAll(update = 'all'): void {
+    // stops all voices
+    // stops all sequences
+    // clears old voice data
+    // data value determines updates
+        // updates all macros data
+        // updates all oscillators data
+        // updates all sequencers data
+    // regenerates all voices
+    // sets up sequencer
+    // sets up filter
+    // sets up FX chain
+    // sets up Analysis
+    // plays all voices
 
+    // update data
+    let gotit: boolean = ['all', 'osc', 'seq'].includes(update); // falsification = terminates function
+    !gotit && console.log('passed bad argument to update parameter in soundAll function');
+    
     // clear your throat
-    if (playback) {
-        shutup();
+    if (gotit) {
+        if (playback) {shutup()};
+    }
+    
+    // always update macros
+    if (gotit) {
+        if (update === 'all') {
+            if (!updateMacros()) {gotit = false};
+            // console.log('updated macros');
+        }
+    }
+    
+    // conditionally update oscillators
+    if (gotit) {
+        if (update === 'all' || update === 'osc') {
+            const oscKeys: Array<string> = Object.keys(oscillators);
+            if (oscKeys.length > 0) {
+                for (const key of oscKeys) {
+                    if (!updateOscillator(key)) {
+                        gotit = false;
+                        break;
+                    }
+                }
+                // console.log('updated oscillators');
+            } else {
+                gotit = false;
+                console.log('Failed to get oscillator keys during update');
+            }
+        }
     }
 
-    // update macros
-    if (updateMacros()) {
-
-        // update oscillator model
-        const oscKeys: Array<string> = Object.keys(oscillators);
-        let gotit: boolean = true;
-        if (oscKeys.length > 0) {
-            for (const key of oscKeys) {
-                if (!updateOscillator(key)) {
-                    gotit = false;
-                    break;
-                }
-            }
-        } else {
-            gotit = false;
-            console.log('Failed to get oscillator keys during update');
-        }
-
-        // update sequencer model
-        if (gotit) {
+    // conditionally update sequencers
+    if (gotit) {
+        if (update === 'all' || update === 'seq' || update === 'osc') {
             const seqKeys: Array<string> = Object.keys(sequencers);
             if (seqKeys.length > 0) {
                 for (const key of seqKeys) {
@@ -1437,396 +1521,409 @@ function soundAll(): void {
                         break;
                     }
                 }
+                // console.log('updated sequencer');
             } else {
                 gotit = false;
                 console.log('Failed to get sequencer keys during update');
             }
         }
-    
-        // generate voices
-        if (gotit) {
+    }
 
-            // console.log(macros);
-            // console.log(oscillators);
-            // console.log(sequencers);
+    // generate voices from data
+    if (gotit && playback) {
 
-            // create out nodes to route to after each voice generation
-            const dry: GainNode = audioContext.createGain(); // no FX
-            const wet: GainNode = audioContext.createGain(); // FX
-    
-            // iterate over every oscillator
-            const oscKeys: Array<string> = Object.keys(oscillators);
-            const oscKeysLength: number = oscKeys.length;
-            const seqKeys: Array<string> = Object.keys(sequencers);
-            let seqKeyIndex: number = 0;
-            for (const key of oscKeys) {
-        
-                // collect oscillator properties
-                const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
-                const oscVoic: number = oscil['oscVoices'];
-                const oscFreq: number = oscil['freq'];
-                const oscDetu: number = oscil['detune'];
-                const oscVol: number = oscil['gain'];
-                const oscDrive: number = oscil['drive'];
-                const oscDriCh: string = oscil['driveCharacter'];
-                const waveform: PeriodicWave = oscil['waveform'];
-                
-                // generator process route map
-                // oscillator: voice > gain > waveshaper > makeup > dry
-                //             voice >      > preAnalyzer         > postAnalyzer
-                //             voice >                            > wet
-                //             voice >
-                
-                // create gain node to apply pre gain value
-                const gainNode: GainNode = audioContext.createGain();
-                gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
-                
-                // create voices for oscilator
-                for (let v = 0; v < oscVoic; v++) { // each oscillator
-                    // each voice from oscillator
-                    const osc: OscillatorNode = audioContext.createOscillator();
-                    // set waveform
-                    osc.setPeriodicWave(waveform);
-                    // set frequency
-                    osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
-                    // set detune
-                    osc.detune.value = oscDetu/oscVoic * v;
-                    // connect each voice from the oscillator to pre gain node
-                    osc.connect(gainNode);
-                    // store pointer to oscillator in structure for global reference
-                    voices.push(osc);
-                }
+        // console.log(macros);
+        // console.log(oscillators);
+        // console.log(sequencers);
 
-                // pre-analysis
-                const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
-                // store in global structure
-                analysis[key] = []; // init key for osc in structure
-                analysis[key].push(preAnalyzer); // add node to array at key in structure
-                gainNode.connect(preAnalyzer);
+        // create out nodes to route to after each voice generation
+        const dry: GainNode = audioContext.createGain(); // no FX
+        const wet: GainNode = audioContext.createGain(); // FX
+
+        // iterate over every oscillator
+        const oscKeys: Array<string> = Object.keys(oscillators);
+        const oscKeysLength: number = oscKeys.length;
+        const seqKeys: Array<string> = Object.keys(sequencers);
+        let seqKeyIndex: number = 0;
+        for (const key of oscKeys) {
     
-                // sigmoid curve waveshaper distortion
-                const makeupGainNode: GainNode = audioContext.createGain();
-                if (oscDrive > 1) {
-                    // build
-                    const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-                    const oversample: OverSampleType = '2x';
-                    let waveshaperCurve: Float32Array<ArrayBuffer>;
-                    console.log(oscDrive);
-                    if (oscDriCh === 'sigmoid1') {
-                        waveshaperCurve = sigmoid1(oscDrive * driveMult);
-                    } else if (oscDriCh === 'sigmoid2') {
-                        waveshaperCurve = sigmoid2(oscDrive * driveMult);
-                    } else if (oscDriCh === 'sigmoid3') {
-                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
-                    } else {
-                        // default to sigmoid 3 if faulty string is provided
-                        waveshaperCurve = sigmoid3(oscDrive * driveMult);
-                    }
-                    waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
-                    waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
-                    const referenceLine: Float32Array<ArrayBuffer> = linear();
-                    // Calculate the power difference and set makeup gain value to a corrective factor
-                    // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
-                    // f = total output power = integration of the waveshaper curve
-                    // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
-                    // reciprocal of factor: 1/(1+(f-i)/i)
-                    const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
-                    const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
-                    const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
-                    makeupGainNode.gain.value = powerFactor;
-    
-                    // route
-                    gainNode.connect(waveshaper);
-                    waveshaper.connect(makeupGainNode);
-    
+            // collect oscillator properties
+            const oscil: {[key:string]: any} = oscillators[key]; // each oscillator
+            const oscVoic: number = oscil['oscVoices'];
+            const oscFreq: number = oscil['freq'];
+            const oscDetu: number = oscil['detune'];
+            const oscVol: number = oscil['gain'];
+            const oscDrive: number = oscil['drive'];
+            const oscDriCh: string = oscil['driveCharacter'];
+            const waveform: PeriodicWave = oscil['waveform'];
+            
+            // generator process route map
+            // oscillator: voice > gain > waveshaper > makeup > dry
+            //             voice >      > preAnalyzer         > postAnalyzer
+            //             voice >                            > wet
+            //             voice >
+            
+            // create gain node to apply pre gain value
+            const gainNode: GainNode = audioContext.createGain();
+            gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic; // set gain based on number of voices
+            
+            // create voices for oscilator
+            for (let v = 0; v < oscVoic; v++) { // each oscillator
+                // each voice from oscillator
+                const osc: OscillatorNode = audioContext.createOscillator();
+                // set waveform
+                osc.setPeriodicWave(waveform);
+                // set frequency
+                osc.frequency.setValueAtTime(oscFreq, audioContext.currentTime);
+                // set detune
+                osc.detune.value = oscDetu/oscVoic * v;
+                // connect each voice from the oscillator to pre gain node
+                osc.connect(gainNode);
+                // store pointer to oscillator in structure for global reference
+                voices.push(osc);
+            }
+
+            // pre-analysis
+            const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
+            // store in global structure
+            analysis[key] = []; // init key for osc in structure
+            analysis[key].push(preAnalyzer); // add node to array at key in structure
+            gainNode.connect(preAnalyzer);
+
+            // sigmoid curve waveshaper distortion
+            const makeupGainNode: GainNode = audioContext.createGain();
+            if (oscDrive > 1) {
+                // build
+                const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
+                const oversample: OverSampleType = '2x';
+                let waveshaperCurve: Float32Array<ArrayBuffer>;
+                if (oscDriCh === 'sigmoid1') {
+                    waveshaperCurve = sigmoid1(oscDrive * macros['driveMult']);
+                } else if (oscDriCh === 'sigmoid2') {
+                    waveshaperCurve = sigmoid2(oscDrive * macros['driveMult']);
+                } else if (oscDriCh === 'sigmoid3') {
+                    waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
                 } else {
-    
-                    // bypass drive
-                    gainNode.connect(makeupGainNode);
-                    makeupGainNode.gain.value = 1;
+                    // default to sigmoid 3 if faulty string is provided
+                    waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
                 }
-                
-                // post-analysis
-                const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
-                analysis[key].push(postAnalyzer) // store in global structure
-                makeupGainNode.connect(postAnalyzer);
+                waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
+                waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
+                const referenceLine: Float32Array<ArrayBuffer> = linear();
+                // Calculate the power difference and set makeup gain value to a corrective factor
+                // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
+                // f = total output power = integration of the waveshaper curve
+                // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
+                // reciprocal of factor: 1/(1+(f-i)/i)
+                const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
+                const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
+                const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
+                makeupGainNode.gain.value = powerFactor;
 
-                // get sequence data
-                const seqID: string | undefined = seqKeys[seqKeyIndex];
-                if (seqID) {
-                    const seqNode: BiquadFilterNode | boolean = setupSequencer(seqID, oscFreq, oscVoic, makeupGainNode);
-                    if (typeof seqNode !== "boolean") {
-                        // route to dry and wet gain nodes for FX chain through sequencer
-                        seqNode.connect(dry);
-                        seqNode.connect(wet);
-                    } else { // sequencer setup failed => bypass
-                        // route to dry and wet gain nodes for FX chain bypassing sequencer
-                        console.log('sequencer setup failed');
-                        makeupGainNode.connect(dry);
-                        makeupGainNode.connect(wet);
-                    }
-                } else {
+                // route
+                gainNode.connect(waveshaper);
+                waveshaper.connect(makeupGainNode);
+
+            } else {
+
+                // bypass drive
+                gainNode.connect(makeupGainNode);
+                makeupGainNode.gain.value = 1;
+            }
+            
+            // post-analysis
+            const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
+            analysis[key].push(postAnalyzer) // store in global structure
+            makeupGainNode.connect(postAnalyzer);
+
+            // get sequence data
+            const seqID: string | undefined = seqKeys[seqKeyIndex];
+            if (seqID) {
+                const seqNode: BiquadFilterNode | boolean = setupSequencer(seqID, oscFreq, oscVoic, makeupGainNode);
+                if (typeof seqNode !== "boolean") {
+                    // route to dry and wet gain nodes for FX chain through sequencer
+                    seqNode.connect(dry);
+                    seqNode.connect(wet);
+                } else { // sequencer setup failed => bypass
                     // route to dry and wet gain nodes for FX chain bypassing sequencer
-                    console.log('sequencer not found during setup');
+                    console.log('sequencer setup failed');
                     makeupGainNode.connect(dry);
                     makeupGainNode.connect(wet);
                 }
-                seqKeyIndex += 1;
+            } else {
+                // route to dry and wet gain nodes for FX chain bypassing sequencer
+                console.log('sequencer not found during setup');
+                makeupGainNode.connect(dry);
+                makeupGainNode.connect(wet);
             }
-    
-            // FX Process Route Map
-            // Dry              > out
-            // Wet > chain > FX > out
-    
-            // dry and wet ammount should combine to 1
-            
-            let dryVal: number = 0; // store dry ammount
-            let wetVal: number = 1; // store wet ammount
-            dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength; // adjust ammount by number of oscilators
-            wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength; // adjust ammount by number of oscilators
-    
-            const FX: GainNode = audioContext.createGain(); // FX chain endpoint
-            FX.gain.value = 1; // ensure level is not affected
-    
-            // before FX
-            const preAnalysis: AnalyserNode = audioContext.createAnalyser();
-            analysis['FX'] = []; // init key for osc in structure
-            analysis['FX'].push(preAnalysis) // store in global structure
-            wet.connect(preAnalysis);
-    
-            // after FX
-            const postAnalysis: AnalyserNode = audioContext.createAnalyser();
-            analysis['FX'].push(postAnalysis) // store in global structure
-            FX.connect(postAnalysis);
-    
-            // FX Chain
-    
-            // Modulations
-            //  - Ring Modulation (RM)
-            //  - Pulse Width Modulation (PWM)
-            //  - Frequency Modulation (FM)
-    
-            // Stereoizations
-            //  - Stereo Multiplier (doubler)
-            //  - Haas Effect (stereo delay)
-            //  - Stereo Panner
-    
-            // Spatializations
-            //  - Dymanic Delay Line (DDL)
-            //  - Rverberation Module
-    
-            wet.connect(FX); // bypass FX chain
-    
-            // Master Process Route Map
-            // Dry > 3Comp > Master Gain > clamp > out
-            // FX  > 
-    
-            // 3Comp: generator dynamics system
-            // -12 dB - -3 dB total range before brickwall
-            // 3X compressors affecting that range
-            // 3X 3 dB ranges in total range
-            //  -12 dB - -9 dB -- 1:1.1 ratio
-            //      - comp1: applies 1/3 of 1:3 ratio
-            //  -9 dB - -6 dB  -- 1:4 ratio
-            //      - comp1: applies 2/3 of 1:3 ratio
-            //      - comp2: applies 1/2 of 1:2 ratio
-            //  -6 dB - -3 dB  -- 1.6 ratio
-            //      - comp1: applies 3/3 of 1:3 ratio
-            //      - comp2: applies 2/2 of 1:2 ratio
-            //  -3 dB - 0 dB   -- 1:20 ratio
-            //      - comp1: applies 3/3 of 1:3 ratio
-            //      - comp2: applies 2/2 of 1:2 ratio
-            //      - comp3: applies 1/1 of 1:3.4 ratio
-    
-            // compress to put dynamics on a curve
-            const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            compressor.threshold.value = -12; // Start compressing at -12 dB
-            compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
-            compressor.ratio.value = 3;       // 1:3 ratio
-            compressor.attack.value = 0.05;   // 1:2 with release
-            compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-            dry.connect(compressor);
-            FX.connect(compressor);
-            
-            // soft limit before critical range
-            const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            limiter.threshold.value = -6;    // limit at -9 dB
-            limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
-            limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
-            limiter.attack.value = 0.05;     // 1:1 with release
-            limiter.release.value = 0.05;
-            compressor.connect(limiter);
-            
-            // brickwall at maximum value
-            const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
-            brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
-            brickwall.knee.value = 0;         // 0 dB knee for immediate effect
-            brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
-            brickwall.attack.value = 0;       // allow peaks
-            brickwall.release.value = 0.1;
-            limiter.connect(brickwall);
-    
-            // master gain control
-            const masterGainNode: GainNode = audioContext.createGain();
-            masterGainNode.gain.value = Number(masterGain.value)/100;
-            brickwall.connect(masterGainNode);
-            
-            // clamp for 0 dB hard-clipping peak-elimination
-            const clampOut: AudioWorkletNode = clamp(masterGainNode);
-            clampOut.connect(audioContext.destination);
-    
+            seqKeyIndex += 1;
         }
-    
-        // setup analysis
-        if (gotit) {
-            const keys: Array<string> = Object.keys(analysis);
-            // start with first oscillator
-            const key: string | undefined = keys[0];
-            if (typeof key === 'string') {
-                const nodeList: AnalyserNode[] | undefined = analysis[key];
-                if (nodeList) {
-                    // control which analyzers log data here
-    
-                    // analyze(nodeList[0]) // preAnalysis for osc1
-                    // analyze(nodeList[1]) // postAnalysis for osc1
-    
-                    // analyze(nodeList[0]) // preAnalysis for osc2
-                    // analyze(nodeList[1]) // postAnalysis for osc2
-    
-                    // analyze(nodeList[0]) // preAnalysis for osc3
-                    // analyze(nodeList[1]) // postAnalysis for osc3
-                    
-                    // allstream logging (not reccomended; mixes data streams)
-                    // for (const node of nodeList) {
-                    //     analyze(node);
-                    // }
-                }
+
+        // FX Process Route Map
+        // Dry              > out
+        // Wet > chain > FX > out
+
+        // dry and wet ammount should combine to 1
+        
+        let dryVal: number = 0; // store dry ammount
+        let wetVal: number = 1; // store wet ammount
+        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength; // adjust ammount by number of oscilators
+        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength; // adjust ammount by number of oscilators
+
+        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
+        FX.gain.value = 1; // ensure level is not affected
+
+        // before FX
+        const preAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['FX'] = []; // init key for osc in structure
+        analysis['FX'].push(preAnalysis) // store in global structure
+        wet.connect(preAnalysis);
+
+        // after FX
+        const postAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['FX'].push(postAnalysis) // store in global structure
+        FX.connect(postAnalysis);
+
+        // FX Chain
+
+        // Modulations
+        //  - Ring Modulation (RM)
+        //  - Pulse Width Modulation (PWM)
+        //  - Frequency Modulation (FM)
+
+        // Stereoizations
+        //  - Stereo Multiplier (doubler)
+        //  - Haas Effect (stereo delay)
+        //  - Stereo Panner
+
+        // Spatializations
+        //  - Dymanic Delay Line (DDL)
+        //  - Rverberation Module
+
+        wet.connect(FX); // bypass FX chain
+
+        // Master Process Route Map
+        // Dry > 3Comp > Master Gain > clamp > out
+        // FX  > 
+
+        // 3Comp: generator dynamics system
+        // -12 dB - -3 dB total range before brickwall
+        // 3X compressors affecting that range
+        // 3X 3 dB ranges in total range
+        //  -12 dB - -9 dB -- 1:1.1 ratio
+        //      - comp1: applies 1/3 of 1:3 ratio
+        //  -9 dB - -6 dB  -- 1:4 ratio
+        //      - comp1: applies 2/3 of 1:3 ratio
+        //      - comp2: applies 1/2 of 1:2 ratio
+        //  -6 dB - -3 dB  -- 1.6 ratio
+        //      - comp1: applies 3/3 of 1:3 ratio
+        //      - comp2: applies 2/2 of 1:2 ratio
+        //  -3 dB - 0 dB   -- 1:20 ratio
+        //      - comp1: applies 3/3 of 1:3 ratio
+        //      - comp2: applies 2/2 of 1:2 ratio
+        //      - comp3: applies 1/1 of 1:3.4 ratio
+
+        // compress to put dynamics on a curve
+        const compressor: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        compressor.threshold.value = -12; // Start compressing at -12 dB
+        compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
+        compressor.ratio.value = 3;       // 1:3 ratio
+        compressor.attack.value = 0.05;   // 1:2 with release
+        compressor.release.value = 0.1;   // slows release to bring up lower dynamics
+        dry.connect(compressor);
+        FX.connect(compressor);
+        
+        // soft limit before critical range
+        const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        limiter.threshold.value = -6;    // limit at -9 dB
+        limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
+        limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
+        limiter.attack.value = 0.05;     // 1:1 with release
+        limiter.release.value = 0.05;
+        compressor.connect(limiter);
+        
+        // brickwall at maximum value
+        const brickwall: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+        brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
+        brickwall.knee.value = 0;         // 0 dB knee for immediate effect
+        brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
+        brickwall.attack.value = 0;       // allow peaks
+        brickwall.release.value = 0.1;
+        limiter.connect(brickwall);
+
+        // master gain control
+        const masterGainNode: GainNode = audioContext.createGain();
+        masterGainNode.gain.value = Number(masterGain.value)/100;
+        brickwall.connect(masterGainNode);
+        
+        // clamp for 0 dB hard-clipping peak-elimination
+        const clampOut: AudioWorkletNode = clamp(masterGainNode);
+        clampOut.connect(audioContext.destination);
+
+    }
+
+    // setup analysis
+    if (gotit && playback) {
+        const keys: Array<string> = Object.keys(analysis);
+        // start with first oscillator
+        const key: string | undefined = keys[0];
+        if (typeof key === 'string') {
+            const nodeList: AnalyserNode[] | undefined = analysis[key];
+            if (nodeList) {
+                // control which analyzers log data here
+
+                // analyze(nodeList[0]) // preAnalysis for osc1
+                // analyze(nodeList[1]) // postAnalysis for osc1
+
+                // analyze(nodeList[0]) // preAnalysis for osc2
+                // analyze(nodeList[1]) // postAnalysis for osc2
+
+                // analyze(nodeList[0]) // preAnalysis for osc3
+                // analyze(nodeList[1]) // postAnalysis for osc3
+                
+                // allstream logging (not reccomended; mixes data streams)
+                // for (const node of nodeList) {
+                //     analyze(node);
+                // }
             }
-            
-            // play voices
-            for (const voice of voices) {
-                voice.start();
-            }
+        }
+        
+        // play voices
+        for (const voice of voices) {
+            voice.start();
         }
     }
 };
 
 function sequencerEvent(event: Event): void {
-    // determine functionality by taraget of event
+    // determine functionality by target of event
+    console.log('seq event');
     const target = event.target as HTMLElement;
-    const parent: HTMLElement | null = target.parentElement;
-    if (parent) {
-        // determine sequencer ID
-        const seqID: string | undefined = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
-        if (seqID) {
-            // sequencer[seqID] == sequencer in which the event occured
-
-            // determine sequence control type
-            if (parent.classList.contains('leveler-stage-style')) {
-                // is leveler control type
-                if (!target.classList.contains('level-style')) {
-                    // not a repeated level
-        
-                    // determine leveler type
-                    const leveler: HTMLElement | null = parent.parentElement;
-                    if (leveler) {
-                        if (leveler.classList.contains('amp-sequence-leveler-container')) {
-                            // determine which stage is being leveled
-                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
-                            const stage: number = stageNum === undefined ? 0 : stageNum;
-
-                            // determine new level
-                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
-                            let level: number = 0;
-                            for (const el of levelList) {
-                                if (el === target) {
-                                    // remove previous level
-                                    parent.querySelector('.level-style')?.classList.remove('level-style');
-                                    // add current level
-                                    el.classList.add('level-style');
-                                    break;
-                                } else {
-                                    level += 1;
+    if (event.type === 'click') { // clicks are for levelers
+        const parent: HTMLElement | null = target.parentElement;
+        if (parent) {
+            // determine sequencer ID
+            const seqID: string | undefined = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+            if (seqID) {
+                // sequencer[seqID] == sequencer in which the event occured
+    
+                // determine sequence control type
+                if (parent.classList.contains('leveler-stage-style')) {
+                    // is leveler control type
+                    if (!target.classList.contains('level-style')) {
+                        // not a repeated level
+            
+                        // determine leveler type
+                        const leveler: HTMLElement | null = parent.parentElement;
+                        if (leveler) {
+                            if (leveler.classList.contains('amp-sequence-leveler-container')) {
+                                // determine which stage is being leveled
+                                const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                                const stage: number = stageNum === undefined ? 0 : stageNum;
+    
+                                // determine new level
+                                const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                                let level: number = 0;
+                                for (const el of levelList) {
+                                    if (el === target) {
+                                        // remove previous level
+                                        parent.querySelector('.level-style')?.classList.remove('level-style');
+                                        // add current level
+                                        el.classList.add('level-style');
+                                        break;
+                                    } else {
+                                        level += 1;
+                                    }
                                 }
-                            }
-
-                            // apply change to model
-                            sequencers[seqID]['ampLvls'][stage] = level;
-
-                            // play sound with change
-                            if (playback) {
-                                soundAll();
-                            }
-                            
-                        } else if (leveler.classList.contains('filt-sequence-leveler-container')) {
-                            // determine which stage is being leveled
-                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
-                            const stage: number = stageNum === undefined ? 0 : stageNum;
-
-                            // determine new level
-                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
-                            let level: number = 0;
-                            for (const el of levelList) {
-                                if (el === target) {
-                                    // remove previous level
-                                    parent.querySelector('.level-style')?.classList.remove('level-style');
-                                    // add current level
-                                    el.classList.add('level-style');
-                                    break;
-                                } else {
-                                    level += 1;
+    
+                                // apply change to model
+                                sequencers[seqID]['ampLvls'][stage] = level;
+    
+                                // play sound with change
+                                soundAll('seq');
+                                
+                            } else if (leveler.classList.contains('filt-sequence-leveler-container')) {
+                                // determine which stage is being leveled
+                                const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                                const stage: number = stageNum === undefined ? 0 : stageNum;
+    
+                                // determine new level
+                                const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                                let level: number = 0;
+                                for (const el of levelList) {
+                                    if (el === target) {
+                                        // remove previous level
+                                        parent.querySelector('.level-style')?.classList.remove('level-style');
+                                        // add current level
+                                        el.classList.add('level-style');
+                                        break;
+                                    } else {
+                                        level += 1;
+                                    }
                                 }
-                            }
-
-                            // apply change
-                            sequencers[seqID]['filtLvls'][stage] = level;
-                            
-                            // play sound with change
-                            if (playback) {
-                                soundAll();
-                            }
-                            
-                        } else if (leveler.classList.contains('freq-sequence-leveler-container')) {
-                            // determine which stage is being leveled
-                            const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
-                            const stage: number = stageNum === undefined ? 0 : stageNum;
-
-                            // determine new level
-                            const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
-                            let level: number = 0;
-                            for (const el of levelList) {
-                                if (el === target) {
-                                    // remove previous level
-                                    parent.querySelector('.level-style')?.classList.remove('level-style');
-                                    // add current level
-                                    el.classList.add('level-style');
-                                    break;
-                                } else {
-                                    level += 1;
+    
+                                // apply change
+                                sequencers[seqID]['filtLvls'][stage] = level;
+                                
+                                // play sound with change
+                                soundAll('seq');
+                                
+                            } else if (leveler.classList.contains('freq-sequence-leveler-container')) {
+                                // determine which stage is being leveled
+                                const stageNum: number | undefined = Number(parent.classList[1]?.split('-')[1]);
+                                const stage: number = stageNum === undefined ? 0 : stageNum;
+    
+                                // determine new level
+                                const levelList: NodeListOf<Element> = parent.querySelectorAll('div');
+                                let level: number = 0;
+                                for (const el of levelList) {
+                                    if (el === target) {
+                                        // remove previous level
+                                        parent.querySelector('.level-style')?.classList.remove('level-style');
+                                        // add current level
+                                        el.classList.add('level-style');
+                                        break;
+                                    } else {
+                                        level += 1;
+                                    }
                                 }
-                            }
-
-                            // apply change
-                            sequencers[seqID]['freqLvls'][stage] = level;
-
-                            // play sound with change
-                            if (playback) {
-                                soundAll();
+    
+                                // apply change
+                                sequencers[seqID]['freqLvls'][stage] = level;
+    
+                                // play sound with change
+                                soundAll('seq');
                             }
                         }
                     }
+        
                 }
     
             }
-
+    
         }
+    } else if (event.type === 'change') { // change is for sequence parameters
+        soundAll('seq');
+    }
+};
 
+function oscillatorEvent(event: Event): void {
+    // determine functionality by target of event
+    console.log('osc event');
+    const target = event.target as HTMLElement;
+    if (event.type === 'change' && target.classList.contains('type')) {
+        soundAll('osc');
+    }
+    if (target.classList.contains('amplitude')  || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+        soundAll('osc');
     }
 };
 
 // test UI integrity, load processor modules, and setup listeners for user controls
 let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
+
+    // initialize data and setup listeners
 
     // test UI integrity
     if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3) {
@@ -1856,9 +1953,9 @@ async function setup(): Promise<void> {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
+                    playback = true;
                     soundAll(); // don't listen until sound is done
                     listening = true;
-                    playback = true;
                 }, latency)
             }
         });
@@ -1871,8 +1968,8 @@ async function setup(): Promise<void> {
                     clearTimeout(cache);
                     listening = false;
                     shutup(); // don't listen until shutup is done
-                    listening = true;
                     playback = false;
+                    listening = true;
                 }, latency)
             }
         });
@@ -1907,8 +2004,34 @@ async function setup(): Promise<void> {
                 }, latency);
             }
         });
+
+        // Beats/Minute (BPM or Tempo)
+        masterTempo.addEventListener('input', () => {
+            if (listening && playback && masterTempo) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+
+        // Beats/Measure (Time Signature)
+        masterMeasure.addEventListener('input', () => {
+            if (listening && playback && masterMeasure) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
     
-        // controls gain for all oscillators
+        // controls input gain for all oscillators
         FPControl.addEventListener('input', () => {
             if (listening && playback) {
                 clearTimeout(cache);
@@ -1947,33 +2070,50 @@ async function setup(): Promise<void> {
             }
         });
 
+        // listener delegation for sequence events
         const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
         if (seqsNodeList.length > 0) {
             for (const seqEl of seqsNodeList) {
                 if (seqEl) {
-                    seqEl.addEventListener('click', (event) => {
-                        // cache = setTimeout(() => {
-                        //     clearTimeout(cache);
-                        //     listening = false;
-                        //     sequencerEvent(event);
-                        //     listening = true;
-                        // }, latency);
-
-                        // no added latency on gui events
-                        listening = false;
-                        sequencerEvent(event);
-                        listening = true;
-
-                    });
+                    ['click', 'change'].forEach((eventType) => {
+                        seqEl.addEventListener(eventType, (event) => {
+                            // no added latency on gui events
+                            listening = false;
+                            sequencerEvent(event);
+                            listening = true;
+                        });
+                    })
                 }
             }
         } else {
-            console.log('sequencer elements not found during setup');
+            console.log('sequencer elements not found during listener setup');
+        }
+        
+        // listener delegation for oscillator events
+        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+        if (oscsNodeList.length > 0) {
+            for (const oscEl of oscsNodeList) {
+                if (oscEl) {
+                    ['change'].forEach((eventType) => {
+                        oscEl.addEventListener(eventType, (event) => {
+                            clearTimeout(cache);
+                            cache = setTimeout(() => {
+                                clearTimeout(cache);
+                                listening = false;
+                                oscillatorEvent(event);
+                                listening = true;
+                            }, 10);
+                        });
+                    })
+                }
+            }
+        } else {
+            console.log('oscillator elements not found during listener setup');
         }
         
 
     } else {
-        console.log('Element Integrity Degraded during setup');
+        console.log('Element Integrity Degraded during listener setup');
     }
 };
 setup();
