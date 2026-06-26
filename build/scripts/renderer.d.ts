@@ -47,6 +47,7 @@ declare const seq3: HTMLElement | null;
 declare const osc1: HTMLElement | null;
 declare const osc2: HTMLElement | null;
 declare const osc3: HTMLElement | null;
+declare function renderLeveler(stages: number, levels: number, container: Element): void;
 declare function linear(): Float32Array<ArrayBuffer>;
 declare function sigmoid1(amount?: number): Float32Array<ArrayBuffer>;
 declare function sigmoid2(amount?: number): Float32Array<ArrayBuffer>;

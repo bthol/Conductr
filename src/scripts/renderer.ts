@@ -129,6 +129,25 @@ const osc2: HTMLElement | null = document.getElementById('osc2');
 // 3rd Section
 const osc3: HTMLElement | null = document.getElementById('osc3');
 
+// GUI functions
+function renderLeveler(stages:number, levels:number, container:Element): void {
+    // clear previous elements
+    container.innerHTML = '';
+    // create new elements
+    for (let s = 1; s < stages + 1; s++) {
+        const stage: HTMLDivElement = document.createElement('div');
+        stage.setAttribute('class', `leveler-stage-style stage-${s}`);
+        for (let l = 0; l < levels; l++) {
+            const level: HTMLDivElement = document.createElement('div');
+            stage.appendChild(level);
+        }
+        if (stage.firstElementChild) {
+            stage.firstElementChild.setAttribute('class', 'level-style');
+        }
+        container.appendChild(stage);
+    }
+};
+
 // waveshaper functions
 function linear(): Float32Array<ArrayBuffer> {
     // line from -1 to 1
@@ -1797,7 +1816,7 @@ function soundAll(update = 'all'): void {
 
 function sequencerEvent(event: Event): void {
     // determine functionality by target of event
-    console.log('seq event');
+    // console.log('seq event');
     const target = event.target as HTMLElement;
     if (event.type === 'click') { // clicks are for levelers
         const parent: HTMLElement | null = target.parentElement;
@@ -1807,7 +1826,7 @@ function sequencerEvent(event: Event): void {
             if (seqID) {
                 // sequencer[seqID] == sequencer in which the event occured
     
-                // determine sequence control type
+                // leveler control
                 if (parent.classList.contains('leveler-stage-style')) {
                     // is leveler control type
                     if (!target.classList.contains('level-style')) {
@@ -1903,13 +1922,68 @@ function sequencerEvent(event: Event): void {
     
         }
     } else if (event.type === 'change') { // change is for sequence parameters
-        soundAll('seq');
+        // parametric leveler rerendering
+        if (target.classList.contains('stages')) {
+            // get seqID
+            const seqID: string | undefined = target?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+            if (seqID) {
+                // get common ancestor for control and container
+                const wireEl: HTMLElement | null | undefined = target?.parentElement?.parentElement?.parentElement?.parentElement;
+                if (wireEl === null || wireEl === undefined) {
+                    console.log('failed to select leveler element during rerender');
+                } else {
+                    // select container elements
+                    const containers: NodeListOf<Element> = wireEl.querySelectorAll('.leveler-layout');
+                    // get sequence data
+                    const targetInput: HTMLInputElement = target as HTMLInputElement;
+                    const stages: number = Number(targetInput.value);
+                    const levels: number = sequencers[seqID]['levels'];
+                    // rerender levelers
+                    for (const container of containers) {
+                        renderLeveler(stages, levels, container);
+                    }
+                    // update all
+                    soundAll();
+                }
+            } else {
+                console.log('seqID not found during leveler rerender');
+            }
+
+        } else if (target.classList.contains('stage-levels')) {
+            // get seqID
+            const seqID: string | undefined = target?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+            if (seqID) {
+                // get common ancestor for control and container
+                const wireEl: HTMLElement | null | undefined = target?.parentElement?.parentElement?.parentElement?.parentElement;
+                if (wireEl === null || wireEl === undefined) {
+                    console.log('failed to select leveler element during rerender');
+                } else {
+                    // select container elements
+                    const containers: NodeListOf<Element> = wireEl.querySelectorAll('.leveler-layout');
+                    // get sequence data
+                    const targetInput: HTMLInputElement = target as HTMLInputElement;
+                    const stages: number =  sequencers[seqID]['stages'];
+                    const levels: number = Number(targetInput.value);
+                    // rerender levelers
+                    for (const container of containers) {
+                        renderLeveler(stages, levels, container);
+                    }
+                    // update all
+                    soundAll();
+                }
+            } else {
+                console.log('seqID not found during leveler rerender');
+            }
+
+        } else {
+            soundAll('seq');
+        }
     }
 };
 
 function oscillatorEvent(event: Event): void {
     // determine functionality by target of event
-    console.log('osc event');
+    // console.log('osc event');
     const target = event.target as HTMLElement;
     if (event.type === 'change' && target.classList.contains('type')) {
         soundAll('osc');
