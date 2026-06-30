@@ -5,6 +5,7 @@ class ClampProcessor extends AudioWorkletProcessor {
     lognum;
     maxlog;
     processed;
+    active;
     constructor() {
         super();
         this.count = 0;
@@ -12,8 +13,17 @@ class ClampProcessor extends AudioWorkletProcessor {
         this.lognum = 0;
         this.maxlog = 5;
         this.processed = 0;
+        this.active = true;
+        this.port.onmessage = (event) => {
+            if (event.data.action === 'deactivate') {
+                this.active = false;
+            }
+        };
     }
     process(inputs, outputs, parameters) {
+        if (!this.active) {
+            return false;
+        }
         this.count++;
         if (inputs.length > 0) {
             for (let put = 0; put < outputs.length; put++) {

@@ -4,14 +4,24 @@ class RMSProcessor extends AudioWorkletProcessor {
     RMS;
     frames;
     interval;
+    active;
     constructor() {
         super();
         this.logging = true;
         this.RMS = 0;
         this.frames = 0;
         this.interval = 4410;
+        this.active = true;
+        this.port.onmessage = (event) => {
+            if (event.data.action === 'deactivate') {
+                this.active = false;
+            }
+        };
     }
     process(inputs, outputs, parameters) {
+        if (!this.active) {
+            return false;
+        }
         this.frames += 128;
         const inputLength = inputs.length;
         if (inputLength > 0 && this.frames >= this.interval) {
@@ -29,7 +39,7 @@ class RMSProcessor extends AudioWorkletProcessor {
                         }
                     }
                     const RMS = (powerSum / n) ** .5;
-                    const logConvert = Math.log(RMS);
+                    const logConvert = Math.log(RMS) * 8.65617;
                     const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
                     let index = 0;
                     for (let i = 0; i < levels.length; i++) {
@@ -39,7 +49,7 @@ class RMSProcessor extends AudioWorkletProcessor {
                         }
                     }
                     const out = levels[index];
-                    if (out && this.logging) {
+                    if (out !== undefined && this.logging) {
                         this.RMS = out;
                         this.port.postMessage({ msg: 'RMS', data: out, input: put });
                     }

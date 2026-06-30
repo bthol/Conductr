@@ -1,29 +1,31 @@
 // LUFS-processor: sends calculated LUFS level as message to main process
 class LUFSProcessor extends AudioWorkletProcessor {
-  // logging
   logging: boolean;
   LUFS: number;
   frames: number;
   interval: number;
+  active: boolean;
   constructor() {
     super();
-    // logging
     this.logging = true; // controls whether logging is active (true) or inactive (false)
     this.LUFS = 0;
     this.frames = 0;
     this.interval = 4410; // @ 44.1kHz sample rate (0.02267573696145124716553287981859 ms/ 1 cycle, 100 ms / 4410 cycles)
+    this.active = true;
 
     // Listen to messages from main thread
-    // this.port.onmessage = (event) => {
-    //   // ping response for testing messaging
-    //   if (event.data.type === 'PING') {
-    //     this.port.postMessage({ msg: 'RMS-processor pinged'});
-    //   }
-    // };
+    this.port.onmessage = (event) => {
+      // ping response for testing messaging
+      // if (event.data.type === 'PING') {
+      //   this.port.postMessage({ msg: 'RMS-processor pinged'});
+      // }
+      if (event.data.action === 'deactivate') {
+        this.active = false;
+      }
+    };
 
   }
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
-    this.frames += 128;
     // logging to renderer main process
     // if (this.logging) {
     //   this.port.postMessage({ msg: 'LUFS-processor ran',});
@@ -35,6 +37,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
     // }
 
     // iterate for number of inputs
+    this.frames += 128;
     const inputsLength: number = inputs.length;
     if (inputsLength > 0 && this.frames >= this.interval) {
       this.frames = 0;
@@ -81,8 +84,11 @@ class LUFSProcessor extends AudioWorkletProcessor {
               // Gating: Relative and Absolute gating
               const LUFS: number = 0;
               
-              // convert to logarithmic scale
-              const logConvert: number = LUFS;
+              // convert to logarithmic scale (let an RMS of 0.5 yield a value of -6 dB)
+              // input range : 0 - 1
+              // log range : -inf - 0
+              // 8.655 = {.5, -5.999}, 8.658 = {.5, -6.001}, 8.6562 = {.5, -6.00002}, 8.65617 = {.5, -6}
+              const logConvert: number = Math.log(LUFS)*8.65617;
 
               // calculate nearest meter level (out)
               const levels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
@@ -96,7 +102,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
               const out: number | undefined = levels[index];
 
               // send calculated level as message to main process
-              if (out && this.logging) {
+              if (out !== undefined && this.logging) {
                 this.LUFS = out;
                 this.port.postMessage({ msg: 'LUFS', data: out, input: put, channel: channel});
               }

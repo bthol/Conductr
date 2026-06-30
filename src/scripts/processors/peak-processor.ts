@@ -1,39 +1,48 @@
-// RMS-processor: sends calculated RMS level as message to main process
+// peak-processor: sends calculated peak level as message to main process
 class PeakProcessor extends AudioWorkletProcessor {
-  // logging
   logging: boolean;
   peak: number;
   frames: number;
   interval: number;
+  active: boolean;
   constructor() {
     super();
-    // logging
     this.logging = true; // controls whether logging is active (true) or inactive (false)
     this.peak = 0;
     this.frames = 0;
     this.interval = 4410; // @ 44.1kHz sample rate (0.02267573696145124716553287981859 ms/ 1 cycle, 100 ms / 4410 cycles)
+    this.active = true;
+
     // Listen to messages from main thread
-    // this.port.onmessage = (event) => {
-    //   // ping response for testing messaging
-    //   if (event.data.type === 'PING') {
-    //     this.port.postMessage({ msg: 'RMS-processor pinged'});
-    //   }
-    // };
+    this.port.onmessage = (event) => {
+      // ping response for testing messaging
+      // if (event.data.type === 'PING') {
+      //   this.port.postMessage({ msg: 'RMS-processor pinged'});
+      // }
+      if (event.data.action === 'deactivate') {
+        this.active = false;
+      }
+    };
 
   }
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
-    this.frames += 128;
+    // terminate process if 'deactivate' message received
+    if (!this.active) {
+      return false;
+    }
+    
     // logging to renderer main process
     // if (this.logging) {
     //   this.port.postMessage({ msg: 'peak-processor ran'});
     // }
-
+    
     // count number of inputs
     // if (this.logging) {
     //   this.port.postMessage({ msg: 'inputs', number: inputs.length, count:this.count});
     // }
-
+    
     // iterate for number of inputs
+    this.frames += 128;
     if (inputs.length > 0 && this.frames >= this.interval) {
       this.frames = 0;
       for (let put = 0; put < inputs.length; put++) {
@@ -75,10 +84,11 @@ class PeakProcessor extends AudioWorkletProcessor {
             }
           }
 
-          // convert to logarithmic scale use naturaL logarithm
-          // peak range : 0 - 1
+          // convert to logarithmic scale (let an RMS of 0.5 yield a value of -6 dB)
+          // input range : 0 - 1
           // log range : -inf - 0
-          const logConvert: number = Math.log(peak);
+          // 8.655 = {.5, -5.999}, 8.658 = {.5, -6.001}, 8.6562 = {.5, -6.00002}, 8.65617 = {.5, -6}
+          const logConvert: number = Math.log(peak)*8.65617;
 
           // calculate nearest meter level (out)
           const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];

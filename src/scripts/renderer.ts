@@ -74,7 +74,8 @@ let sequencers: { [key: string]: any } = {}; // stores parameters for each seque
 // Playback structures
 let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
 let sequences: {[key:string]: ReturnType<typeof setTimeout> } = {}; // stores cache for sequencer schedule caches
-let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator or sequencer, second index = analyzer node for that oscillator
+let analysis: {[key: string]: Array<AnalyserNode>} = {'master': [], 'FX': []}; // first index = oscillator or sequencer, second index = analyzer node for that oscillator
+let audioWorkletNodes: Array<AudioWorkletNode> = [];
 
 // Status Booleans
 let playback: boolean = false; // stores the program run state (run: true, off: false)
@@ -229,6 +230,12 @@ function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number 
     return Area;
 };
 
+function meanSquare(data: Float32Array<ArrayBuffer>): number {
+    // mean square of data represents total energy of waveform
+    const ms: number = data.reduce((accumulator:number, value:number) => {return accumulator + value**2}, 0);
+    return ms / data.length;
+};
+
 function linear(): Float32Array<ArrayBuffer> {
     // line from -1 to 1
     const n_samples: number = 44100;
@@ -319,6 +326,7 @@ function clamp(input: AudioNode): AudioWorkletNode {
 
     // create processor node
     const processor = new AudioWorkletNode(audioContext, 'clamp-processor');
+    audioWorkletNodes.push(processor); // push to global structure for later deactivation
 
     // setup worklet dev logs
     // processor.port.onmessage = (event) => {
@@ -341,6 +349,7 @@ function peakLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
         // processor.channelCountMode = 'explicit'; // use channel count
         // processor.channelInterpretation = 'speakers'; // each channel is a different array
         // processor.channelCount = 2; // 2 stereo channels
+        audioWorkletNodes.push(processor); // push to global structure for later deactivation
     
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
@@ -367,11 +376,12 @@ function RMSLevel(input: AnalyserNode, root: HTMLElement | null, selector: strin
         // processor.channelCountMode = 'explicit'; // use channel count
         // processor.channelInterpretation = 'speakers'; // each channel is a different array
         // processor.channelCount = 2; // 2 stereo channels
+        audioWorkletNodes.push(processor); // push to global structure for later deactivation
 
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
             // use data here
-            // console.log('RMS-processor thread: ', event.data);
+            console.log('RMS-processor thread: ', event.data);
             // render GUI state with data
             const level: number = event.data.data;
             renderMeterLevel(level, root, selector);
@@ -393,6 +403,7 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
         // processor.channelCountMode = 'explicit'; // use channel count
         // processor.channelInterpretation = 'speakers'; // each channel is a different array
         // processor.channelCount = 2; // 2 stereo channels
+        audioWorkletNodes.push(processor); // push to global structure for later deactivation
 
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
@@ -749,7 +760,7 @@ function initSequencers(): void {
 function updateMacros(): boolean {
     // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
     
-    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && CControl && VControl) { // test element integrity
+    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
 
         // Master Gain
         let masterVal: number = Number(masterGain.value);
@@ -829,7 +840,7 @@ function updateMacros(): boolean {
         }
 
         // Expressivity = Envelope Multiplier
-        let expVal: number = Number(FPControl.value);
+        let expVal: number = Number(EControl.value);
         const expRange: number = 10;
         // enforce range
         if (expVal > expRange) { // above max
@@ -843,19 +854,19 @@ function updateMacros(): boolean {
         }
         // convert scale
         if (expVal === 0) { // bypass
-            macros['FortePiano'] = 1;
+            macros['expressivity'] = 1;
         } else if (expVal > 0) { // +
-            macros['FortePiano'] = 1 + expVal/expRange;
+            macros['expressivity'] = 1 + expVal/expRange;
         } else if (expVal < 0) { // -
-            macros['FortePiano'] = 1 + expVal/expRange;
+            macros['expressivity'] = 1 + expVal/expRange;
         } else { // bypass
-            macros['FortePiano'] = 1;
+            macros['expressivity'] = 1;
             console.log('macro range error: Expressivity');
         }
 
         // Major Gusto = Drive Multiplier
         let driveMultiplier: number = Number(DMControl.value); // control range: -10 - 0 | 0 - 30, converted range: 0 - 1 | 1 - 5, mult range: 0.1X - 5X 
-        const driveMultRange: number = 3 * macros['creciendo']; // range of multiplication
+        const driveMultRange: number = 3; // range of multiplication
         const driveMultGran: number = 10; // granularity per unit
         // enforce range
         if (driveMultiplier > driveMultGran * driveMultRange) { // above max
@@ -871,9 +882,9 @@ function updateMacros(): boolean {
         if (driveMultiplier === 0) { // bypass
             macros['driveMult'] = 1;
         } else if (driveMultiplier > 0) { // +
-            macros['driveMult'] = 1 + driveMultiplier/driveMultGran * macros['creciendo']; // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
+            macros['driveMult'] = 1 + (driveMultiplier/driveMultGran * macros['creciendo']); // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
         } else if (driveMultiplier < 0) { // -
-            macros['driveMult'] = 1 + driveMultiplier/driveMultGran * macros['creciendo'];
+            macros['driveMult'] = 1 + (driveMultiplier/driveMultGran * macros['creciendo']);
         } else { // bypass
             macros['driveMult'] = 1;
             console.log('macro range error: Drive Multiplier');
@@ -896,9 +907,9 @@ function updateMacros(): boolean {
         if (inVal === 0) { // bypass
             macros['FortePiano'] = 1;
         } else if (inVal > 0) { // +
-            macros['FortePiano'] = 1 + inVal/inRange;
+            macros['FortePiano'] = 1 + (inVal/inRange * macros['creciendo']);
         } else if (inVal < 0) { // -
-            macros['FortePiano'] = 1 + inVal/inRange;
+            macros['FortePiano'] = 1 + (inVal/inRange * macros['creciendo']);
         } else { // bypass
             macros['FortePiano'] = 1;
             console.log('macro range error: Forte Piano');
@@ -914,7 +925,8 @@ function updateMacros(): boolean {
         } else if (inVal % 1 !== 0) { // round + fractions up
             inVal = Math.ceil(inVal);
         }
-        macros['variance'] = vary;
+        // convert scale
+        macros['variance'] = vary * macros['creciendo'];
 
         return true;
 
@@ -998,7 +1010,9 @@ function updateOscillator(oscID: string): boolean {
                 // gain variation
                 const gainFactor: number = .25; // 4:1  variation to gain
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
-                const gainCalc: number = gain === 0 ? 0 : gain === 99 ? (1 - gainV - .01) * macros['FortePiano'] : (-Math.log10(-(gain/100) + 1)/2 + gainV) * macros['FortePiano'];
+                const xAty1: number = 99; // x input which produces y = 1
+                const curve: number = gain === 0 ? 0 : (-Math.log10(-(gain/100) + 1)/2)*xAty1 - gainV; // put on logarithmic curve with output interval [0, 1]
+                const gainCalc: number = macros['FortePiano'] / 4 * curve; // scale curve: divide scalar by maximum scalar value to prevent overscaling
                 
                 // frequency variation
                 const freqFactor: number = .5; // 2:1  variation to frequency
@@ -1604,11 +1618,22 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 
 // playback functions
 function shutup(): void {
-    voices.forEach((osc) => { osc.stop(audioContext.currentTime) }); // mute each voice
+    // mute all voices
+    voices.forEach((osc) => { osc.stop(audioContext.currentTime) });
+    // stop all sequences
     const sequenceKeys: Array<string> = Object.keys(sequences);
-    for (const seqID of sequenceKeys) {clearInterval(sequences[seqID])} // stop each sequences
-    voices = []; // clear voices data
-    analysis = {}; // clear analysis data
+    for (const seqID of sequenceKeys) {clearInterval(sequences[seqID])}
+    // deactivate all audioWorkletNodes
+    for (const node of audioWorkletNodes) {
+        node.disconnect(); // remove from audio context
+        node.port.postMessage({'action': 'deactivate'}); // deactivate process and cleanup
+    }
+    // clear voices data
+    voices = [];
+    // clear analysis data
+    analysis = {};
+    // clear audioWorkletNode data
+    audioWorkletNodes = [];
 };
 
 function soundAll(update = 'all'): void {
@@ -1747,14 +1772,15 @@ function soundAll(update = 'all'): void {
             if (oscDrive > 1) {
                 // build
                 const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-                const oversample: OverSampleType = '2x';
+                const oversample: OverSampleType = '4x';
+                const drive: number = oscDrive * macros['driveMult']; // apply drive multiplier macro (X0 - X6), max drive = 60
                 let waveshaperCurve: Float32Array<ArrayBuffer>;
                 if (oscDriCh === 'sigmoid1') {
-                    waveshaperCurve = sigmoid1(oscDrive * macros['driveMult']);
+                    waveshaperCurve = sigmoid1(drive);
                 } else if (oscDriCh === 'sigmoid2') {
-                    waveshaperCurve = sigmoid2(oscDrive * macros['driveMult']);
+                    waveshaperCurve = sigmoid2(drive);
                 } else if (oscDriCh === 'sigmoid3') {
-                    waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
+                    waveshaperCurve = sigmoid3(drive);
                 } else {
                     // default to sigmoid 3 if faulty string is provided
                     waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
@@ -1767,8 +1793,16 @@ function soundAll(update = 'all'): void {
                 // f = total output power = integration of the waveshaper curve
                 // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
                 // reciprocal of factor: 1/(1+(f-i)/i)
-                const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
-                const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
+
+                // numerical integration method
+                // const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
+                // const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
+
+                // statistical method
+                const initialPower: number = meanSquare(referenceLine);
+                const finalPower: number = meanSquare(waveshaperCurve);
+
+                // use powers to calculate power factor
                 const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
                 makeupGainNode.gain.value = powerFactor;
 
@@ -1954,13 +1988,13 @@ function soundAll(update = 'all'): void {
                     const pre: AnalyserNode | undefined = nodeList[0];
                     if (pre) { // before FX chain
                        // send to pre FX meter
-                       RMSLevel(pre, meterFX, 'pre-peak-container');
+                    //    RMSLevel(pre, meterFX, 'pre-peak-container');
                     }
 
                     const post: AnalyserNode | undefined = nodeList[1];
                     if (post) { // after FX chain
                         // send to post FX meter
-                        RMSLevel(post, meterFX, 'post-peak-container');
+                        // RMSLevel(post, meterFX, 'post-peak-container');
                     }
                 } else { // oscillator
                     // get oscillator
@@ -1971,19 +2005,19 @@ function soundAll(update = 'all'): void {
                         const pre: AnalyserNode | undefined = nodeList[0];
                         if (pre) { // before distortion
                             // send to section meter
-                            RMSLevel(pre, root, 'pre-peak-container');
+                            // RMSLevel(pre, root, 'pre-peak-container');
                         }
     
                         const post: AnalyserNode | undefined = nodeList[1];
                         if (post) { // after distortion
                             // send to gusto meter
-                            RMSLevel(post, root, 'post-peak-container');
+                            // RMSLevel(post, root, 'post-peak-container');
                         }
                         
                         const seq: AnalyserNode | undefined = nodeList[2];
                         if (seq) { // after sequencer
                             // send to wire meter
-                            RMSLevel(seq, root, 'seq-peak-container');
+                            // RMSLevel(seq, root, 'seq-peak-container');
                         }
                     } else {
                         console.log('oscillator meter setup failed due to missing oscillator element');
@@ -2186,7 +2220,7 @@ async function setup(): Promise<void> {
     // initialize data and setup listeners
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && meterMaster && meterFX && meter1 && meter2 && meter3) {
 
         // load processor modules
         await getProcessorModules();

@@ -23,6 +23,7 @@ declare let sequences: {
 declare let analysis: {
     [key: string]: Array<AnalyserNode>;
 };
+declare let audioWorkletNodes: Array<AudioWorkletNode>;
 declare let playback: boolean;
 declare let macrosInitialized: boolean;
 declare let oscillatorsInitialized: boolean;
@@ -56,6 +57,7 @@ declare const osc3: HTMLElement | null;
 declare function renderLeveler(stages: number, levels: number, container: Element): void;
 declare function renderMeterLevel(level: number, root: HTMLElement | null, selector: string): void;
 declare function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number;
+declare function meanSquare(data: Float32Array<ArrayBuffer>): number;
 declare function linear(): Float32Array<ArrayBuffer>;
 declare function sigmoid1(amount?: number): Float32Array<ArrayBuffer>;
 declare function sigmoid2(amount?: number): Float32Array<ArrayBuffer>;

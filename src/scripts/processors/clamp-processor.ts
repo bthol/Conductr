@@ -6,6 +6,7 @@ class ClampProcessor extends AudioWorkletProcessor {
   lognum: number;
   maxlog: number;
   processed: number;
+  active: boolean;
   constructor() {
     super();
     // logging
@@ -14,17 +15,24 @@ class ClampProcessor extends AudioWorkletProcessor {
     this.lognum = 0; // counts the number of logs to compare with maxlog
     this.maxlog = 5; // maximum number of logs per run
     this.processed = 0; // stores the number of inputs processed into outputs
+    this.active = true;
 
     // Listen to messages from main thread
-    // this.port.onmessage = (event) => {
-    //   // ping response for testing messaging
-    //   if (event.data.type === 'PING') {
-    //     this.port.postMessage({ msg: 'clamp-processor pinged'});
-    //   }
-    // };
+    this.port.onmessage = (event) => {
+      // ping response for testing messaging
+      // if (event.data.type === 'PING') {
+      //   this.port.postMessage({ msg: 'clamp-processor pinged'});
+      // }
+      if (event.data.action === 'deactivate') {
+        this.active = false;
+      }
+    };
 
   }
   process(inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>): boolean {
+    if (!this.active) {
+      return false;
+    }
     // logging to renderer main process
     this.count++;
     // this.processed = 0;
