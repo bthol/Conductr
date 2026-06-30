@@ -15,17 +15,19 @@ class ClampProcessor extends AudioWorkletProcessor {
     }
     process(inputs, outputs, parameters) {
         this.count++;
-        for (let put = 0; put < outputs.length; put++) {
-            const input = inputs[put];
-            const output = outputs[put];
-            if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
-                for (let channel = 0; channel < output.length; channel++) {
-                    const inputChannel = input[channel];
-                    const outputChannel = output[channel];
-                    if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
-                        for (let i = 0; i < outputChannel.length; i++) {
-                            const out = Math.max(-1.0, Math.min(1.0, Number(inputChannel[i])));
-                            outputChannel[i] = out;
+        if (inputs.length > 0) {
+            for (let put = 0; put < outputs.length; put++) {
+                const input = inputs[put];
+                const output = outputs[put];
+                if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
+                    for (let channel = 0; channel < output.length; channel++) {
+                        const inputChannel = input[channel];
+                        const outputChannel = output[channel];
+                        if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
+                            for (let i = 0; i < outputChannel.length; i++) {
+                                const out = Math.max(-1.0, Math.min(1.0, Number(inputChannel[i])));
+                                outputChannel[i] = out;
+                            }
                         }
                     }
                 }

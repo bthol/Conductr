@@ -12,7 +12,6 @@ body {
 .panel {
     display: flex;
     align-items: center;
-    gap: 6px;
 }
 
 .module {
@@ -49,6 +48,12 @@ body {
     margin: 10px 0px;
     border: 1.5px solid index.$detailing;
     @include index.break-corners;
+}
+
+.border-alternate {
+    border: 1px solid index.$border-color;
+    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
+    outline: 3px solid color.adjust(index.$background-color-3, $hue: 90deg);
 }
 
 .section-layout {
@@ -115,42 +120,43 @@ $lvl-number: 2; // number of levels in a stage
     color: index.$text-color-2;
 }
 
-// indicator light style
-
 // include animation
 @include index.blinker('blink', index.$color-on, index.$color-off);
 
-.indicator-light-label-layout {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: max-content;
-    margin-right: 18px;
-}
+// #come-selector {
+//     @include index.break-corners;
+// }
 
-.light-label {
-    margin: 0px 12px;
-    font-size: index.$font-small;
-    cursor: default;
-}
-
-.indicator-light {
-    background: index.$color-off;
-    border-radius: 100px;
-    height: 16px;
-    width: 16px;
-}
-
-#indicator-lights {
-    background-color: index.$background-color-2;
-    border: 1px solid index.$border-color;
-    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
-    outline: 3px solid color.adjust(index.$background-color-3, $hue: 90deg);
+// meter style
+.meter-container-style {
     padding: 8px;
-    margin: 10px 0px;
-    @include index.break-corners;
+    margin: 5px;
+    background: index.$background-color-2;
 }
 
-#run-light {
-    animation: blink 1s linear infinite;
+.meter-gradation-style {
+    width: 50px;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 5px;
+}
+
+.meter-gradation-style > .gradation {
+    height: 2.5px;
+    width: 25px;
+    background: index.$color-off;
+}
+
+.gradation.on {
+    background: index.$color-on;
+}
+
+// button style
+.button {
+    padding: 8px;
+    margin: 5px;
+    border-radius: 3px;
+    background: index.$background-color-3;
+    color: index.$text-color-1;
 }

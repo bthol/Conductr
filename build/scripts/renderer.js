@@ -6,6 +6,7 @@ window.electronAPI.res((data) => {
 });
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
+const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 let macros = {
     'master': .75,
     'pan': 0,
@@ -29,6 +30,11 @@ let playback = false;
 let macrosInitialized = false;
 let oscillatorsInitialized = false;
 let sequencersInitialized = false;
+const meterMaster = document.getElementById('meter-master');
+const meterFX = document.getElementById('meter-FX');
+const meter1 = document.getElementById('meter-1');
+const meter2 = document.getElementById('meter-2');
+const meter3 = document.getElementById('meter-3');
 const masterGain = document.getElementById('master-gain');
 const masterPan = document.getElementById('master-pan');
 const masterTempo = document.getElementById('master-tempo');
@@ -64,6 +70,59 @@ function renderLeveler(stages, levels, container) {
         }
         container.appendChild(stage);
     }
+}
+;
+function renderMeterLevel(level, root, selector) {
+    if (root) {
+        const container = root.querySelector(`.${selector}`);
+        if (container) {
+            container.querySelector('.on')?.classList.remove('on');
+            const NodeList = container.querySelectorAll('.gradation');
+            let index = 0;
+            for (let i = 0; i < meterLevels.length; i++) {
+                const compare = meterLevels[i];
+                if (compare && compare === level) {
+                    index = i;
+                    break;
+                }
+            }
+            const node = NodeList[index];
+            if (node) {
+                node.classList.add('on');
+            }
+            else {
+                console.log('meter level rerender failed due to missing level element');
+            }
+        }
+        else {
+            console.log('meter level rerender failed due to faulty selector');
+        }
+    }
+    else {
+        console.log('meter level rerender failed due to missing root element');
+    }
+}
+;
+function integrateNumericalTrapezoidal(data) {
+    let Area = 0;
+    for (let i = 1; i < data.length - 1; i++) {
+        const y = data[i];
+        if (y === undefined) {
+            return 0;
+        }
+        else {
+            Area += Math.abs(y);
+        }
+    }
+    const first = data[0];
+    const last = data[data.length - 1];
+    if (first === undefined || last === undefined) {
+        return 0;
+    }
+    else {
+        Area += (Math.abs(first) + Math.abs(last)) / 2;
+    }
+    return Area;
 }
 ;
 function linear() {
@@ -122,101 +181,56 @@ function sigmoid3(amount = 1) {
 ;
 async function getProcessorModules() {
     await audioContext.audioWorklet.addModule('./build/scripts/processors/clamp-processor.js');
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/peak-processor.js');
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/RMS-processor.js');
     await audioContext.audioWorklet.addModule('./build/scripts/processors/LUFS-processor.js');
-}
-;
-function integrateNumericalTrapezoidal(data) {
-    let Area = 0;
-    for (let i = 1; i < data.length - 1; i++) {
-        const y = data[i];
-        if (y === undefined) {
-            return 0;
-        }
-        else {
-            Area += Math.abs(y);
-        }
-    }
-    const first = data[0];
-    const last = data[data.length - 1];
-    if (first === undefined || last === undefined) {
-        return 0;
-    }
-    else {
-        Area += (Math.abs(first) + Math.abs(last)) / 2;
-    }
-    return Area;
-}
-;
-function peak(data) {
-    let peak = 0;
-    for (let i = 0; i < data.length; i++) {
-        const datum = data[i];
-        if (typeof datum === 'number') {
-            const absValue = Math.abs(datum);
-            if (absValue > peak) {
-                peak = absValue;
-            }
-        }
-    }
-    return peak;
-}
-;
-function analyzePeak(node) {
-    if (node) {
-        const bufferSize = 128;
-        node.fftSize = bufferSize;
-        node.maxDecibels = 6;
-        node.minDecibels = -200;
-        let data = new Float32Array(bufferSize);
-        let debounce;
-        function loop(currentTime) {
-            if (node) {
-                clearTimeout(debounce);
-                debounce = setTimeout(() => {
-                    clearTimeout(debounce);
-                    node.getFloatTimeDomainData(data);
-                    const peakVal = peak(data);
-                    console.log(peakVal);
-                    requestAnimationFrame(loop);
-                }, 1000);
-            }
-        }
-        ;
-        loop(audioContext.currentTime);
-    }
-}
-;
-function analyze(node) {
-    if (node) {
-        const bufferSize = 128;
-        node.fftSize = bufferSize;
-        node.maxDecibels = 6;
-        node.minDecibels = -200;
-        let data = new Float32Array(bufferSize);
-        let debounce;
-        function loop(currentTime) {
-            if (node) {
-                clearTimeout(debounce);
-                debounce = setTimeout(() => {
-                    clearTimeout(debounce);
-                    node.getFloatTimeDomainData(data);
-                    const peakVal = peak(data);
-                    requestAnimationFrame(loop);
-                }, 1000);
-            }
-        }
-        ;
-        loop(audioContext.currentTime);
-    }
 }
 ;
 function clamp(input) {
     const processor = new AudioWorkletNode(audioContext, 'clamp-processor');
-    processor.port.onmessage = (event) => {
-        console.log('clamp-processor thread: ', event.data);
-    };
     input.connect(processor);
     return processor;
+}
+;
+function peakLevel(input, root, selector) {
+    if (root) {
+        const processor = new AudioWorkletNode(audioContext, 'peak-processor');
+        processor.port.onmessage = (event) => {
+            const level = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+        input.connect(processor);
+    }
+    else {
+        console.log('peak meter setup failed because root element not found');
+    }
+}
+;
+function RMSLevel(input, root, selector) {
+    if (root) {
+        const processor = new AudioWorkletNode(audioContext, 'RMS-processor');
+        processor.port.onmessage = (event) => {
+            const level = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+        input.connect(processor);
+    }
+    else {
+        console.log('RMS meter setup failed because root element not found');
+    }
+}
+function LUFSLevel(input, root, selector) {
+    if (root) {
+        const processor = new AudioWorkletNode(audioContext, 'LUFS-processor');
+        processor.port.onmessage = (event) => {
+            const level = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+        input.connect(processor);
+    }
+    else {
+        console.log('LUFS meter setup failed because root element not found');
+    }
 }
 ;
 function initMacros() {
@@ -249,12 +263,15 @@ function initMacros() {
 function initOscillators() {
     oscillators = {};
     const oscsNodeList = document.querySelectorAll('.oscs');
+    let count = 0;
     for (const osc of oscsNodeList) {
+        count += 1;
         const frequency = 65.4;
         const detune = -3;
         const partials = 256;
         const ID = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
+            osc.id = ID;
             const v = (macros['variance'] * (frequency / 20000));
             const timbFactor = .1;
             const stereoFactor = .15;
@@ -286,6 +303,7 @@ function initOscillators() {
                 'freq': frequency,
                 'detune': detune,
                 'waveform': waveform,
+                'meterID': `meter-${count}`,
             };
         }
         else {
@@ -1160,25 +1178,28 @@ function soundAll(update = 'all') {
             const postAnalyzer = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer);
             makeupGainNode.connect(postAnalyzer);
+            const seqOut = audioContext.createGain();
             const seqID = seqKeys[seqKeyIndex];
             if (seqID) {
                 const seqNode = setupSequencer(seqID, oscFreq, oscVoic, makeupGainNode);
                 if (typeof seqNode !== "boolean") {
-                    seqNode.connect(dry);
-                    seqNode.connect(wet);
+                    seqNode.connect(seqOut);
                 }
                 else {
                     console.log('sequencer setup failed');
-                    makeupGainNode.connect(dry);
-                    makeupGainNode.connect(wet);
+                    makeupGainNode.connect(seqOut);
                 }
             }
             else {
                 console.log('sequencer not found during setup');
-                makeupGainNode.connect(dry);
-                makeupGainNode.connect(wet);
+                makeupGainNode.connect(seqOut);
             }
             seqKeyIndex += 1;
+            seqOut.connect(dry);
+            seqOut.connect(wet);
+            const seqAnalyzer = audioContext.createAnalyser();
+            analysis[key].push(postAnalyzer);
+            seqOut.connect(seqAnalyzer);
         }
         let dryVal = 0;
         let wetVal = 1;
@@ -1221,13 +1242,54 @@ function soundAll(update = 'all') {
         brickwall.connect(masterGainNode);
         const clampOut = clamp(masterGainNode);
         clampOut.connect(audioContext.destination);
+        const masterAnalysis = audioContext.createAnalyser();
+        analysis['master'] = [];
+        analysis['master'].push(masterAnalysis);
+        masterGainNode.connect(masterAnalysis);
     }
     if (gotit && playback) {
         const keys = Object.keys(analysis);
-        const key = keys[0];
-        if (typeof key === 'string') {
+        for (let key of keys) {
             const nodeList = analysis[key];
             if (nodeList) {
+                if (key === 'master') {
+                    const out = nodeList[0];
+                    if (out) {
+                        peakLevel(out, meterMaster, 'true-peak-container');
+                        RMSLevel(out, meterMaster, 'RMS-container');
+                    }
+                }
+                else if (key === 'FX') {
+                    const pre = nodeList[0];
+                    if (pre) {
+                        RMSLevel(pre, meterFX, 'pre-peak-container');
+                    }
+                    const post = nodeList[1];
+                    if (post) {
+                        RMSLevel(post, meterFX, 'post-peak-container');
+                    }
+                }
+                else {
+                    const meterID = oscillators[key]['meterID'];
+                    const root = document.getElementById(meterID);
+                    if (root) {
+                        const pre = nodeList[0];
+                        if (pre) {
+                            RMSLevel(pre, root, 'pre-peak-container');
+                        }
+                        const post = nodeList[1];
+                        if (post) {
+                            RMSLevel(post, root, 'post-peak-container');
+                        }
+                        const seq = nodeList[2];
+                        if (seq) {
+                            RMSLevel(seq, root, 'seq-peak-container');
+                        }
+                    }
+                    else {
+                        console.log('oscillator meter setup failed due to missing oscillator element');
+                    }
+                }
             }
         }
         for (const voice of voices) {

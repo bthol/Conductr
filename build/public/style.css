@@ -7,7 +7,6 @@ body {
 .panel {
   display: flex;
   align-items: center;
-  gap: 6px;
 }
 
 .module {
@@ -44,6 +43,12 @@ body {
   margin: 10px 0px;
   border: 1.5px solid hsl(58, 94%, 48%);
   border-radius: 3px;
+}
+
+.border-alternate {
+  border: 1px solid hsl(240, 95%, 22%);
+  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
+  outline: 3px solid hsl(325, 31%, 33%);
 }
 
 .section-layout {
@@ -115,39 +120,36 @@ body {
     box-shadow: 0px 0px 0px 0px rgb(96, 104, 82);
   }
 }
-.indicator-light-label-layout {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: max-content;
-  margin-right: 18px;
-}
-
-.light-label {
-  margin: 0px 12px;
-  font-size: large;
-  cursor: default;
-}
-
-.indicator-light {
-  background: rgb(96, 104, 82);
-  border-radius: 100px;
-  height: 16px;
-  width: 16px;
-}
-
-#indicator-lights {
-  background-color: hsl(242, 16%, 63%);
-  border: 1px solid hsl(240, 95%, 22%);
-  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
-  outline: 3px solid hsl(325, 31%, 33%);
+.meter-container-style {
   padding: 8px;
-  margin: 10px 0px;
-  border-radius: 3px;
+  margin: 5px;
+  background: hsl(242, 16%, 63%);
 }
 
-#run-light {
-  animation: blink 1s linear infinite;
+.meter-gradation-style {
+  width: 50px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 5px;
+}
+
+.meter-gradation-style > .gradation {
+  height: 2.5px;
+  width: 25px;
+  background: rgb(96, 104, 82);
+}
+
+.gradation.on {
+  background: hsl(62, 86%, 47%);
+}
+
+.button {
+  padding: 8px;
+  margin: 5px;
+  border-radius: 3px;
+  background: hsl(235, 31%, 33%);
+  color: hsl(66, 100%, 50%);
 }
 
 /*# sourceMappingURL=style.css.map */

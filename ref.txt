@@ -135,5 +135,3 @@ Effect Types:
  - flanger
  - ring mod
  
-
-make dBFS and LUFS custom processors

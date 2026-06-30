@@ -43,9 +43,12 @@ window.electronAPI.res((data) => {
 // channelCountMode, ConstantSourceNode, AudioBufferSourceNode
 
 
-// setup audio context
+// create audio context
 const options: Object = {'sampleRate': 44100.0, 'latencyHint': 'interactive'};
 const audioContext: AudioContext = new AudioContext(options);
+
+// declare contant features
+const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 
 // Preset structures
 let macros: { [key: string]: any} = {
@@ -71,7 +74,7 @@ let sequencers: { [key: string]: any } = {}; // stores parameters for each seque
 // Playback structures
 let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
 let sequences: {[key:string]: ReturnType<typeof setTimeout> } = {}; // stores cache for sequencer schedule caches
-let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator, second index = analyzer node for that oscillator
+let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator or sequencer, second index = analyzer node for that oscillator
 
 // Status Booleans
 let playback: boolean = false; // stores the program run state (run: true, off: false)
@@ -80,6 +83,13 @@ let oscillatorsInitialized: boolean = false; // boolean for testing initializati
 let sequencersInitialized: boolean = false; // boolean for testing initialization status
 
 // DOM elements
+
+// Meters
+const meterMaster = document.getElementById('meter-master'); // master levels
+const meterFX = document.getElementById('meter-FX'); // FX levels
+const meter1 = document.getElementById('meter-1'); // 
+const meter2 = document.getElementById('meter-2'); // 
+const meter3 = document.getElementById('meter-3'); // 
 
 // Player Controls
 const masterGain = document.getElementById('master-gain') as HTMLInputElement; // Master Gain out
@@ -148,7 +158,77 @@ function renderLeveler(stages:number, levels:number, container:Element): void {
     }
 };
 
+function renderMeterLevel(level: number, root: HTMLElement | null, selector: string): void {
+    if (root) {
+        const container: HTMLElement | null = root.querySelector(`.${selector}`);
+        if (container) {
+            // remove old level
+            container.querySelector('.on')?.classList.remove('on');
+            // get new level
+            const NodeList: NodeListOf<HTMLElement> = container.querySelectorAll('.gradation');
+            let index: number = 0;
+            for (let i = 0; i < meterLevels.length; i++) {
+                const compare: number | undefined = meterLevels[i];
+                if (compare && compare === level) {
+                    index = i;
+                    break;
+                }
+            }
+            const node: HTMLElement | undefined = NodeList[index];
+            if (node) {
+                // add new level
+                node.classList.add('on');
+            } else {
+                console.log('meter level rerender failed due to missing level element');
+            }
+        } else {
+            console.log('meter level rerender failed due to faulty selector');
+        }
+    } else {
+        console.log('meter level rerender failed due to missing root element');
+    }
+};
+
 // waveshaper functions
+function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number {
+    // function purpose: calculate wave energy for automatic gain correction from waveshaper curve distortion
+
+    // Trapezoidal method of numerical definite integration for a discrete data set (data)
+    // The total interval of integration from a to b is divided into subintervals represented as trapezoids on their side
+
+    // returns 0 if there is an undefined value in data
+    // otherwise it returns the area of the wave off of equilibrium (a value of zero)
+    // a.k.a. total power of the wave
+
+    // Reimann's Integration is more efficient, but lacks the desired accuracy accomplished by the Trapezoidal Method
+    // Simpson's Rule is more accurate (using parabolas), but more computationally complex,
+    // especially since the Trapezoidal Method can be highly optimized for the use case of this function
+    // x axis = array index = time
+    // y axis = value at x index = amplitude
+    // it is possible to use uniform grid optimization
+    // becauase the data array is read at a constant rate,
+    // so change in x is constant,
+    // and no need for sorting x into incrimental order,
+    // because indexes already are in incrimental order
+    // Trapezoid Area = (b1 + b2)/2 * h
+    // Area = delta x * ( (y0 + yn)/2 + SUM(y1, ..., yn-1) )
+    // Area = ( (y0 + yn)/2 + SUM(y1, ..., yn-1) ) // since delta x is 1 and anything multiplied by 1 is itself
+    let Area: number = 0;
+    for (let i = 1; i < data.length - 1; i++) {
+        const y: number | undefined = data[i];
+        if (y === undefined) {return 0} else {
+            Area += Math.abs(y);
+        }
+    }
+    const first: number | undefined = data[0];
+    const last: number | undefined = data[data.length - 1];
+    if (first === undefined || last === undefined) {return 0} else {
+        Area += (Math.abs(first) + Math.abs(last)) / 2;
+    }
+
+    return Area;
+};
+
 function linear(): Float32Array<ArrayBuffer> {
     // line from -1 to 1
     const n_samples: number = 44100;
@@ -222,158 +302,28 @@ function sigmoid3(amount = 1): Float32Array<ArrayBuffer> {
     return curve;
 };
 
-// custom processors
-// I/O processor type convention: input type GainNode and output type GainNode
+// custom processor import function
 async function getProcessorModules(): Promise<void> {
     // collects all processor scripts by adding their modules to the global audio context
+    // runs on initial setup
     await audioContext.audioWorklet.addModule('./build/scripts/processors/clamp-processor.js');
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/peak-processor.js');
+    await audioContext.audioWorklet.addModule('./build/scripts/processors/RMS-processor.js');
     await audioContext.audioWorklet.addModule('./build/scripts/processors/LUFS-processor.js');
 };
 
-// Analysis Functions
-function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number {
-    // Trapezoidal method of numerical definite integration for a discrete data set (data)
-    // The total interval of integration from a to b is divided into subintervals represented as trapezoids on their side
+// Multi-thread Audio Processor Setup functions
 
-    // returns 0 if there is an undefined value in data
-    // otherwise it returns the area of the wave off of equilibrium (a value of zero)
-    // a.k.a. total power of the wave
-
-    // Reimann's Integration is more efficient, but lacks the desired accuracy accomplished by the Trapezoidal Method
-    // Simpson's Rule is more accurate (using parabolas), but more computationally complex,
-    // especially since the Trapezoidal Method can be highly optimized for the use case of this function
-    // x axis = array index = time
-    // y axis = value at x index = amplitude
-    // it is possible to use uniform grid optimization
-    // becauase the data array is read at a constant rate,
-    // so change in x is constant,
-    // and no need for sorting x into incrimental order,
-    // because indexes already are in incrimental order
-    // Trapezoid Area = (b1 + b2)/2 * h
-    // Area = delta x * ( (y0 + yn)/2 + SUM(y1, ..., yn-1) )
-    // Area = ( (y0 + yn)/2 + SUM(y1, ..., yn-1) ) // since delta x is 1 and anything multiplied by 1 is itself
-    let Area: number = 0;
-    for (let i = 1; i < data.length - 1; i++) {
-        const y: number | undefined = data[i];
-        if (y === undefined) {return 0} else {
-            Area += Math.abs(y);
-        }
-    }
-    const first: number | undefined = data[0];
-    const last: number | undefined = data[data.length - 1];
-    if (first === undefined || last === undefined) {return 0} else {
-        Area += (Math.abs(first) + Math.abs(last)) / 2;
-    }
-
-    return Area;
-};
-
-// calculates peak level
-function peak(data: Float32Array<ArrayBuffer>): number {
-    let peak: number = 0;
-    for (let i = 0; i < data.length; i++) {
-        const datum: number | undefined = data[i];
-        if (typeof datum === 'number') {
-            const absValue = Math.abs(datum);
-            if (absValue > peak) {
-                peak = absValue;
-            }
-        }
-    }
-    return peak;
-};
-
-// setup peak level analysis on node
-function analyzePeak(node: AnalyserNode | undefined): void {
-    // performs real-time analysis on peak value of data stream from analyser node
-    if (node) {
-        
-        const bufferSize: number = 128; // number of samples per second
-        node.fftSize = bufferSize;
-        node.maxDecibels = 6; // measure up to +6 dB to detect peaks over 0 dB
-        node.minDecibels = -200; // measure down to ensure detection of dynamic behavior
-        let data: Float32Array<ArrayBuffer> = new Float32Array(bufferSize);
-    
-        // console.log(audioContext.state); // should be "running"
-        // console.log(node); // should not be undefined + have updated properties
-
-        let debounce: ReturnType<typeof setTimeout>;
-        function loop(currentTime: number) {
-            if (node) {
-                clearTimeout(debounce);
-                debounce = setTimeout(() => {
-                    // cleanup timeout
-                    clearTimeout(debounce);
-                    // get data
-                    node.getFloatTimeDomainData(data);
-                    // calculate peak from data
-                    const peakVal: number = peak(data);
-
-                    // console.log(data);
-                    console.log(peakVal);
-
-                    requestAnimationFrame(loop);
-                }, 1000)
-            }
-        };
-    
-        loop(audioContext.currentTime);
-
-    }
-};
-
-// setup general analysis on node
-function analyze(node: AnalyserNode | undefined): void {
-    // performs real-time analysis on analyser node
-    // gets:
-    //  - peak value
-
-    if (node) {
-        
-        const bufferSize: number = 128; // number of samples per second
-        node.fftSize = bufferSize;
-        node.maxDecibels = 6; // measure up to +6 dB to detect peaks over 0 dB
-        node.minDecibels = -200; // measure down to ensure detection of dynamic behavior
-        let data: Float32Array<ArrayBuffer> = new Float32Array(bufferSize);
-    
-        // console.log(audioContext.state); // should be "running"
-        // console.log(node); // should not be undefined + have updated properties
-
-        let debounce: ReturnType<typeof setTimeout>;
-        function loop(currentTime: number) {
-            if (node) {
-                clearTimeout(debounce);
-                debounce = setTimeout(() => {
-                    // cleanup timeout
-                    clearTimeout(debounce);
-                    // get data
-                    node.getFloatTimeDomainData(data);
-                    // calculate peak from data
-                    const peakVal: number = peak(data);
-
-                    // console.log(data);
-                    // console.log(peakVal);
-
-                    requestAnimationFrame(loop);
-                }, 1000)
-            }
-        };
-    
-        loop(audioContext.currentTime);
-
-    }
-};
-
-// clamp procesor ensures no audio peaking over 0 dB at the sample level
+// clamp procesor eliminates audio peaking over 0 dB at the sample level
 function clamp(input: AudioNode): AudioWorkletNode {
 
     // create processor node
     const processor = new AudioWorkletNode(audioContext, 'clamp-processor');
 
     // setup worklet dev logs
-    processor.port.onmessage = (event) => {
-        console.log('clamp-processor thread: ', event.data);
-    };
+    // processor.port.onmessage = (event) => {
+    //     console.log('clamp-processor thread: ', event.data);
+    // };
 
     // connect input node to processor node
     input.connect(processor);
@@ -381,6 +331,184 @@ function clamp(input: AudioNode): AudioWorkletNode {
     // return worklet node for further routing
     return processor;
 };
+
+// Peak processor measures the peak level over a 128 sample window
+function peakLevel(input: AnalyserNode, root: HTMLElement | null, selector: string): void {
+    // prevent function on null root
+    if (root) {
+        // create processor node
+        const processor = new AudioWorkletNode(audioContext, 'peak-processor');
+        // processor.channelCountMode = 'explicit'; // use channel count
+        // processor.channelInterpretation = 'speakers'; // each channel is a different array
+        // processor.channelCount = 2; // 2 stereo channels
+    
+        // setup worklet dev logs
+        processor.port.onmessage = (event) => {
+            // use data here
+            // console.log('peak-processor thread: ', event.data);
+            // render GUI state with data
+            const level: number = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+    
+        // connect input nodes to processor node
+        input.connect(processor);
+    } else {
+        console.log('peak meter setup failed because root element not found');
+    }
+};
+
+// RMS processor measures the root mean square level over a 128 sample window
+function RMSLevel(input: AnalyserNode, root: HTMLElement | null, selector: string): void {
+    // prevent function on null root
+    if (root) {
+        // create processor node
+        const processor = new AudioWorkletNode(audioContext, 'RMS-processor');
+        // processor.channelCountMode = 'explicit'; // use channel count
+        // processor.channelInterpretation = 'speakers'; // each channel is a different array
+        // processor.channelCount = 2; // 2 stereo channels
+
+        // setup worklet dev logs
+        processor.port.onmessage = (event) => {
+            // use data here
+            // console.log('RMS-processor thread: ', event.data);
+            // render GUI state with data
+            const level: number = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+
+        // connect input nodes to processor node
+        input.connect(processor);
+    } else {
+        console.log('RMS meter setup failed because root element not found');
+    }
+}
+
+// LUFS procesor measures Loudness Units relative to Full Scale over a 128 sample window
+function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: string): void {
+    // prevent function on null root
+    if (root) {
+        // create processor node
+        const processor = new AudioWorkletNode(audioContext, 'LUFS-processor');
+        // processor.channelCountMode = 'explicit'; // use channel count
+        // processor.channelInterpretation = 'speakers'; // each channel is a different array
+        // processor.channelCount = 2; // 2 stereo channels
+
+        // setup worklet dev logs
+        processor.port.onmessage = (event) => {
+            // use data here
+            // console.log('LUFS-processor thread: ', event.data);
+            // render GUI state with data
+            const level: number = event.data.data;
+            renderMeterLevel(level, root, selector);
+        };
+
+        // connect input nodes to processor node
+        input.connect(processor);
+    } else {
+        console.log('LUFS meter setup failed because root element not found');
+    }
+};
+
+// Main Thread Analysis
+
+// // calculates peak level
+// function peakMain(data: Float32Array<ArrayBuffer>): number {
+//     let peak: number = 0;
+//     for (let i = 0; i < data.length; i++) {
+//         const datum: number | undefined = data[i];
+//         if (typeof datum === 'number') {
+//             const absValue = Math.abs(datum);
+//             if (absValue > peak) {
+//                 peak = absValue;
+//             }
+//         }
+//     }
+//     return peak;
+// };
+
+// // setup peak level analysis on node
+// function analyzePeakMain(node: AnalyserNode | undefined): void {
+//     // performs real-time analysis on peak value of data stream from analyser node
+//     if (node) {
+        
+//         const bufferSize: number = 128; // number of samples per second
+//         node.fftSize = bufferSize;
+//         node.maxDecibels = 6; // measure up to +6 dB to detect peaks over 0 dB
+//         node.minDecibels = -200; // measure down to ensure detection of dynamic behavior
+//         let data: Float32Array<ArrayBuffer> = new Float32Array(bufferSize);
+    
+//         // console.log(audioContext.state); // should be "running"
+//         // console.log(node); // should not be undefined + have updated properties
+
+//         let debounce: ReturnType<typeof setTimeout>;
+//         function loop(currentTime: number) {
+//             if (node) {
+//                 clearTimeout(debounce);
+//                 debounce = setTimeout(() => {
+//                     // cleanup timeout
+//                     clearTimeout(debounce);
+//                     // get data
+//                     node.getFloatTimeDomainData(data);
+//                     // calculate peak from data
+//                     const peakVal: number = peakMain(data);
+
+//                     // console.log(data);
+//                     console.log(peakVal);
+
+//                     requestAnimationFrame(loop);
+//                 }, 1000)
+//             }
+//         };
+    
+//         loop(audioContext.currentTime);
+
+//     }
+// };
+
+// // setup general analysis on node
+// function analyze(node: AnalyserNode | undefined): void {
+//     // performs real-time analysis on analyser node
+//     // gets:
+//     //  - peak value
+
+//     if (node) {
+        
+//         const bufferSize: number = 128; // number of samples per second
+//         node.fftSize = bufferSize;
+//         node.maxDecibels = 6; // measure up to +6 dB to detect peaks over 0 dB
+//         node.minDecibels = -200; // measure down to ensure detection of dynamic behavior
+//         let data: Float32Array<ArrayBuffer> = new Float32Array(bufferSize);
+    
+//         // console.log(audioContext.state); // should be "running"
+//         // console.log(node); // should not be undefined + have updated properties
+
+//         let debounce: ReturnType<typeof setTimeout>;
+//         function loop(currentTime: number) {
+//             if (node) {
+//                 clearTimeout(debounce);
+//                 debounce = setTimeout(() => {
+//                     // cleanup timeout
+//                     clearTimeout(debounce);
+//                     // get data
+//                     node.getFloatTimeDomainData(data);
+//                     // calculate peak from data
+//                     const peakVal: number = peakMain(data);
+
+//                     // console.log(data);
+//                     // console.log(peakVal);
+
+//                     requestAnimationFrame(loop);
+//                 }, 1000)
+//             }
+//         };
+    
+//         loop(audioContext.currentTime);
+
+//     }
+// };
+
+// Data Handling Functions
 
 // data initialization
 function initMacros(): void {
@@ -420,7 +548,9 @@ function initMacros(): void {
 function initOscillators(): void {
     oscillators = {}; // delete old data
     const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+    let count: number = 0;
     for (const osc of oscsNodeList) {
+        count += 1;
 
         // Model parameters
         const frequency: number = 65.4;
@@ -430,6 +560,8 @@ function initOscillators(): void {
         // Generate a unique Oscillator ID
         const ID: string | undefined = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
+            // apply ID to HTML element
+            osc.id = ID;
             // generate default waveform
             const v: number = (macros['variance'] * (frequency / 20000)); // maximum possible variation
             const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
@@ -477,6 +609,7 @@ function initOscillators(): void {
                 'freq':frequency, // 20 - 20,000
                 'detune':detune, // -24 - 24
                 'waveform':waveform, // periodic waveform
+                'meterID': `meter-${count}`,
             };
 
         } else {
@@ -1577,9 +1710,9 @@ function soundAll(update = 'all'): void {
             const waveform: PeriodicWave = oscil['waveform'];
             
             // generator process route map
-            // oscillator: voice > gain > waveshaper > makeup > dry
-            //             voice >      > preAnalyzer         > postAnalyzer
-            //             voice >                            > wet
+            // oscillator: voice > gain > waveshaper > makeup > sequencer    > gain > dry
+            //             voice >      > preAnalyzer         > postAnalyzer        > seqAnalyzer
+            //             voice >                                                  > wet
             //             voice >
             
             // create gain node to apply pre gain value
@@ -1656,26 +1789,31 @@ function soundAll(update = 'all'): void {
             makeupGainNode.connect(postAnalyzer);
 
             // get sequence data
+            const seqOut: GainNode = audioContext.createGain();
             const seqID: string | undefined = seqKeys[seqKeyIndex];
             if (seqID) {
                 const seqNode: BiquadFilterNode | boolean = setupSequencer(seqID, oscFreq, oscVoic, makeupGainNode);
                 if (typeof seqNode !== "boolean") {
                     // route to dry and wet gain nodes for FX chain through sequencer
-                    seqNode.connect(dry);
-                    seqNode.connect(wet);
+                    seqNode.connect(seqOut);
                 } else { // sequencer setup failed => bypass
                     // route to dry and wet gain nodes for FX chain bypassing sequencer
                     console.log('sequencer setup failed');
-                    makeupGainNode.connect(dry);
-                    makeupGainNode.connect(wet);
+                    makeupGainNode.connect(seqOut);
                 }
             } else {
                 // route to dry and wet gain nodes for FX chain bypassing sequencer
                 console.log('sequencer not found during setup');
-                makeupGainNode.connect(dry);
-                makeupGainNode.connect(wet);
+                makeupGainNode.connect(seqOut);
             }
             seqKeyIndex += 1;
+            seqOut.connect(dry);
+            seqOut.connect(wet);
+
+            // Analysis post sequence
+            const seqAnalyzer: AnalyserNode = audioContext.createAnalyser();
+            analysis[key].push(postAnalyzer) // store in global structure
+            seqOut.connect(seqAnalyzer);
         }
 
         // FX Process Route Map
@@ -1779,31 +1917,79 @@ function soundAll(update = 'all'): void {
         const clampOut: AudioWorkletNode = clamp(masterGainNode);
         clampOut.connect(audioContext.destination);
 
+        // output analysis
+        const masterAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['master'] = []; // initialize master analysis key
+        analysis['master'].push(masterAnalysis) // store in global structure
+        masterGainNode.connect(masterAnalysis);
+
     }
 
     // setup analysis
     if (gotit && playback) {
         const keys: Array<string> = Object.keys(analysis);
-        // start with first oscillator
-        const key: string | undefined = keys[0];
-        if (typeof key === 'string') {
+        for (let key of keys) {
             const nodeList: AnalyserNode[] | undefined = analysis[key];
             if (nodeList) {
                 // control which analyzers log data here
-
-                // analyze(nodeList[0]) // preAnalysis for osc1
-                // analyze(nodeList[1]) // postAnalysis for osc1
-
-                // analyze(nodeList[0]) // preAnalysis for osc2
-                // analyze(nodeList[1]) // postAnalysis for osc2
-
-                // analyze(nodeList[0]) // preAnalysis for osc3
-                // analyze(nodeList[1]) // postAnalysis for osc3
+                // analysis[keys[key]] = list of AnalyzerNodes
                 
-                // allstream logging (not reccomended; mixes data streams)
-                // for (const node of nodeList) {
-                //     analyze(node);
-                // }
+                // Analyzer Nodes
+                // generated ID key: pre analysis and post analysis for each oscillator
+                // 'FX' key : pre FX analysis and post FX analysis
+                // 'master' key:  master output analysis
+
+                if (key === 'master') {
+                    const out: AnalyserNode | undefined = nodeList[0];
+                    if (out) {
+                        // send to peak meter
+                        peakLevel(out, meterMaster, 'true-peak-container');
+                        // send to RMS meter
+                        RMSLevel(out, meterMaster, 'RMS-container');
+                        // send to LUFS meter
+                        // LUFSLevel(out, meterMaster, 'LUFS-container');
+                    }
+                } else if (key === 'FX') {
+                    // distinguish pre from post
+                    const pre: AnalyserNode | undefined = nodeList[0];
+                    if (pre) { // before FX chain
+                       // send to pre FX meter
+                       RMSLevel(pre, meterFX, 'pre-peak-container');
+                    }
+
+                    const post: AnalyserNode | undefined = nodeList[1];
+                    if (post) { // after FX chain
+                        // send to post FX meter
+                        RMSLevel(post, meterFX, 'post-peak-container');
+                    }
+                } else { // oscillator
+                    // get oscillator
+                    const meterID = oscillators[key]['meterID'];
+                    const root: HTMLElement | null = document.getElementById(meterID);
+                    if (root) {
+                        // distinguish pre from post from seq
+                        const pre: AnalyserNode | undefined = nodeList[0];
+                        if (pre) { // before distortion
+                            // send to section meter
+                            RMSLevel(pre, root, 'pre-peak-container');
+                        }
+    
+                        const post: AnalyserNode | undefined = nodeList[1];
+                        if (post) { // after distortion
+                            // send to gusto meter
+                            RMSLevel(post, root, 'post-peak-container');
+                        }
+                        
+                        const seq: AnalyserNode | undefined = nodeList[2];
+                        if (seq) { // after sequencer
+                            // send to wire meter
+                            RMSLevel(seq, root, 'seq-peak-container');
+                        }
+                    } else {
+                        console.log('oscillator meter setup failed due to missing oscillator element');
+                    }
+                }
+                
             }
         }
         

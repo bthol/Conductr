@@ -50,61 +50,63 @@ class ClampProcessor extends AudioWorkletProcessor {
     // }
 
     // iterate for number of outputs over inputs and outputs
-    for (let put = 0; put < outputs.length; put++) {
-      
-      // Take an input and an output at the same put index
-      const input: Float32Array<ArrayBufferLike>[] | undefined = inputs[put];
-      const output: Float32Array<ArrayBufferLike>[] | undefined = outputs[put];
-      
-      // check input and output types aren't undefined
-      if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
-        // count number of channels
-        // if (!this.logoff) {
-        //   this.lognum++;
-        //   if (this.lognum >= this.maxlog) {this.logoff = true};
-        //   this.port.postMessage({ msg: `input ${put} channels`, number: input.length, count:this.count});
-        //   this.port.postMessage({ msg: `output ${put} channels`, number: output.length, count:this.count});
-        // }
+    if (inputs.length > 0) {
+      for (let put = 0; put < outputs.length; put++) {
         
-        // iterate over all channels for each input and output at each put index
-        for (let channel = 0; channel < output.length; channel++) {
+        // Take an input and an output at the same put index
+        const input: Float32Array<ArrayBufferLike>[] | undefined = inputs[put];
+        const output: Float32Array<ArrayBufferLike>[] | undefined = outputs[put];
+        
+        // check input and output types aren't undefined
+        if (input && output && input.every(item => item instanceof Float32Array) && output.every(item => item instanceof Float32Array)) {
+          // count number of channels
+          // if (!this.logoff) {
+          //   this.lognum++;
+          //   if (this.lognum >= this.maxlog) {this.logoff = true};
+          //   this.port.postMessage({ msg: `input ${put} channels`, number: input.length, count:this.count});
+          //   this.port.postMessage({ msg: `output ${put} channels`, number: output.length, count:this.count});
+          // }
           
-          // each channel
-          const inputChannel: Float32Array<ArrayBufferLike> | undefined = input[channel];
-          const outputChannel: Float32Array<ArrayBufferLike> | undefined = output[channel];
-          
-          // check inputChannel and outputChannel types aren't undefined
-          if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
+          // iterate over all channels for each input and output at each put index
+          for (let channel = 0; channel < output.length; channel++) {
             
-            // input data in each channel
-            // if (!this.logoff) {
-            //   this.lognum++;
-            //   if (this.lognum >= this.maxlog) {this.logoff = true};
-            //   this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
-            // }
+            // each channel
+            const inputChannel: Float32Array<ArrayBufferLike> | undefined = input[channel];
+            const outputChannel: Float32Array<ArrayBufferLike> | undefined = output[channel];
             
-            // processes audio in chunks of 128 samples
-            // to prevent data loss by lengths greater than 128, iterate for number of samples in output channel
-            for (let i = 0; i < outputChannel.length; i++) {
-              // impliment logic for custom processing here
-              // this.processed++; // optional value to determine number of inputs processed
+            // check inputChannel and outputChannel types aren't undefined
+            if (inputChannel instanceof Float32Array && outputChannel instanceof Float32Array) {
               
-              // Clamp the audio sample between -1.0 and 1.0 (0 dB limit)
+              // input data in each channel
+              // if (!this.logoff) {
+              //   this.lognum++;
+              //   if (this.lognum >= this.maxlog) {this.logoff = true};
+              //   this.port.postMessage({ msg: `input ${put} channel ${channel} data`, data: inputChannel, count:this.count});
+              // }
               
-              // process input
-              const out: number = Math.max( -1.0, Math.min(1.0, Number(inputChannel[i]) ));
+              // processes audio in chunks of 128 samples
+              // to prevent data loss by lengths greater than 128, iterate for number of samples in output channel
+              for (let i = 0; i < outputChannel.length; i++) {
+                // impliment logic for custom processing here
+                // this.processed++; // optional value to determine number of inputs processed
+                
+                // Clamp the audio sample between -1.0 and 1.0 (0 dB limit)
+                
+                // process input
+                const out: number = Math.max( -1.0, Math.min(1.0, Number(inputChannel[i]) ));
+                
+                // assign to output
+                outputChannel[i] = out;
+              }
               
-              // assign to output
-              outputChannel[i] = out;
-            }
-            
-            // ouput data in each channel
-            // if (!this.logoff) {
-            //   this.lognum++;
-            //   if (this.lognum >= this.maxlog) {this.logoff = true};
-            //   this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
-            // }
+              // ouput data in each channel
+              // if (!this.logoff) {
+              //   this.lognum++;
+              //   if (this.lognum >= this.maxlog) {this.logoff = true};
+              //   this.port.postMessage({ msg: `output ${put} channel ${channel} data`, data: outputChannel, count:this.count});
+              // }
 
+            }
           }
         }
       }
