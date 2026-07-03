@@ -227,19 +227,20 @@ function initMacros() {
     macros['tempo'] = 128;
     macros['beatsPerMeasure'] = 4;
     macros['FortePiano'] = 1;
-    macros['creciendo'] = 1;
-    macros['expressivity'] = 4;
+    macros['creciendo'] = 0;
+    macros['expressivity'] = 0;
     macros['variance'] = 2;
     macros['driveMult'] = 1;
     macros['Attack'] = 3;
     macros['Sustain'] = 5;
     macros['Release'] = 4;
-    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) {
+    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) {
         masterGain.value = '75';
         masterPan.value = '0';
         DMControl.value = '1';
         FPControl.value = '1';
         CControl.value = '0';
+        EControl.value = '0';
         VControl.value = '2';
     }
     else {
@@ -1259,18 +1260,24 @@ function soundAll(update = 'all') {
             analysis[key].push(seqAnalyzer);
             seqOut.connect(seqAnalyzer);
         }
-        let dryVal = 0;
-        let wetVal = 1;
-        dry.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
+        const exp = macros['expressivity'];
+        const dryVal = exp > 1 ? .5 - ((exp - 1) / 2) : exp < 1 ? .5 + (.5 - (exp / 2)) : 0.5;
+        const wetVal = exp > 1 ? .5 + ((exp - 1) / 2) : exp < 1 ? .5 - (.5 - (exp / 2)) : 0.5;
+        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
         const FX = audioContext.createGain();
         FX.gain.value = 1;
+        const mix = audioContext.createGain();
+        const mixFactor = 1;
+        mix.gain.value = mixFactor;
         const preAnalysis = audioContext.createAnalyser();
         analysis['FX'] = [];
         analysis['FX'].push(preAnalysis);
-        wet.connect(preAnalysis);
         const postAnalysis = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis);
+        dry.connect(mix);
+        FX.connect(mix);
+        wet.connect(preAnalysis);
         FX.connect(postAnalysis);
         wet.connect(FX);
         const compressor = audioContext.createDynamicsCompressor();
@@ -1279,8 +1286,7 @@ function soundAll(update = 'all') {
         compressor.ratio.value = 3;
         compressor.attack.value = 0.05;
         compressor.release.value = 0.1;
-        dry.connect(compressor);
-        FX.connect(compressor);
+        mix.connect(compressor);
         const limiter = audioContext.createDynamicsCompressor();
         limiter.threshold.value = -6;
         limiter.knee.value = 3;
@@ -1578,6 +1584,17 @@ async function setup() {
             }
         });
         CControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll();
+                    listening = true;
+                }, latency);
+            }
+        });
+        EControl.addEventListener('input', () => {
             if (listening && playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {

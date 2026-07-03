@@ -492,8 +492,8 @@ function initMacros(): void {
     macros['beatsPerMeasure'] = 4; // 1 - 100
     // Conductor Macros
     macros['FortePiano'] = 1; // 0 - 2
-    macros['creciendo'] = 1; // 0 - 10
-    macros['expressivity'] = 4; // 1 - 10
+    macros['creciendo'] = 0; // -10 - 10
+    macros['expressivity'] = 0; // -10 - 10
     macros['variance'] = 2; // 1 - 10
     macros['driveMult'] = 1; // 1 - 10
     // dynamic modifiers
@@ -502,12 +502,13 @@ function initMacros(): void {
     macros['Release'] = 4; // 1 - 1
 
     // display
-    if (masterGain && masterPan && DMControl && FPControl && CControl && VControl) { // test element integrity
+    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
         masterGain.value = '75'; // 0 - 100
         masterPan.value = '0'; // -50 - 50
         DMControl.value = '1'; // -10 - 30
         FPControl.value = '1'; // -50 - 50
         CControl.value = '0'; // -10 - 10
+        EControl.value = '0'; // -10 - 10
         VControl.value = '2'; // 1 - 10
     } else {
         console.log('macro display initialization failed');
@@ -800,7 +801,7 @@ function updateMacros(): boolean {
             console.log('macro range error: creciendo/diminuendo');
         }
 
-        // Expressivity = Envelope Multiplier
+        // Expressivity = Dry Wet Control for FX Chain
         let expVal: number = Number(EControl.value);
         const expRange: number = 10;
         // enforce range
@@ -1705,7 +1706,7 @@ function soundAll(update = 'all'): void {
 
         // create out nodes to route to after each voice generation
         const dry: GainNode = audioContext.createGain(); // no FX
-        const wet: GainNode = audioContext.createGain(); // FX
+        const wet: GainNode = audioContext.createGain(); // FX startpoint
 
         // iterate over every oscillator
         const oscKeys: Array<string> = Object.keys(oscillators);
@@ -1843,30 +1844,41 @@ function soundAll(update = 'all'): void {
         }
 
         // FX Process Route Map
-        // Dry              > out
-        // Wet > chain > FX > out
+        // Dry              > mix
+        // Wet > chain > FX > mix
 
-        // dry and wet ammount should combine to 1
-        
-        let dryVal: number = 0; // store dry ammount
-        let wetVal: number = 1; // store wet ammount
+        // expressivity control range : -10 - 10 => 0 - 2
+        // control :   dry    ,  wet
+        // 1 - 2   :  .5 - 0  , .5 - 1
+        // 0 - 1   :  1 - .5  , 0 - .5
+        const exp: number = macros['expressivity']; // 0 - 2
+        const dryVal: number = exp > 1 ? .5 - ((exp - 1)/2)  : exp < 1 ? .5 + (.5 - (exp/2)) : 0.5; // store dry ammount
+        const wetVal: number = exp > 1 ? .5 + ((exp - 1)/2)  : exp < 1 ? .5 - (.5 - (exp/2)) : 0.5; // store wet ammount
         // adjust ammount by number of unmuted oscilators
-        dry.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
+        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
 
         const FX: GainNode = audioContext.createGain(); // FX chain endpoint
         FX.gain.value = 1; // ensure level is not affected
+
+        const mix: GainNode = audioContext.createGain(); // dry + FX endpoint
+        const mixFactor: number = 1;
+        mix.gain.value = mixFactor;
 
         // before FX
         const preAnalysis: AnalyserNode = audioContext.createAnalyser();
         analysis['FX'] = []; // init key for osc in structure
         analysis['FX'].push(preAnalysis) // store in global structure
-        wet.connect(preAnalysis);
-
+        
         // after FX
         const postAnalysis: AnalyserNode = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis) // store in global structure
-        FX.connect(postAnalysis);
+        
+        // route nodes
+        dry.connect(mix); // add to mix
+        FX.connect(mix); // add to mix
+        wet.connect(preAnalysis); // pre analysis
+        FX.connect(postAnalysis); // post analysis
 
         // FX Chain
 
@@ -1887,8 +1899,7 @@ function soundAll(update = 'all'): void {
         wet.connect(FX); // bypass FX chain
 
         // Master Process Route Map
-        // Dry > 3Comp > Master Gain > clamp > out
-        // FX  > 
+        // Mix > 3Comp > Master Gain > clamp > out
 
         // 3Comp: generator dynamics system
         // -12 dB - -3 dB total range before brickwall
@@ -1914,8 +1925,7 @@ function soundAll(update = 'all'): void {
         compressor.ratio.value = 3;       // 1:3 ratio
         compressor.attack.value = 0.05;   // 1:2 with release
         compressor.release.value = 0.1;   // slows release to bring up lower dynamics
-        dry.connect(compressor);
-        FX.connect(compressor);
+        mix.connect(compressor);
         
         // soft limit before critical range
         const limiter: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
@@ -2333,6 +2343,19 @@ async function setup(): Promise<void> {
     
         // controls intensity
         CControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+        
+        // controls wet/dry for whole FX Chain
+        EControl.addEventListener('input', () => {
             if (listening && playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
