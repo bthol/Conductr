@@ -148,6 +148,10 @@ $lvl-number: 2; // number of levels in a stage
     background: index.$color-off;
 }
 
+.meter-set-label {
+    height: 25px;
+}
+
 .gradation.on {
     background: index.$color-on;
 }

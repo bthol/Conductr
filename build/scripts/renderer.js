@@ -219,7 +219,6 @@ function RMSLevel(input, root, selector) {
         const processor = new AudioWorkletNode(audioContext, 'RMS-processor');
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
-            console.log('RMS-processor thread: ', event.data);
             const level = event.data.data;
             renderMeterLevel(level, root, selector);
         };
@@ -696,11 +695,9 @@ function updateOscillator(oscID) {
                 const phaze = Math.pow(Math.E, phi);
                 const real = new Float32Array(partialsVal);
                 const imag = new Float32Array(partialsVal);
-                let waveform;
+                let waveform = [];
                 if (type === 'sine') {
-                    real[1] = 1 * Math.cos(phaze);
-                    imag[1] = 1 * Math.sin(phaze);
-                    waveform = audioContext.createPeriodicWave(real, imag);
+                    imag[1] = 1;
                 }
                 else if (type === 'triangle') {
                     for (let n = 1; n < partialsVal + 1; n++) {
@@ -716,7 +713,6 @@ function updateOscillator(oscID) {
                         }
                         real[n] = 0;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'saw') {
                     for (let n = 1; n < partialsVal + 1; n++) {
@@ -725,10 +721,9 @@ function updateOscillator(oscID) {
                         const out = partial - timbCalc;
                         imag[n] = out;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'square') {
-                    for (let n = 0; n < partialsVal; n++) {
+                    for (let n = 1; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial = 4 / (n * Math.PI);
                             const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01;
@@ -739,7 +734,6 @@ function updateOscillator(oscID) {
                             imag[n] = 0;
                         }
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.5') {
                     let a = 0;
@@ -751,7 +745,6 @@ function updateOscillator(oscID) {
                         imag[i] = out;
                         b *= .5;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.25') {
                     let a = 0;
@@ -763,7 +756,6 @@ function updateOscillator(oscID) {
                         imag[i] = out;
                         b *= .25;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.125') {
                     let a = 0;
@@ -775,7 +767,6 @@ function updateOscillator(oscID) {
                         imag[i] = out;
                         b *= .125;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else if (type === 'inf-conv-geo-series-0.0625') {
                     let a = 0;
@@ -787,12 +778,79 @@ function updateOscillator(oscID) {
                         imag[i] = out;
                         b *= .0625;
                     }
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 else {
-                    real[0] = 0;
-                    imag[0] = 0;
                     imag[1] = 1;
+                }
+                real[0] = 0;
+                imag[0] = 0;
+                let maxPeak = 0;
+                const r = real[0];
+                const i = imag[0];
+                let fallback = false;
+                if (r !== undefined && i !== undefined) {
+                    maxPeak += Math.sqrt(r ** 2 + i ** 2);
+                    for (let p = 1; p < partialsVal; p++) {
+                        const r = real[p];
+                        const i = imag[p];
+                        if (r !== undefined && i !== undefined) {
+                            const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                            maxPeak += amp;
+                        }
+                        else {
+                            fallback = true;
+                            break;
+                        }
+                    }
+                    const targetPeak = 1.0;
+                    const scalingFactor = targetPeak / maxPeak;
+                    const normReal = new Float32Array(partialsVal);
+                    const normImag = new Float32Array(partialsVal);
+                    for (let i = 0; i < real.length; i++) {
+                        let rea = real[i];
+                        let ima = imag[i];
+                        if (rea !== undefined && ima !== undefined) {
+                            normReal[i] = rea * scalingFactor;
+                            normImag[i] = ima * scalingFactor;
+                        }
+                        else {
+                            fallback = true;
+                            break;
+                        }
+                    }
+                    let componentAmps = new Float32Array(partialsVal);
+                    for (let c = 0; c < real.length; c++) {
+                        const r = normReal[c];
+                        const i = normImag[c];
+                        if (r !== undefined && i !== undefined) {
+                            const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                            componentAmps[c] = amp;
+                        }
+                    }
+                    const E = meanSquare(componentAmps);
+                    const upperEnergyThreshhold = 0.0009765625;
+                    const lowerEnergyThreshhold = 0.0000969;
+                    const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+                    const realE = new Float32Array(partialsVal);
+                    const imagE = new Float32Array(partialsVal);
+                    for (let c = 0; c < real.length; c++) {
+                        const r = normReal[c];
+                        const i = normImag[c];
+                        if (i !== undefined && r !== undefined) {
+                            realE[c] = r * EFactor;
+                            imagE[c] = i * EFactor;
+                        }
+                    }
+                    if (!fallback) {
+                        console.log('custom normalization implemented');
+                        waveform = audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
+                    }
+                }
+                else {
+                    fallback = true;
+                }
+                if (fallback) {
+                    console.log('fell back to default normalization');
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
                 oscillators[oscID]['waveform'] = waveform;
@@ -1139,6 +1197,7 @@ function soundAll(update = 'all') {
         const oscKeysLength = oscKeys.length;
         const seqKeys = Object.keys(sequencers);
         let seqKeyIndex = 0;
+        let mutedOscillatorCount = 0;
         for (const key of oscKeys) {
             const oscil = oscillators[key];
             const oscVoic = oscil['oscVoices'];
@@ -1148,6 +1207,9 @@ function soundAll(update = 'all') {
             const oscDrive = oscil['drive'];
             const oscDriCh = oscil['driveCharacter'];
             const waveform = oscil['waveform'];
+            if (oscVol === 0) {
+                mutedOscillatorCount += 1;
+            }
             const gainNode = audioContext.createGain();
             gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic;
             for (let v = 0; v < oscVoic; v++) {
@@ -1217,13 +1279,13 @@ function soundAll(update = 'all') {
             seqOut.connect(dry);
             seqOut.connect(wet);
             const seqAnalyzer = audioContext.createAnalyser();
-            analysis[key].push(postAnalyzer);
+            analysis[key].push(seqAnalyzer);
             seqOut.connect(seqAnalyzer);
         }
         let dryVal = 0;
         let wetVal = 1;
-        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength;
-        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength;
+        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
         const FX = audioContext.createGain();
         FX.gain.value = 1;
         const preAnalysis = audioContext.createAnalyser();
@@ -1281,9 +1343,11 @@ function soundAll(update = 'all') {
                 else if (key === 'FX') {
                     const pre = nodeList[0];
                     if (pre) {
+                        RMSLevel(pre, meterFX, 'pre-peak-container');
                     }
                     const post = nodeList[1];
                     if (post) {
+                        RMSLevel(post, meterFX, 'post-peak-container');
                     }
                 }
                 else {
@@ -1292,12 +1356,15 @@ function soundAll(update = 'all') {
                     if (root) {
                         const pre = nodeList[0];
                         if (pre) {
+                            RMSLevel(pre, root, 'pre-peak-container');
                         }
                         const post = nodeList[1];
                         if (post) {
+                            RMSLevel(post, root, 'post-peak-container');
                         }
                         const seq = nodeList[2];
                         if (seq) {
+                            RMSLevel(seq, root, 'seq-peak-container');
                         }
                     }
                     else {

@@ -231,7 +231,7 @@ function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number 
 };
 
 function meanSquare(data: Float32Array<ArrayBuffer>): number {
-    // mean square of data represents total energy of waveform
+    // mean square of data represents average energy of waveform
     const ms: number = data.reduce((accumulator:number, value:number) => {return accumulator + value**2}, 0);
     return ms / data.length;
 };
@@ -381,7 +381,7 @@ function RMSLevel(input: AnalyserNode, root: HTMLElement | null, selector: strin
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
             // use data here
-            console.log('RMS-processor thread: ', event.data);
+            // console.log('RMS-processor thread: ', event.data);
             // render GUI state with data
             const level: number = event.data.data;
             renderMeterLevel(level, root, selector);
@@ -1085,31 +1085,18 @@ function updateOscillator(oscID: string): boolean {
                 }
 
                 // generate waveform
-                // e^i*phi
+                // e^i*phi = cos(phi) + i*sin(phi)
                 const phi: number = (1 + stereoV * 30) * Math.PI/180; // 1 - 46 deg => radians
                 const phaze: number = Math.pow(Math.E, phi); // (vertical phaze; k-phase; k-scalar) stereo varation => % max degrees => radian phaze shift
                 const real: Float32Array = new Float32Array(partialsVal); // real coefficients
                 const imag: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
-                let waveform: PeriodicWave; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
+                let waveform: PeriodicWave = []; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
                 if (type === 'sine') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // set partial
-                    real[1] = 1 * Math.cos(phaze);
-                    imag[1] = 1 * Math.sin(phaze);
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
+                    // real[1] = 1;
+                    imag[1] = 1;
 
                 } else if (type === 'triangle') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     for (let n = 1; n < partialsVal + 1; n++) {
                         if (n % 2 !== 0) {
@@ -1129,15 +1116,7 @@ function updateOscillator(oscID: string): boolean {
                         real[n] = 0;
                     }
 
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
-
                 } else if (type === 'saw') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     for (let n = 1; n < partialsVal + 1; n++) {
                         const partial: number = 1 / (n * Math.PI);
@@ -1145,18 +1124,10 @@ function updateOscillator(oscID: string): boolean {
                         const out: number = partial - timbCalc;
                         imag[n] = out;
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
-
+                    
                 } else if (type === 'square') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
-                    // generate partials
-                    for (let n = 0; n < partialsVal; n++) {
+                    // generate partials for waveform type
+                    for (let n = 1; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial: number = 4 / (n * Math.PI); // Fourier series coefficient for square wave
                             const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor -.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
@@ -1166,16 +1137,8 @@ function updateOscillator(oscID: string): boolean {
                             imag[n] = 0;
                         }
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
                     
                 } else if (type === 'inf-conv-geo-series-0.5') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
@@ -1186,16 +1149,8 @@ function updateOscillator(oscID: string): boolean {
                         imag[i] = out;
                         b *= .5;
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
                 
                 } else if (type === 'inf-conv-geo-series-0.25') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
@@ -1206,15 +1161,8 @@ function updateOscillator(oscID: string): boolean {
                         imag[i] = out;
                         b *= .25;
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
+                
                 } else if (type === 'inf-conv-geo-series-0.125') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
@@ -1225,16 +1173,8 @@ function updateOscillator(oscID: string): boolean {
                         imag[i] = out;
                         b *= .125;
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
-
+                
                 } else if (type === 'inf-conv-geo-series-0.0625') {
-                    // DC offset (horizontal phaze)
-                    // automatically set to 0 by setPeriodicWave method
-                    // real[0] = 0;
-                    // imag[0] = 0;
-
                     // generate partials
                     let a: number = 0;
                     let b: number = 1;
@@ -1245,21 +1185,110 @@ function updateOscillator(oscID: string): boolean {
                         imag[i] = out;
                         b *= .0625;
                     }
-
-                    // use partial data to create custom waveform
-                    waveform = audioContext.createPeriodicWave(real, imag);
-
+                
                 } else {
                     // if no type detected, default to sine waveform
 
-                    // DC offset
-                    real[0] = 0;
-                    imag[0] = 0;
-
                     // set partial
+                    // real[1] = 1;
                     imag[1] = 1;
+                }
 
-                    // use partial data to create custom waveform
+                // DC offset (horizontal phaze)
+                // automatically set to 0 by setPeriodicWave method
+                real[0] = 0;
+                imag[0] = 0;
+
+                // get peak value
+                // from fourier coefficients
+                let maxPeak: number = 0;
+                // handle first coefficients (DC offset)
+                const r: number | undefined = real[0];
+                const i: number | undefined = imag[0];
+                // controls fallback to defualt Web Audio API normalization
+                let fallback: boolean = false;
+                if (r !== undefined && i !== undefined) {
+                    maxPeak += Math.sqrt(r**2 + i**2);
+                    for (let p = 1; p < partialsVal; p++) {
+                        // use pythogorean formula to calculate amplitude of each partial
+                        const r: number | undefined = real[p];
+                        const i: number | undefined = imag[p];
+                        if (r !== undefined && i !== undefined) {
+                            const amp: number = 2*Math.sqrt(r**2 + i**2);
+                            maxPeak += amp; // accumulate component amplitude
+                        } else {
+                            fallback = true;
+                            break;
+                        }
+                    }
+                    
+                    // normalize to target peak value
+                    const targetPeak = 1.0;
+                    const scalingFactor = targetPeak / maxPeak;
+                    const normReal: Float32Array = new Float32Array(partialsVal); // real coefficients
+                    const normImag: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
+                    for (let i = 0; i < real.length; i++) {
+                        let rea: number | undefined = real[i];
+                        let ima: number | undefined = imag[i];
+                        if (rea !== undefined && ima !== undefined) {
+                            normReal[i] = rea * scalingFactor;
+                            normImag[i] = ima * scalingFactor;
+                        } else {
+                            fallback = true;
+                            break;
+                        }
+                    }
+                    
+                    // collect component amplitudes from normalized fourier coefficients
+                    let componentAmps: Float32Array<ArrayBuffer> = new Float32Array(partialsVal);
+                    for (let c = 0; c < real.length; c++) {
+                        const r: number | undefined = normReal[c];
+                        const i: number | undefined = normImag[c];
+                        if (r !== undefined && i !== undefined) {
+                            // calculate component amplitude
+                            const amp: number = 2*Math.sqrt(r**2 + i**2);
+                            // add component amplitude to array
+                            componentAmps[c] = amp;
+                        }
+                    }
+
+                    // calculate average energy in one waveform cycle
+                    const E: number = meanSquare(componentAmps);
+
+                    // adjust average energy to be between upper and lower energy threshold
+                    // 0.25 is -12 dB on meter scale
+                    // √2/8 is -15 dB on meter scale
+                    // 0.03125 is -30 dB on meter scale
+                    // 0.0009765625 is -60 dB on meter scale
+                    // 0.0000969 is -80 dB on meter scale
+                    const upperEnergyThreshhold: number = 0.0009765625; // -60 dB
+                    const lowerEnergyThreshhold: number = 0.0000969; // -80 dB
+                    const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+                    const realE: Float32Array = new Float32Array(partialsVal); // real coefficients
+                    const imagE: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
+                    for (let c = 0; c < real.length; c++) {
+                        const r: number | undefined = normReal[c];
+                        const i: number | undefined = normImag[c];
+                        if (i !== undefined && r !== undefined) {
+                            realE[c] = r*EFactor;
+                            imagE[c] = i*EFactor;
+                        }
+                    }
+
+                    // use waveform data to create custom waveform
+                    if (!fallback) {
+                        // use custom normalization
+                        // console.log('custom normalization implemented');
+                        waveform = audioContext.createPeriodicWave(realE, imagE, {disableNormalization: true});
+                    }
+                } else {
+                    fallback = true;
+                }
+                
+                // use waveform data to create custom waveform
+                if (fallback) {
+                    // fallback to default normalization
+                    console.log('fell back to default normalization');
                     waveform = audioContext.createPeriodicWave(real, imag);
                 }
 
@@ -1706,7 +1735,7 @@ function soundAll(update = 'all'): void {
         }
     }
 
-    // generate voices from data
+    // generate voices from data + setup node routing
     if (gotit && playback) {
 
         // console.log(macros);
@@ -1722,6 +1751,7 @@ function soundAll(update = 'all'): void {
         const oscKeysLength: number = oscKeys.length;
         const seqKeys: Array<string> = Object.keys(sequencers);
         let seqKeyIndex: number = 0;
+        let mutedOscillatorCount: number = 0;
         for (const key of oscKeys) {
     
             // collect oscillator properties
@@ -1733,6 +1763,10 @@ function soundAll(update = 'all'): void {
             const oscDrive: number = oscil['drive'];
             const oscDriCh: string = oscil['driveCharacter'];
             const waveform: PeriodicWave = oscil['waveform'];
+
+            if (oscVol === 0) {
+                mutedOscillatorCount += 1;
+            }
             
             // generator process route map
             // oscillator: voice > gain > waveshaper > makeup > sequencer    > gain > dry
@@ -1787,13 +1821,14 @@ function soundAll(update = 'all'): void {
                 }
                 waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
                 waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
-                const referenceLine: Float32Array<ArrayBuffer> = linear();
                 // Calculate the power difference and set makeup gain value to a corrective factor
                 // i = total input power  = integration of line with 1 to 1 slope between gain and amplitude
                 // f = total output power = integration of the waveshaper curve
                 // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
                 // reciprocal of factor: 1/(1+(f-i)/i)
 
+                const referenceLine: Float32Array<ArrayBuffer> = linear();
+                
                 // numerical integration method
                 // const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
                 // const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
@@ -1846,7 +1881,7 @@ function soundAll(update = 'all'): void {
 
             // Analysis post sequence
             const seqAnalyzer: AnalyserNode = audioContext.createAnalyser();
-            analysis[key].push(postAnalyzer) // store in global structure
+            analysis[key].push(seqAnalyzer) // store in global structure
             seqOut.connect(seqAnalyzer);
         }
 
@@ -1858,8 +1893,9 @@ function soundAll(update = 'all'): void {
         
         let dryVal: number = 0; // store dry ammount
         let wetVal: number = 1; // store wet ammount
-        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / oscKeysLength; // adjust ammount by number of oscilators
-        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / oscKeysLength; // adjust ammount by number of oscilators
+        // adjust ammount by number of unmuted oscilators
+        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
 
         const FX: GainNode = audioContext.createGain(); // FX chain endpoint
         FX.gain.value = 1; // ensure level is not affected
@@ -1988,13 +2024,13 @@ function soundAll(update = 'all'): void {
                     const pre: AnalyserNode | undefined = nodeList[0];
                     if (pre) { // before FX chain
                        // send to pre FX meter
-                    //    RMSLevel(pre, meterFX, 'pre-peak-container');
+                       RMSLevel(pre, meterFX, 'pre-peak-container');
                     }
 
                     const post: AnalyserNode | undefined = nodeList[1];
                     if (post) { // after FX chain
                         // send to post FX meter
-                        // RMSLevel(post, meterFX, 'post-peak-container');
+                        RMSLevel(post, meterFX, 'post-peak-container');
                     }
                 } else { // oscillator
                     // get oscillator
@@ -2005,19 +2041,19 @@ function soundAll(update = 'all'): void {
                         const pre: AnalyserNode | undefined = nodeList[0];
                         if (pre) { // before distortion
                             // send to section meter
-                            // RMSLevel(pre, root, 'pre-peak-container');
+                            RMSLevel(pre, root, 'pre-peak-container');
                         }
     
                         const post: AnalyserNode | undefined = nodeList[1];
                         if (post) { // after distortion
                             // send to gusto meter
-                            // RMSLevel(post, root, 'post-peak-container');
+                            RMSLevel(post, root, 'post-peak-container');
                         }
                         
                         const seq: AnalyserNode | undefined = nodeList[2];
                         if (seq) { // after sequencer
                             // send to wire meter
-                            // RMSLevel(seq, root, 'seq-peak-container');
+                            RMSLevel(seq, root, 'seq-peak-container');
                         }
                     } else {
                         console.log('oscillator meter setup failed due to missing oscillator element');

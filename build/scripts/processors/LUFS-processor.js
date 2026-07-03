@@ -33,7 +33,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
                             const n = inputChannel.length;
                             const MS = powerSum / n;
                             const LUFS = 0;
-                            const logConvert = Math.log(LUFS) * 8.65617;
+                            const logConvert = Math.log(LUFS) * 8.65617025;
                             const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
                             let index = 0;
                             for (let i = 0; i < levels.length; i++) {
