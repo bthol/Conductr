@@ -191,45 +191,6 @@ function renderMeterLevel(level: number, root: HTMLElement | null, selector: str
 };
 
 // waveshaper functions
-function integrateNumericalTrapezoidal(data: Float32Array<ArrayBuffer>): number {
-    // function purpose: calculate wave energy for automatic gain correction from waveshaper curve distortion
-
-    // Trapezoidal method of numerical definite integration for a discrete data set (data)
-    // The total interval of integration from a to b is divided into subintervals represented as trapezoids on their side
-
-    // returns 0 if there is an undefined value in data
-    // otherwise it returns the area of the wave off of equilibrium (a value of zero)
-    // a.k.a. total power of the wave
-
-    // Reimann's Integration is more efficient, but lacks the desired accuracy accomplished by the Trapezoidal Method
-    // Simpson's Rule is more accurate (using parabolas), but more computationally complex,
-    // especially since the Trapezoidal Method can be highly optimized for the use case of this function
-    // x axis = array index = time
-    // y axis = value at x index = amplitude
-    // it is possible to use uniform grid optimization
-    // becauase the data array is read at a constant rate,
-    // so change in x is constant,
-    // and no need for sorting x into incrimental order,
-    // because indexes already are in incrimental order
-    // Trapezoid Area = (b1 + b2)/2 * h
-    // Area = delta x * ( (y0 + yn)/2 + SUM(y1, ..., yn-1) )
-    // Area = ( (y0 + yn)/2 + SUM(y1, ..., yn-1) ) // since delta x is 1 and anything multiplied by 1 is itself
-    let Area: number = 0;
-    for (let i = 1; i < data.length - 1; i++) {
-        const y: number | undefined = data[i];
-        if (y === undefined) {return 0} else {
-            Area += Math.abs(y);
-        }
-    }
-    const first: number | undefined = data[0];
-    const last: number | undefined = data[data.length - 1];
-    if (first === undefined || last === undefined) {return 0} else {
-        Area += (Math.abs(first) + Math.abs(last)) / 2;
-    }
-
-    return Area;
-};
-
 function meanSquare(data: Float32Array<ArrayBuffer>): number {
     // mean square of data represents average energy of waveform
     const ms: number = data.reduce((accumulator:number, value:number) => {return accumulator + value**2}, 0);
@@ -1828,10 +1789,6 @@ function soundAll(update = 'all'): void {
                 // reciprocal of factor: 1/(1+(f-i)/i)
 
                 const referenceLine: Float32Array<ArrayBuffer> = linear();
-                
-                // numerical integration method
-                // const initialPower: number = integrateNumericalTrapezoidal(referenceLine);
-                // const finalPower: number = integrateNumericalTrapezoidal(waveshaperCurve);
 
                 // statistical method
                 const initialPower: number = meanSquare(referenceLine);
@@ -1894,8 +1851,8 @@ function soundAll(update = 'all'): void {
         let dryVal: number = 0; // store dry ammount
         let wetVal: number = 1; // store wet ammount
         // adjust ammount by number of unmuted oscilators
-        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
+        dry.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
 
         const FX: GainNode = audioContext.createGain(); // FX chain endpoint
         FX.gain.value = 1; // ensure level is not affected

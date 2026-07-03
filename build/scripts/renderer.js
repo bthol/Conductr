@@ -104,28 +104,6 @@ function renderMeterLevel(level, root, selector) {
     }
 }
 ;
-function integrateNumericalTrapezoidal(data) {
-    let Area = 0;
-    for (let i = 1; i < data.length - 1; i++) {
-        const y = data[i];
-        if (y === undefined) {
-            return 0;
-        }
-        else {
-            Area += Math.abs(y);
-        }
-    }
-    const first = data[0];
-    const last = data[data.length - 1];
-    if (first === undefined || last === undefined) {
-        return 0;
-    }
-    else {
-        Area += (Math.abs(first) + Math.abs(last)) / 2;
-    }
-    return Area;
-}
-;
 function meanSquare(data) {
     const ms = data.reduce((accumulator, value) => { return accumulator + value ** 2; }, 0);
     return ms / data.length;
@@ -842,7 +820,6 @@ function updateOscillator(oscID) {
                         }
                     }
                     if (!fallback) {
-                        console.log('custom normalization implemented');
                         waveform = audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
                     }
                 }
@@ -1284,8 +1261,8 @@ function soundAll(update = 'all') {
         }
         let dryVal = 0;
         let wetVal = 1;
-        dry.gain.value = oscKeysLength === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
+        dry.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        wet.gain.value = oscKeysLength === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
         const FX = audioContext.createGain();
         FX.gain.value = 1;
         const preAnalysis = audioContext.createAnalyser();
