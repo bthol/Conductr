@@ -514,10 +514,10 @@ function updateMacros() {
             macros['driveMult'] = 1;
         }
         else if (driveMultiplier > 0) {
-            macros['driveMult'] = 1 + (driveMultiplier / driveMultGran * macros['creciendo']);
+            macros['driveMult'] = (1 + driveMultiplier / driveMultGran) * macros['creciendo'];
         }
         else if (driveMultiplier < 0) {
-            macros['driveMult'] = 1 + (driveMultiplier / driveMultGran * macros['creciendo']);
+            macros['driveMult'] = (1 + driveMultiplier / driveMultGran) * macros['creciendo'];
         }
         else {
             macros['driveMult'] = 1;
@@ -541,10 +541,10 @@ function updateMacros() {
             macros['FortePiano'] = 1;
         }
         else if (inVal > 0) {
-            macros['FortePiano'] = 1 + (inVal / inRange * macros['creciendo']);
+            macros['FortePiano'] = (1 + inVal / inRange) * macros['creciendo'];
         }
         else if (inVal < 0) {
-            macros['FortePiano'] = 1 + (inVal / inRange * macros['creciendo']);
+            macros['FortePiano'] = (1 + inVal / inRange) * macros['creciendo'];
         }
         else {
             macros['FortePiano'] = 1;
@@ -560,7 +560,12 @@ function updateMacros() {
         else if (inVal % 1 !== 0) {
             inVal = Math.ceil(inVal);
         }
-        macros['variance'] = vary * macros['creciendo'];
+        if (vary === 1) {
+            macros['variance'] = 0;
+        }
+        else {
+            macros['variance'] = vary * macros['creciendo'];
+        }
         return true;
     }
     else {
@@ -603,16 +608,16 @@ function updateOscillator(oscID) {
                 const type = oscType.value;
                 const v = (macros['variance'] * (freq / 20000));
                 const gainFactor = .25;
+                const freqFactor = .5;
+                const stereoFactor = .15;
+                const timbFactor = .1;
                 const gainV = Math.random() * v * gainFactor;
+                const freqV = Math.random() * v * freqFactor;
+                const stereoV = Math.random() * v * stereoFactor / 1.5;
                 const xAty1 = 99;
                 const curve = gain === 0 ? 0 : (-Math.log10(-(gain / 100) + 1) / 2) * xAty1 - gainV;
                 const gainCalc = macros['FortePiano'] / 4 * curve;
-                const freqFactor = .5;
-                const freqV = Math.random() * v * freqFactor;
                 const freqCalc = freq - freqV;
-                const stereoFactor = .15;
-                const stereoV = Math.random() * v * stereoFactor / 1.5;
-                const timbFactor = .1;
                 let gainVal = gainCalc;
                 if (gainCalc >= 1) {
                     gainVal = 1 - gainV;
@@ -1171,6 +1176,8 @@ function soundAll(update = 'all') {
     if (gotit && playback) {
         const dry = audioContext.createGain();
         const wet = audioContext.createGain();
+        const startFX = audioContext.createGain();
+        const endFX = audioContext.createGain();
         const oscKeys = Object.keys(oscillators);
         const oscKeysLength = oscKeys.length;
         const seqKeys = Object.keys(sequencers);
@@ -1255,7 +1262,7 @@ function soundAll(update = 'all') {
             }
             seqKeyIndex += 1;
             seqOut.connect(dry);
-            seqOut.connect(wet);
+            seqOut.connect(startFX);
             const seqAnalyzer = audioContext.createAnalyser();
             analysis[key].push(seqAnalyzer);
             seqOut.connect(seqAnalyzer);
@@ -1263,10 +1270,10 @@ function soundAll(update = 'all') {
         const exp = macros['expressivity'];
         const dryVal = exp > 1 ? .5 - ((exp - 1) / 2) : exp < 1 ? .5 + (.5 - (exp / 2)) : 0.5;
         const wetVal = exp > 1 ? .5 + ((exp - 1) / 2) : exp < 1 ? .5 - (.5 - (exp / 2)) : 0.5;
+        wet.gain.value = wetVal;
         dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
-        const FX = audioContext.createGain();
-        FX.gain.value = 1;
+        startFX.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : 1 / (oscKeysLength - mutedOscillatorCount);
+        endFX.gain.value = 1;
         const mix = audioContext.createGain();
         const mixFactor = 1;
         mix.gain.value = mixFactor;
@@ -1276,10 +1283,11 @@ function soundAll(update = 'all') {
         const postAnalysis = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis);
         dry.connect(mix);
-        FX.connect(mix);
-        wet.connect(preAnalysis);
-        FX.connect(postAnalysis);
-        wet.connect(FX);
+        endFX.connect(mix);
+        startFX.connect(wet);
+        startFX.connect(preAnalysis);
+        endFX.connect(postAnalysis);
+        wet.connect(endFX);
         const compressor = audioContext.createDynamicsCompressor();
         compressor.threshold.value = -12;
         compressor.knee.value = 9;

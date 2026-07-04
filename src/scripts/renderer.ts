@@ -844,9 +844,9 @@ function updateMacros(): boolean {
         if (driveMultiplier === 0) { // bypass
             macros['driveMult'] = 1;
         } else if (driveMultiplier > 0) { // +
-            macros['driveMult'] = 1 + (driveMultiplier/driveMultGran * macros['creciendo']); // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
+            macros['driveMult'] = (1 + driveMultiplier/driveMultGran) * macros['creciendo']; // 1/driveMultGran = 1 grain, 1 grain * driveMultiplier = number of grains
         } else if (driveMultiplier < 0) { // -
-            macros['driveMult'] = 1 + (driveMultiplier/driveMultGran * macros['creciendo']);
+            macros['driveMult'] = (1 + driveMultiplier/driveMultGran) * macros['creciendo'];
         } else { // bypass
             macros['driveMult'] = 1;
             console.log('macro range error: Drive Multiplier');
@@ -869,9 +869,9 @@ function updateMacros(): boolean {
         if (inVal === 0) { // bypass
             macros['FortePiano'] = 1;
         } else if (inVal > 0) { // +
-            macros['FortePiano'] = 1 + (inVal/inRange * macros['creciendo']);
+            macros['FortePiano'] = (1 + inVal/inRange) * macros['creciendo'];
         } else if (inVal < 0) { // -
-            macros['FortePiano'] = 1 + (inVal/inRange * macros['creciendo']);
+            macros['FortePiano'] = (1 + inVal/inRange) * macros['creciendo'];
         } else { // bypass
             macros['FortePiano'] = 1;
             console.log('macro range error: Forte Piano');
@@ -888,7 +888,11 @@ function updateMacros(): boolean {
             inVal = Math.ceil(inVal);
         }
         // convert scale
-        macros['variance'] = vary * macros['creciendo'];
+        if (vary === 1) {
+            macros['variance'] = 0;
+        } else {
+            macros['variance'] = vary * macros['creciendo'];
+        }
 
         return true;
 
@@ -969,24 +973,28 @@ function updateOscillator(oscID: string): boolean {
                 // each property has a factor of variation, which when all are summed euqals 1
                 const v: number = (macros['variance'] * (freq / 20000)); // maximum possible variation
                 
-                // gain variation
+                // variation factors
                 const gainFactor: number = .25; // 4:1  variation to gain
+                const freqFactor: number = .5; // 2:1  variation to frequency
+                const stereoFactor: number = .15 // 20:3 variation to stereo
+                const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
+
+                // variation values
                 const gainV: number = Math.random() * v*gainFactor; // variation ammount for gain
+                const freqV: number = Math.random() * v*freqFactor; // variation ammount for frequency
+                const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
+
+                // gain calcualtion
                 const xAty1: number = 99; // x input which produces y = 1
                 const curve: number = gain === 0 ? 0 : (-Math.log10(-(gain/100) + 1)/2)*xAty1 - gainV; // put on logarithmic curve with output interval [0, 1]
                 const gainCalc: number = macros['FortePiano'] / 4 * curve; // scale curve: divide scalar by maximum scalar value to prevent overscaling
                 
                 // frequency variation
-                const freqFactor: number = .5; // 2:1  variation to frequency
-                const freqV: number = Math.random() * v*freqFactor; // variation ammount for frequency
                 const freqCalc: number = freq - freqV;
 
                 // stereo varation
-                const stereoFactor: number = .15 // 20:3 variation to stereo
-                const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
 
                 // timbral variation
-                const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
 
                 // enforce ranges to validate user input and prevent variability engine from causing trouble
                 
@@ -1705,9 +1713,13 @@ function soundAll(update = 'all'): void {
         // console.log(sequencers);
 
         // create out nodes to route to after each voice generation
-        const dry: GainNode = audioContext.createGain(); // no FX
-        const wet: GainNode = audioContext.createGain(); // FX startpoint
+        const dry: GainNode = audioContext.createGain(); // no FX processing
+        const wet: GainNode = audioContext.createGain(); // FX processing
 
+        // create startpoint and endpoint nodes for FX metering at either ends of FX Chain
+        const startFX: GainNode = audioContext.createGain(); // FX chain endpoint
+        const endFX: GainNode = audioContext.createGain(); // FX chain endpoint
+        
         // iterate over every oscillator
         const oscKeys: Array<string> = Object.keys(oscillators);
         const oscKeysLength: number = oscKeys.length;
@@ -1835,7 +1847,7 @@ function soundAll(update = 'all'): void {
             }
             seqKeyIndex += 1;
             seqOut.connect(dry);
-            seqOut.connect(wet);
+            seqOut.connect(startFX);
 
             // Analysis post sequence
             const seqAnalyzer: AnalyserNode = audioContext.createAnalyser();
@@ -1844,8 +1856,8 @@ function soundAll(update = 'all'): void {
         }
 
         // FX Process Route Map
-        // Dry              > mix
-        // Wet > chain > FX > mix
+        // Dry                           > mix
+        // startFX > Wet > chain > endFX > mix
 
         // expressivity control range : -10 - 10 => 0 - 2
         // control :   dry    ,  wet
@@ -1854,12 +1866,16 @@ function soundAll(update = 'all'): void {
         const exp: number = macros['expressivity']; // 0 - 2
         const dryVal: number = exp > 1 ? .5 - ((exp - 1)/2)  : exp < 1 ? .5 + (.5 - (exp/2)) : 0.5; // store dry ammount
         const wetVal: number = exp > 1 ? .5 + ((exp - 1)/2)  : exp < 1 ? .5 - (.5 - (exp/2)) : 0.5; // store wet ammount
-        // adjust ammount by number of unmuted oscilators
-        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        wet.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : wetVal / (oscKeysLength - mutedOscillatorCount);
 
-        const FX: GainNode = audioContext.createGain(); // FX chain endpoint
-        FX.gain.value = 1; // ensure level is not affected
+        // apply calculated wet value
+        wet.gain.value = wetVal;
+        
+        // adjust initial gain values by number of unmuted oscilators to prevent excessive signal summing
+        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
+        startFX.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : 1 / (oscKeysLength - mutedOscillatorCount);
+        
+        // ensure level is not affected FX endpoint
+        endFX.gain.value = 1;
 
         const mix: GainNode = audioContext.createGain(); // dry + FX endpoint
         const mixFactor: number = 1;
@@ -1876,9 +1892,10 @@ function soundAll(update = 'all'): void {
         
         // route nodes
         dry.connect(mix); // add to mix
-        FX.connect(mix); // add to mix
-        wet.connect(preAnalysis); // pre analysis
-        FX.connect(postAnalysis); // post analysis
+        endFX.connect(mix); // add to mix
+        startFX.connect(wet); // adjust with wet control after metering summed seq out
+        startFX.connect(preAnalysis); // pre analysis
+        endFX.connect(postAnalysis); // post analysis
 
         // FX Chain
 
@@ -1896,7 +1913,7 @@ function soundAll(update = 'all'): void {
         //  - Dymanic Delay Line (DDL)
         //  - Rverberation Module
 
-        wet.connect(FX); // bypass FX chain
+        wet.connect(endFX); // bypass FX chain
 
         // Master Process Route Map
         // Mix > 3Comp > Master Gain > clamp > out
