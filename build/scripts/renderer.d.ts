@@ -7,6 +7,9 @@ interface Window {
 declare const options: Object;
 declare const audioContext: AudioContext;
 declare const meterLevels: Array<number>;
+declare const targetPeak = 1;
+declare const upperEnergyThreshhold: number;
+declare const lowerEnergyThreshhold: number;
 declare let macros: {
     [key: string]: any;
 };

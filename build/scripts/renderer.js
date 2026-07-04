@@ -7,6 +7,9 @@ window.electronAPI.res((data) => {
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
 const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+const targetPeak = 1.0;
+const upperEnergyThreshhold = 0.0009765625;
+const lowerEnergyThreshhold = 0.0000969;
 let macros = {
     'master': .75,
     'pan': 0,
@@ -282,6 +285,73 @@ function initOscillators() {
                     imag[n] = 0;
                 }
                 real[n] = 0;
+            }
+            real[0] = 0;
+            imag[0] = 0;
+            let maxPeak = 0;
+            const r = real[0];
+            const i = imag[0];
+            let fallback = false;
+            if (r !== undefined && i !== undefined) {
+                maxPeak += Math.sqrt(r ** 2 + i ** 2);
+                for (let p = 1; p < partials; p++) {
+                    const r = real[p];
+                    const i = imag[p];
+                    if (r !== undefined && i !== undefined) {
+                        const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                        maxPeak += amp;
+                    }
+                    else {
+                        fallback = true;
+                        break;
+                    }
+                }
+                const scalingFactor = targetPeak / maxPeak;
+                const normReal = new Float32Array(partials);
+                const normImag = new Float32Array(partials);
+                for (let i = 0; i < real.length; i++) {
+                    let rea = real[i];
+                    let ima = imag[i];
+                    if (rea !== undefined && ima !== undefined) {
+                        normReal[i] = rea * scalingFactor;
+                        normImag[i] = ima * scalingFactor;
+                    }
+                    else {
+                        fallback = true;
+                        break;
+                    }
+                }
+                let componentAmps = new Float32Array(partials);
+                for (let c = 0; c < real.length; c++) {
+                    const r = normReal[c];
+                    const i = normImag[c];
+                    if (r !== undefined && i !== undefined) {
+                        const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                        componentAmps[c] = amp;
+                    }
+                }
+                const E = meanSquare(componentAmps);
+                const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+                const realE = new Float32Array(partials);
+                const imagE = new Float32Array(partials);
+                for (let c = 0; c < real.length; c++) {
+                    const r = normReal[c];
+                    const i = normImag[c];
+                    if (i !== undefined && r !== undefined) {
+                        realE[c] = r * EFactor;
+                        imagE[c] = i * EFactor;
+                    }
+                }
+                if (!fallback) {
+                    waveform = audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
+                }
+            }
+            else {
+                fallback = true;
+            }
+            if (fallback) {
+                console.log('fell back to default normalization');
+                waveform = audioContext.createPeriodicWave(real, imag);
             }
             waveform = audioContext.createPeriodicWave(real, imag);
             oscillators[ID] = {
@@ -786,7 +856,6 @@ function updateOscillator(oscID) {
                             break;
                         }
                     }
-                    const targetPeak = 1.0;
                     const scalingFactor = targetPeak / maxPeak;
                     const normReal = new Float32Array(partialsVal);
                     const normImag = new Float32Array(partialsVal);
@@ -812,8 +881,6 @@ function updateOscillator(oscID) {
                         }
                     }
                     const E = meanSquare(componentAmps);
-                    const upperEnergyThreshhold = 0.0009765625;
-                    const lowerEnergyThreshhold = 0.0000969;
                     const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                     const realE = new Float32Array(partialsVal);
                     const imagE = new Float32Array(partialsVal);
@@ -1275,7 +1342,7 @@ function soundAll(update = 'all') {
         startFX.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : 1 / (oscKeysLength - mutedOscillatorCount);
         endFX.gain.value = 1;
         const mix = audioContext.createGain();
-        const mixFactor = 1;
+        const mixFactor = .5;
         mix.gain.value = mixFactor;
         const preAnalysis = audioContext.createAnalyser();
         analysis['FX'] = [];

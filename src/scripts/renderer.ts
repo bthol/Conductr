@@ -49,6 +49,15 @@ const audioContext: AudioContext = new AudioContext(options);
 
 // declare contant features
 const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+const targetPeak = 1.0; // peak normalize to this gain level
+// 0.25 is -12 dB on meter scale
+// √2/8 is -15 dB on meter scale
+// 0.03125 is -30 dB on meter scale
+// 0.0009765625 is -60 dB on meter scale
+// 0.0000969 is -80 dB on meter scale
+const upperEnergyThreshhold: number = 0.0009765625; // -60 dB maximum waveform energy
+const lowerEnergyThreshhold: number = 0.0000969; // -80 dB minimum waveform energy
+
 
 // Preset structures
 let macros: { [key: string]: any} = {
@@ -545,11 +554,6 @@ function initOscillators(): void {
             const real: Float32Array = new Float32Array(partials); // real coefficients
             const imag: Float32Array = new Float32Array(partials); // imaginary coefficients
             let waveform: PeriodicWave; // use coefficients with Inverse Fast Fourier Transform (IFFT) to generate complex waveform
-            
-            // DC offset (horizontal phaze)
-            // automatically set to 0 by setPeriodicWave method
-            // real[0] = 0;
-            // imag[0] = 0;
 
             // generate partials
             for (let n = 1; n < partials + 1; n++) {
@@ -568,6 +572,94 @@ function initOscillators(): void {
                 }
                 // Cosine terms are zero
                 real[n] = 0;
+            }
+
+            // DC offset (horizontal phaze)
+            // automatically set to 0 by setPeriodicWave method
+            real[0] = 0;
+            imag[0] = 0;
+
+            // get peak value
+            // from fourier coefficients
+            let maxPeak: number = 0;
+            // handle first coefficients (DC offset)
+            const r: number | undefined = real[0];
+            const i: number | undefined = imag[0];
+            // controls fallback to defualt Web Audio API normalization
+            let fallback: boolean = false;
+            if (r !== undefined && i !== undefined) {
+                maxPeak += Math.sqrt(r**2 + i**2);
+                for (let p = 1; p < partials; p++) {
+                    // use pythogorean formula to calculate amplitude of each partial
+                    const r: number | undefined = real[p];
+                    const i: number | undefined = imag[p];
+                    if (r !== undefined && i !== undefined) {
+                        const amp: number = 2*Math.sqrt(r**2 + i**2);
+                        maxPeak += amp; // accumulate component amplitude
+                    } else {
+                        fallback = true;
+                        break;
+                    }
+                }
+                
+                // normalize to target peak value
+                const scalingFactor = targetPeak / maxPeak;
+                const normReal: Float32Array = new Float32Array(partials); // real coefficients
+                const normImag: Float32Array = new Float32Array(partials); // imaginary coefficients
+                for (let i = 0; i < real.length; i++) {
+                    let rea: number | undefined = real[i];
+                    let ima: number | undefined = imag[i];
+                    if (rea !== undefined && ima !== undefined) {
+                        normReal[i] = rea * scalingFactor;
+                        normImag[i] = ima * scalingFactor;
+                    } else {
+                        fallback = true;
+                        break;
+                    }
+                }
+                
+                // collect component amplitudes from normalized fourier coefficients
+                let componentAmps: Float32Array<ArrayBuffer> = new Float32Array(partials);
+                for (let c = 0; c < real.length; c++) {
+                    const r: number | undefined = normReal[c];
+                    const i: number | undefined = normImag[c];
+                    if (r !== undefined && i !== undefined) {
+                        // calculate component amplitude
+                        const amp: number = 2*Math.sqrt(r**2 + i**2);
+                        // add component amplitude to array
+                        componentAmps[c] = amp;
+                    }
+                }
+
+                // calculate average energy in one waveform cycle
+                const E: number = meanSquare(componentAmps);
+                const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+                const realE: Float32Array = new Float32Array(partials); // real coefficients
+                const imagE: Float32Array = new Float32Array(partials); // imaginary coefficients
+                for (let c = 0; c < real.length; c++) {
+                    const r: number | undefined = normReal[c];
+                    const i: number | undefined = normImag[c];
+                    if (i !== undefined && r !== undefined) {
+                        realE[c] = r*EFactor;
+                        imagE[c] = i*EFactor;
+                    }
+                }
+
+                // use waveform data to create custom waveform
+                if (!fallback) {
+                    // use custom normalization
+                    // console.log('custom normalization implemented');
+                    waveform = audioContext.createPeriodicWave(realE, imagE, {disableNormalization: true});
+                }
+            } else {
+                fallback = true;
+            }
+            
+            // use waveform data to create custom waveform
+            if (fallback) {
+                // fallback to default normalization
+                console.log('fell back to default normalization');
+                waveform = audioContext.createPeriodicWave(real, imag);
             }
 
             // use partial data to create custom waveform
@@ -1193,7 +1285,6 @@ function updateOscillator(oscID: string): boolean {
                     }
                     
                     // normalize to target peak value
-                    const targetPeak = 1.0;
                     const scalingFactor = targetPeak / maxPeak;
                     const normReal: Float32Array = new Float32Array(partialsVal); // real coefficients
                     const normImag: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
@@ -1226,13 +1317,6 @@ function updateOscillator(oscID: string): boolean {
                     const E: number = meanSquare(componentAmps);
 
                     // adjust average energy to be between upper and lower energy threshold
-                    // 0.25 is -12 dB on meter scale
-                    // √2/8 is -15 dB on meter scale
-                    // 0.03125 is -30 dB on meter scale
-                    // 0.0009765625 is -60 dB on meter scale
-                    // 0.0000969 is -80 dB on meter scale
-                    const upperEnergyThreshhold: number = 0.0009765625; // -60 dB
-                    const lowerEnergyThreshhold: number = 0.0000969; // -80 dB
                     const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                     const realE: Float32Array = new Float32Array(partialsVal); // real coefficients
                     const imagE: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
@@ -1878,7 +1962,7 @@ function soundAll(update = 'all'): void {
         endFX.gain.value = 1;
 
         const mix: GainNode = audioContext.createGain(); // dry + FX endpoint
-        const mixFactor: number = 1;
+        const mixFactor: number = .5; // 1 max value / (dry + endFX) = 1 / 2 = .5
         mix.gain.value = mixFactor;
 
         // before FX
