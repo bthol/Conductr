@@ -9,7 +9,7 @@ const audioContext = new AudioContext(options);
 const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 const targetPeak = 1.0;
 const upperEnergyThreshhold = 0.0009765625;
-const lowerEnergyThreshhold = 0.0000969;
+const lowerEnergyThreshhold = 0.00048828;
 let macros = {
     'master': .75,
     'pan': 0,
@@ -225,7 +225,7 @@ function LUFSLevel(input, root, selector) {
 }
 ;
 function initMacros() {
-    macros['master'] = .75;
+    macros['master'] = 1;
     macros['pan'] = 0;
     macros['tempo'] = 128;
     macros['beatsPerMeasure'] = 4;
@@ -238,10 +238,10 @@ function initMacros() {
     macros['Sustain'] = 5;
     macros['Release'] = 4;
     if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) {
-        masterGain.value = '75';
+        masterGain.value = '100';
         masterPan.value = '0';
-        DMControl.value = '1';
-        FPControl.value = '1';
+        DMControl.value = '0';
+        FPControl.value = '0';
         CControl.value = '0';
         EControl.value = '0';
         VControl.value = '2';
@@ -268,7 +268,7 @@ function initOscillators() {
             const timbFactor = .1;
             const stereoFactor = .15;
             const stereoV = Math.random() * v * stereoFactor / 1.5;
-            const phi = (1 + stereoV * 30) * Math.PI / 180;
+            const phi = (45 + stereoV * 30) * Math.PI / 180;
             const phaze = Math.pow(Math.E, phi);
             const real = new Float32Array(partials);
             const imag = new Float32Array(partials);
@@ -277,7 +277,7 @@ function initOscillators() {
                 if (n % 2 !== 0) {
                     const sign = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                     const partial = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
-                    const timbCalc = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign;
+                    const timbCalc = (Math.random() * (macros['variance'] / 10) * timbFactor) * sign;
                     const out = partial + timbCalc;
                     imag[n] = out;
                 }
@@ -745,7 +745,7 @@ function updateOscillator(oscID) {
                 else if (partialsVal % 1 !== 0) {
                     partialsVal = Math.ceil(partials);
                 }
-                const phi = (1 + stereoV * 30) * Math.PI / 180;
+                const phi = (45 + stereoV * 30) * Math.PI / 180;
                 const phaze = Math.pow(Math.E, phi);
                 const real = new Float32Array(partialsVal);
                 const imag = new Float32Array(partialsVal);
@@ -758,8 +758,8 @@ function updateOscillator(oscID) {
                         if (n % 2 !== 0) {
                             const sign = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                             const partial = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2));
-                            const timbCalc = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign;
-                            const out = partial + timbCalc;
+                            const timbCalc = (Math.random() * (macros['variance'] / 10) * timbFactor);
+                            const out = partial + (timbCalc * sign);
                             imag[n] = out;
                         }
                         else {
@@ -771,7 +771,7 @@ function updateOscillator(oscID) {
                 else if (type === 'saw') {
                     for (let n = 1; n < partialsVal + 1; n++) {
                         const partial = 1 / (n * Math.PI);
-                        const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01;
+                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                         const out = partial - timbCalc;
                         imag[n] = out;
                     }
@@ -780,7 +780,7 @@ function updateOscillator(oscID) {
                     for (let n = 1; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial = 4 / (n * Math.PI);
-                            const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01;
+                            const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                             const out = partial - timbCalc;
                             imag[n] = out;
                         }
@@ -793,7 +793,7 @@ function updateOscillator(oscID) {
                     let a = 0;
                     let b = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01;
+                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                         const out = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -804,7 +804,7 @@ function updateOscillator(oscID) {
                     let a = 0;
                     let b = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01;
+                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                         const out = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -815,7 +815,7 @@ function updateOscillator(oscID) {
                     let a = 0;
                     let b = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01;
+                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                         const out = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -826,7 +826,7 @@ function updateOscillator(oscID) {
                     let a = 0;
                     let b = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01;
+                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
                         const out = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1272,14 +1272,21 @@ function soundAll(update = 'all') {
                 osc.connect(gainNode);
                 voices.push(osc);
             }
+            const transient = audioContext.createDynamicsCompressor();
+            transient.threshold.value = -100;
+            transient.knee.value = 0;
+            transient.ratio.value = 1;
+            transient.attack.value = 0.250;
+            transient.release.value = 0.250;
+            gainNode.connect(transient);
             const preAnalyzer = audioContext.createAnalyser();
             analysis[key] = [];
             analysis[key].push(preAnalyzer);
-            gainNode.connect(preAnalyzer);
+            transient.connect(preAnalyzer);
             const makeupGainNode = audioContext.createGain();
             if (oscDrive > 1) {
                 const waveshaper = audioContext.createWaveShaper();
-                const oversample = '4x';
+                const oversample = '2x';
                 const drive = oscDrive * macros['driveMult'];
                 let waveshaperCurve;
                 if (oscDriCh === 'sigmoid1') {
@@ -1301,11 +1308,11 @@ function soundAll(update = 'all') {
                 const finalPower = meanSquare(waveshaperCurve);
                 const powerFactor = 1 / (1 + ((finalPower - initialPower) / initialPower));
                 makeupGainNode.gain.value = powerFactor;
-                gainNode.connect(waveshaper);
+                transient.connect(waveshaper);
                 waveshaper.connect(makeupGainNode);
             }
             else {
-                gainNode.connect(makeupGainNode);
+                transient.connect(makeupGainNode);
                 makeupGainNode.gain.value = 1;
             }
             const postAnalyzer = audioContext.createAnalyser();
@@ -1360,21 +1367,21 @@ function soundAll(update = 'all') {
         compressor.knee.value = 9;
         compressor.ratio.value = 3;
         compressor.attack.value = 0.05;
-        compressor.release.value = 0.1;
+        compressor.release.value = 0.25;
         mix.connect(compressor);
         const limiter = audioContext.createDynamicsCompressor();
         limiter.threshold.value = -6;
         limiter.knee.value = 3;
         limiter.ratio.value = 2;
         limiter.attack.value = 0.05;
-        limiter.release.value = 0.05;
+        limiter.release.value = 0.25;
         compressor.connect(limiter);
         const brickwall = audioContext.createDynamicsCompressor();
         brickwall.threshold.value = -2.8;
         brickwall.knee.value = 0;
         brickwall.ratio.value = 3.4;
-        brickwall.attack.value = 0;
-        brickwall.release.value = 0.1;
+        brickwall.attack.value = 0.003;
+        brickwall.release.value = 0.25;
         limiter.connect(brickwall);
         const masterGainNode = audioContext.createGain();
         masterGainNode.gain.value = Number(masterGain.value) / 100;

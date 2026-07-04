@@ -37,11 +37,9 @@ window.electronAPI.res((data) => {
 //     })
 // }
 
-
 // use Web Audio API
 // look into tone.js: https://tonejs.github.io/
 // channelCountMode, ConstantSourceNode, AudioBufferSourceNode
-
 
 // create audio context
 const options: Object = {'sampleRate': 44100.0, 'latencyHint': 'interactive'};
@@ -53,11 +51,12 @@ const targetPeak = 1.0; // peak normalize to this gain level
 // 0.25 is -12 dB on meter scale
 // √2/8 is -15 dB on meter scale
 // 0.03125 is -30 dB on meter scale
+// 0.00390625 is -48 dB on meter scale
 // 0.0009765625 is -60 dB on meter scale
+// 0.00048828 is -66 dB on meter scale
 // 0.0000969 is -80 dB on meter scale
 const upperEnergyThreshhold: number = 0.0009765625; // -60 dB maximum waveform energy
-const lowerEnergyThreshhold: number = 0.0000969; // -80 dB minimum waveform energy
-
+const lowerEnergyThreshhold: number = 0.00048828; // -66 dB minimum waveform energy
 
 // Preset structures
 let macros: { [key: string]: any} = {
@@ -495,7 +494,7 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
 function initMacros(): void {
     // model
     // player control macros
-    macros['master'] = .75; // 0 - 0.99
+    macros['master'] = 1; // 0 - 1
     macros['pan'] = 0; // -50 - 50
     macros['tempo'] = 128; // 1 - 200
     macros['beatsPerMeasure'] = 4; // 1 - 100
@@ -512,10 +511,10 @@ function initMacros(): void {
 
     // display
     if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
-        masterGain.value = '75'; // 0 - 100
+        masterGain.value = '100'; // 0 - 100
         masterPan.value = '0'; // -50 - 50
-        DMControl.value = '1'; // -10 - 30
-        FPControl.value = '1'; // -50 - 50
+        DMControl.value = '0'; // -10 - 30
+        FPControl.value = '0'; // -50 - 50
         CControl.value = '0'; // -10 - 10
         EControl.value = '0'; // -10 - 10
         VControl.value = '2'; // 1 - 10
@@ -549,7 +548,7 @@ function initOscillators(): void {
             const timbFactor: number = .1; // 10:1 variation to timbre (partial phase shift)
             const stereoFactor: number = .15 // 20:3 variation to stereo
             const stereoV: number = Math.random() * v*stereoFactor / 1.5; // variation ammount for stereo: 0 - 1
-            const phi: number = (1 + stereoV * 30) * Math.PI/180; // 1 - 46 deg => radians
+            const phi: number = (45 + stereoV * 30) * Math.PI/180; // 45 - 91 deg => radians
             const phaze: number = Math.pow(Math.E, phi); // (vertical phaze; k-phase; k-scalar) stereo varation => % max degrees => radian phaze shift
             const real: Float32Array = new Float32Array(partials); // real coefficients
             const imag: Float32Array = new Float32Array(partials); // imaginary coefficients
@@ -562,7 +561,7 @@ function initOscillators(): void {
                     // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
                     const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                     const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
-                    const timbCalc: number = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                    const timbCalc: number = (Math.random() * (macros['variance'] / 10) * timbFactor) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
                     // const out: number = partial * phaze + timbCalc;
                     const out: number = partial + timbCalc;
                     imag[n] = out;
@@ -1148,7 +1147,7 @@ function updateOscillator(oscID: string): boolean {
 
                 // generate waveform
                 // e^i*phi = cos(phi) + i*sin(phi)
-                const phi: number = (1 + stereoV * 30) * Math.PI/180; // 1 - 46 deg => radians
+                const phi: number = (45 + stereoV * 30) * Math.PI/180; // 45 - 91 deg => radians
                 const phaze: number = Math.pow(Math.E, phi); // (vertical phaze; k-phase; k-scalar) stereo varation => % max degrees => radian phaze shift
                 const real: Float32Array = new Float32Array(partialsVal); // real coefficients
                 const imag: Float32Array = new Float32Array(partialsVal); // imaginary coefficients
@@ -1166,9 +1165,9 @@ function updateOscillator(oscID: string): boolean {
                             // Formula: (8 / (pi^2)) * ((-1)^((n-1)/2) / n^2)
                             const sign: number = ((n - 1) / 2) % 2 === 0 ? 1 : -1;
                             const partial: number = (8 / Math.pow(Math.PI, 2)) * (sign / Math.pow(n, 2)); // weights for cos component
-                            const timbCalc: number = ((Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - .01) * sign; // timbral variation (amp and phase change per partial; partial non-linearity): 0 - .09
+                            const timbCalc: number = (Math.random() * (macros['variance'] / 10) * timbFactor); // timbral variation
                             // const out: number = partial * phaze + timbCalc;
-                            const out: number = partial + timbCalc;
+                            const out: number = partial + (timbCalc*sign);
                             imag[n] = out;
                         } else {
                             // Even harmonics are zero
@@ -1182,7 +1181,7 @@ function updateOscillator(oscID: string): boolean {
                     // generate partials
                     for (let n = 1; n < partialsVal + 1; n++) {
                         const partial: number = 1 / (n * Math.PI);
-                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                         const out: number = partial - timbCalc;
                         imag[n] = out;
                     }
@@ -1192,7 +1191,7 @@ function updateOscillator(oscID: string): boolean {
                     for (let n = 1; n < partialsVal; n++) {
                         if (n % 2 !== 0) {
                             const partial: number = 4 / (n * Math.PI); // Fourier series coefficient for square wave
-                            const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor -.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                            const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                             const out: number = partial - timbCalc;
                             imag[n] = out;
                         } else {
@@ -1205,7 +1204,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1217,7 +1216,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1229,7 +1228,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1241,7 +1240,7 @@ function updateOscillator(oscID: string): boolean {
                     let a: number = 0;
                     let b: number = 1;
                     for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = (Math.random() * (macros['variance'] - 1) + 1) / 10 * timbFactor - 0.01; // timbral variation (amp phaze change per partial/harmonic): 0 - .09
+                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
                         const out: number = b - timbCalc;
                         real[i] = a;
                         imag[i] = out;
@@ -1852,19 +1851,28 @@ function soundAll(update = 'all'): void {
                 voices.push(osc);
             }
 
-            // pre-analysis
+            // use compressor to control transient behavior
+            const transient: DynamicsCompressorNode = audioContext.createDynamicsCompressor();
+            transient.threshold.value = -100;
+            transient.knee.value = 0;
+            transient.ratio.value = 1;
+            transient.attack.value = 0.250; // default 0.003
+            transient.release.value = 0.250; // default 0.250
+            gainNode.connect(transient);
+
+            // pre-analysis (section meter)
             const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
             // store in global structure
             analysis[key] = []; // init key for osc in structure
             analysis[key].push(preAnalyzer); // add node to array at key in structure
-            gainNode.connect(preAnalyzer);
+            transient.connect(preAnalyzer);
 
             // sigmoid curve waveshaper distortion
             const makeupGainNode: GainNode = audioContext.createGain();
             if (oscDrive > 1) {
                 // build
                 const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-                const oversample: OverSampleType = '4x';
+                const oversample: OverSampleType = '2x';
                 const drive: number = oscDrive * macros['driveMult']; // apply drive multiplier macro (X0 - X6), max drive = 60
                 let waveshaperCurve: Float32Array<ArrayBuffer>;
                 if (oscDriCh === 'sigmoid1') {
@@ -1896,17 +1904,17 @@ function soundAll(update = 'all'): void {
                 makeupGainNode.gain.value = powerFactor;
 
                 // route
-                gainNode.connect(waveshaper);
+                transient.connect(waveshaper);
                 waveshaper.connect(makeupGainNode);
 
             } else {
 
                 // bypass drive
-                gainNode.connect(makeupGainNode);
+                transient.connect(makeupGainNode);
                 makeupGainNode.gain.value = 1;
             }
             
-            // post-analysis
+            // post-analysis (Gusto Meter)
             const postAnalyzer: AnalyserNode = audioContext.createAnalyser();
             analysis[key].push(postAnalyzer) // store in global structure
             makeupGainNode.connect(postAnalyzer);
@@ -2025,7 +2033,7 @@ function soundAll(update = 'all'): void {
         compressor.knee.value = 9;        // 9 dB knee (stops at brickwall threshold)
         compressor.ratio.value = 3;       // 1:3 ratio
         compressor.attack.value = 0.05;   // 1:2 with release
-        compressor.release.value = 0.1;   // slows release to bring up lower dynamics
+        compressor.release.value = 0.25;   // slows release to bring up lower dynamics
         mix.connect(compressor);
         
         // soft limit before critical range
@@ -2034,7 +2042,7 @@ function soundAll(update = 'all'): void {
         limiter.knee.value = 3;          // 3 dB knee (full effect starts at beginning of critical range: -6 dB)
         limiter.ratio.value = 2;         // 1:2 ratio (soft limit)
         limiter.attack.value = 0.05;     // 1:1 with release
-        limiter.release.value = 0.05;
+        limiter.release.value = 0.25;
         compressor.connect(limiter);
         
         // brickwall at maximum value
@@ -2042,8 +2050,8 @@ function soundAll(update = 'all'): void {
         brickwall.threshold.value = -2.8; // brickwall at -2.8 dB
         brickwall.knee.value = 0;         // 0 dB knee for immediate effect
         brickwall.ratio.value = 3.4;      // 1:3.4 ratio (brickwall limit when combined with other compressors)
-        brickwall.attack.value = 0;       // allow peaks
-        brickwall.release.value = 0.1;
+        brickwall.attack.value = 0.003;   // allow peaks
+        brickwall.release.value = 0.25;
         limiter.connect(brickwall);
 
         // master gain control
