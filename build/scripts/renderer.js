@@ -214,6 +214,7 @@ function LUFSLevel(input, root, selector) {
         const processor = new AudioWorkletNode(audioContext, 'LUFS-processor');
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
+            console.log('LUFS-processor thread: ', event.data);
             const level = event.data.data;
             renderMeterLevel(level, root, selector);
         };
@@ -407,7 +408,7 @@ function initSequencers() {
                 'levels': 25,
                 'seqRate': '1/4',
                 'type': 'lowpass',
-                'cutoff': 1400,
+                'cutoff': 1680,
                 'resonance': 1,
                 'ampMod': 0,
                 'filtMod': 0,
@@ -437,7 +438,7 @@ function initSequencers() {
             levelsEl.value = '25';
             seqRateEl.value = '1/4';
             filterTypeEL.value = 'lowpass';
-            filterCutoffEL.value = '1400';
+            filterCutoffEL.value = '1680';
             filterResonanceEl.value = '1';
             ampModEl.value = '0';
             filtModEl.value = '0';
@@ -1403,6 +1404,7 @@ function soundAll(update = 'all') {
                     if (out) {
                         peakLevel(out, meterMaster, 'true-peak-container');
                         RMSLevel(out, meterMaster, 'RMS-container');
+                        LUFSLevel(out, meterMaster, 'LUFS-container');
                     }
                 }
                 else if (key === 'FX') {

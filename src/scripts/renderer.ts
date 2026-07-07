@@ -377,7 +377,7 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
             // use data here
-            // console.log('LUFS-processor thread: ', event.data);
+            console.log('LUFS-processor thread: ', event.data);
             // render GUI state with data
             const level: number = event.data.data;
             renderMeterLevel(level, root, selector);
@@ -736,7 +736,7 @@ function initSequencers(): void {
                 'levels':25,
                 'seqRate':'1/4',
                 'type': 'lowpass',
-                'cutoff': 1400,
+                'cutoff': 1680,
                 'resonance': 1,
                 'ampMod':0,
                 'filtMod':0,
@@ -770,7 +770,7 @@ function initSequencers(): void {
             levelsEl.value = '25';
             seqRateEl.value = '1/4';
             filterTypeEL.value = 'lowpass';
-            filterCutoffEL.value = '1400';
+            filterCutoffEL.value = '1680';
             filterResonanceEl.value = '1';
             ampModEl.value = '0';
             filtModEl.value = '0';
@@ -2093,7 +2093,7 @@ function soundAll(update = 'all'): void {
                         // send to RMS meter
                         RMSLevel(out, meterMaster, 'RMS-container');
                         // send to LUFS meter
-                        // LUFSLevel(out, meterMaster, 'LUFS-container');
+                        LUFSLevel(out, meterMaster, 'LUFS-container');
                     }
                 } else if (key === 'FX') {
                     // distinguish pre from post

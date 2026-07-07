@@ -135,3 +135,10 @@ Effect Types:
  - flanger
  - ring mod
  
+transfer function = linear, time-invariant (LTI) system
+Second-Order Section (SOS) biquad filter
+Biquad Filter = bi - quad = ratio of two quadratic expressions
+Biquad Filters are differentiated and classified by their number of zeroes and poles
+Poles are the zeros of the denominator expression and zeroes are the zeroes of the numerator expression
+Cascading Biquad Filters allows for more stable complex filtering circuits/programs than other approaches
+Infinite Impulse Response (IIR), as opposed to Finite Impulse Response (FIR), 
