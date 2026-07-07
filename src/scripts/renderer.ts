@@ -375,7 +375,7 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
         // setup worklet dev logs
         processor.port.onmessage = (event) => {
             // use data here
-            console.log('LUFS-processor thread: ', event.data);
+            // console.log('LUFS-processor thread: ', event.data);
             // render GUI state with data
             renderMeterLevel(event.data.data, root, selector);
         };

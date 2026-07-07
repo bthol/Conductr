@@ -219,10 +219,6 @@ class LUFSProcessor extends AudioWorkletProcessor {
             // Mean Square (MS): calculate the mean square of the filtered channel
             const powerSum: number = weighted.reduce((accumulator:number, value:number) => accumulator + value**2, 0);
             const MS: number = powerSum / n;
-    
-            // Gating: Relative
-            // ignore LUFS levels -10 LU below mean square
-            // Gating: Absolute
             
             // standard curve for dBFS (deciebels full scale) (except for +24 for meter adjustment)
             const logConvert: number = 10 * Math.log10(MS) + 24;
@@ -332,66 +328,5 @@ class BiquadFilter44100 {
     return y;
   }
 };
-
-class RingBuffer {
-  private buffer: Float32Array;
-  private writeIndex: number = 0;
-  private readIndex: number = 0;
-  private capacity: number;
-
-  constructor(capacity: number) {
-    this.capacity = capacity;
-    this.buffer = new Float32Array(capacity);
-  }
-
-  public write(data: Float32Array): void {
-    const capacity: number = data.length;
-    // Handle wrap-around scenarios
-    if (this.writeIndex + data.length <= capacity) {
-      this.buffer.set(data, this.writeIndex);
-      this.writeIndex = (this.writeIndex + data.length) % capacity;
-    } else {
-      // Split the data chunk that overflows the buffer edge
-      const firstPart = data.subarray(0, capacity - this.writeIndex);
-      const secondPart = data.subarray(capacity - this.writeIndex);
-      
-      this.buffer.set(firstPart, this.writeIndex);
-      this.buffer.set(secondPart, 0);
-      this.writeIndex = secondPart.length;
-    }
-  };
-
-  public read(): void {
-    this.readIndex = 0;
-  }
-};
-
-class CircularAudioBuffer {
-  private buffer: Float32Array;
-  private writePointer: number = 0;
-  
-  constructor(capacity: number) {
-    this.buffer = new Float32Array(capacity);
-  }
-
-  public write(data: Float32Array): void {
-    const capacity = this.buffer.length;
-    
-    // Handle wrap-around scenarios
-    if (this.writePointer + data.length <= capacity) {
-      this.buffer.set(data, this.writePointer);
-      this.writePointer = (this.writePointer + data.length) % capacity;
-    } else {
-      // Split the data chunk that overflows the buffer edge
-      const firstPart = data.subarray(0, capacity - this.writePointer);
-      const secondPart = data.subarray(capacity - this.writePointer);
-      
-      this.buffer.set(firstPart, this.writePointer);
-      this.buffer.set(secondPart, 0);
-      this.writePointer = secondPart.length;
-    }
-  }
-}
-
 
 registerProcessor("LUFS-processor", LUFSProcessor);
