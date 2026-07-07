@@ -185,8 +185,7 @@ function peakLevel(input, root, selector) {
         const processor = new AudioWorkletNode(audioContext, 'peak-processor');
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
-            const level = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
         input.connect(processor);
     }
@@ -200,8 +199,7 @@ function RMSLevel(input, root, selector) {
         const processor = new AudioWorkletNode(audioContext, 'RMS-processor');
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
-            const level = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
         input.connect(processor);
     }
@@ -215,8 +213,7 @@ function LUFSLevel(input, root, selector) {
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
             console.log('LUFS-processor thread: ', event.data);
-            const level = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
         input.connect(processor);
     }

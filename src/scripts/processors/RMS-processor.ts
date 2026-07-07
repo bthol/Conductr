@@ -87,7 +87,8 @@ class RMSProcessor extends AudioWorkletProcessor {
           // input range : 0 - 1
           // log range : -inf - 0
           // 8.655 = {.5, -5.999}, 8.658 = {.5, -6.001}, 8.6562 = {.5, -6.00002}, 8.65617 = {.5, -6} but {1, not 0}, 8.65617025 = {1, 0} and {.5, -6}
-          const logConvert: number = Math.log(RMS)*8.65617025; // custom meter curve
+          // const logConvert: number = Math.log(RMS)*8.65617025; // custom meter curve
+          const logConvert: number = 10 * Math.log10(RMS);
 
           // calculate nearest meter level (out)
           const levels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];

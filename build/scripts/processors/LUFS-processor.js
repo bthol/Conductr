@@ -16,7 +16,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
         super();
         this.logging = true;
         this.logs = 0;
-        this.LUFS = 0;
+        this.LUFS = -100;
         this.active = true;
         this.ran = 0;
         this.sampleRate = 44100;
@@ -84,27 +84,43 @@ class LUFSProcessor extends AudioWorkletProcessor {
                                 weighted[i] = x;
                             }
                         }
-                        if (this.logging) {
-                            this.port.postMessage({
-                                msg: 'weighted',
-                                data: weighted,
-                            });
-                        }
                         const powerSum = weighted.reduce((accumulator, value) => accumulator + value ** 2, 0);
                         const MS = powerSum / n;
-                        const logConvert = 10 * Math.log10(MS);
-                        const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
-                        let index = 0;
-                        for (let i = 0; i < levels.length; i++) {
-                            const level = levels[i];
-                            if (level !== undefined && logConvert < level) {
-                                index = i;
+                        const logConvert = 10 * Math.log10(MS) + 24;
+                        if (this.logging) {
+                            if (this.LUFS <= logConvert || Math.abs(this.LUFS - logConvert) < 10) {
+                                const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+                                let index = 0;
+                                for (let i = 0; i < levels.length; i++) {
+                                    const level = levels[i];
+                                    if (level !== undefined && logConvert < level) {
+                                        index = i;
+                                    }
+                                }
+                                const out = levels[index];
+                                this.port.postMessage({
+                                    msg: 'LUFS',
+                                    logConvert: logConvert,
+                                    data: out
+                                });
+                                this.LUFS = logConvert;
                             }
-                        }
-                        const out = levels[index];
-                        if (out !== undefined && this.logging) {
-                            this.LUFS = logConvert;
-                            this.port.postMessage({ msg: 'LUFS', data: out });
+                            else {
+                                const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+                                let index = 0;
+                                for (let i = 0; i < levels.length; i++) {
+                                    const level = levels[i];
+                                    if (level !== undefined && this.LUFS < level) {
+                                        index = i;
+                                    }
+                                }
+                                const out = levels[index];
+                                this.port.postMessage({
+                                    msg: 'LUFS (10+ LU drop)',
+                                    logConvert: logConvert,
+                                    data: out
+                                });
+                            }
                         }
                         break;
                     }

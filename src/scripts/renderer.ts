@@ -325,8 +325,7 @@ function peakLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
             // use data here
             // console.log('peak-processor thread: ', event.data);
             // render GUI state with data
-            const level: number = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
     
         // connect input nodes to processor node
@@ -352,8 +351,7 @@ function RMSLevel(input: AnalyserNode, root: HTMLElement | null, selector: strin
             // use data here
             // console.log('RMS-processor thread: ', event.data);
             // render GUI state with data
-            const level: number = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
 
         // connect input nodes to processor node
@@ -379,8 +377,7 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
             // use data here
             console.log('LUFS-processor thread: ', event.data);
             // render GUI state with data
-            const level: number = event.data.data;
-            renderMeterLevel(level, root, selector);
+            renderMeterLevel(event.data.data, root, selector);
         };
 
         // connect input nodes to processor node

@@ -17,7 +17,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
     super();
     this.logging = true; // single control to turn off logs
     this.logs = 0;
-    this.LUFS = 0; // last LUFS value
+    this.LUFS = -100; // last LUFS value
     this.active = true; // kill switch for processor instance
     this.ran = 0;
 
@@ -173,14 +173,14 @@ class LUFSProcessor extends AudioWorkletProcessor {
           if (this.blockIndex >= this.block.length) {
             this.blockIndex = 0; // wrap index back to start or circle buffer
 
-            if (this.logging) {
-              this.port.postMessage({
-                msg: 'fully accumulated',
-                data: this.block,
-                index: this.blockIndex,
-                n: this.block.length
-              });
-            }
+            // if (this.logging) {
+            //   this.port.postMessage({
+            //     msg: 'fully accumulated',
+            //     data: this.block,
+            //     // index: this.blockIndex,
+            //     // n: this.block.length
+            //   });
+            // }
             
             // Caclulate LUFS level (ITU-R BS.1770-4 standard)
             
@@ -204,13 +204,6 @@ class LUFSProcessor extends AudioWorkletProcessor {
                 weighted[i] = x;
               }
             }
-
-            if (this.logging) {
-              this.port.postMessage({
-                msg: 'weighted',
-                data: weighted,
-              });
-            }
     
             // Channel Weighting (optional): reduce weight of channels on stereo edges
             // number of channels: below 3 channels, the signal doesn't have stereo edge defined by a channel
@@ -231,24 +224,61 @@ class LUFSProcessor extends AudioWorkletProcessor {
             // ignore LUFS levels -10 LU below mean square
             // Gating: Absolute
             
-            // apply standard curve for dBFS (deciebels full scale)
-            const logConvert: number = 10 * Math.log10(MS);
-    
-            // calculate nearest meter level (out)
-            const levels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
-            let index: number = 0;
-            for (let i = 0; i < levels.length; i++) {
-              const level: number | undefined = levels[i];
-              if (level !== undefined && logConvert < level) {
-                index = i;
+            // standard curve for dBFS (deciebels full scale) (except for +24 for meter adjustment)
+            const logConvert: number = 10 * Math.log10(MS) + 24;
+
+            if (this.logging) {
+              // apply relative gating (remove 10+ LU drop)
+              if (this.LUFS <= logConvert || Math.abs(this.LUFS - logConvert) < 10) {
+                // use current LUFS reading
+
+                // calculate nearest meter level (out) using 
+                const levels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+                let index: number = 0;
+                for (let i = 0; i < levels.length; i++) {
+                  const level: number | undefined = levels[i];
+                  if (level !== undefined && logConvert < level) {
+                    index = i;
+                  }
+                }
+                const out: number | undefined = levels[index];
+
+                // send calculated level as message to main process
+                this.port.postMessage({
+                  msg: 'LUFS',
+                  // weighted: weighted,
+                  // meanSquare: MS,
+                  logConvert: logConvert,
+                  data: out
+                });
+
+                // save LUFS reading to buffer
+                this.LUFS = logConvert;
+
+              } else {
+                // use last LUFS reading
+
+                // calculate nearest meter level (out)
+                const levels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+                let index: number = 0;
+                for (let i = 0; i < levels.length; i++) {
+                  const level: number | undefined = levels[i];
+                  if (level !== undefined && this.LUFS < level) {
+                    index = i;
+                  }
+                }
+                const out: number | undefined = levels[index];
+
+                // send calculated level as message to main process
+                this.port.postMessage({
+                  msg: 'LUFS (10+ LU drop)',
+                  // weighted: weighted,
+                  // meanSquare: MS,
+                  logConvert: logConvert,
+                  data: out
+                });
+
               }
-            }
-            const out: number | undefined = levels[index];
-    
-            // send calculated level as message to main process
-            if (out !== undefined && this.logging) {
-              this.LUFS = logConvert;
-              this.port.postMessage({ msg: 'LUFS', data: out});
             }
 
             break;
