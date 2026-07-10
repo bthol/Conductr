@@ -161,55 +161,5 @@ class BiquadFilter44100 {
     }
 }
 ;
-class RingBuffer {
-    buffer;
-    writeIndex = 0;
-    readIndex = 0;
-    capacity;
-    constructor(capacity) {
-        this.capacity = capacity;
-        this.buffer = new Float32Array(capacity);
-    }
-    write(data) {
-        const capacity = data.length;
-        if (this.writeIndex + data.length <= capacity) {
-            this.buffer.set(data, this.writeIndex);
-            this.writeIndex = (this.writeIndex + data.length) % capacity;
-        }
-        else {
-            const firstPart = data.subarray(0, capacity - this.writeIndex);
-            const secondPart = data.subarray(capacity - this.writeIndex);
-            this.buffer.set(firstPart, this.writeIndex);
-            this.buffer.set(secondPart, 0);
-            this.writeIndex = secondPart.length;
-        }
-    }
-    ;
-    read() {
-        this.readIndex = 0;
-    }
-}
-;
-class CircularAudioBuffer {
-    buffer;
-    writePointer = 0;
-    constructor(capacity) {
-        this.buffer = new Float32Array(capacity);
-    }
-    write(data) {
-        const capacity = this.buffer.length;
-        if (this.writePointer + data.length <= capacity) {
-            this.buffer.set(data, this.writePointer);
-            this.writePointer = (this.writePointer + data.length) % capacity;
-        }
-        else {
-            const firstPart = data.subarray(0, capacity - this.writePointer);
-            const secondPart = data.subarray(capacity - this.writePointer);
-            this.buffer.set(firstPart, this.writePointer);
-            this.buffer.set(secondPart, 0);
-            this.writePointer = secondPart.length;
-        }
-    }
-}
 registerProcessor("LUFS-processor", LUFSProcessor);
 //# sourceMappingURL=LUFS-processor.js.map

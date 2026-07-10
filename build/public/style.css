@@ -1,5 +1,6 @@
 body {
-  background: hsl(250, 51%, 32%);
+  background: hsl(250, 50%, 24%);
+  background: linear-gradient(0deg, hsl(0, 50%, 22%) 0%, hsl(250, 50%, 24%) 10%, hsl(250, 50%, 24%) 60%, hsl(0, 50%, 22%) 65%, hsl(250, 50%, 24%) 100%);
   color: hsl(66, 100%, 50%);
   font-size: medium;
 }
@@ -61,7 +62,7 @@ body {
 .wire-layout {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-start;
+  justify-content: center;
   align-items: flex-start;
   gap: 1vw;
 }
@@ -154,6 +155,55 @@ body {
   border-radius: 3px;
   background: hsl(235, 31%, 33%);
   color: hsl(66, 100%, 50%);
+}
+
+.knob-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
+  padding: 15px;
+  border-radius: 3px;
+}
+
+.knob-dial {
+  position: relative;
+  width: 5vmin;
+  height: 5vmin;
+  border-radius: 50%;
+  background: radial-gradient(circle, #444 0%, #222 100%);
+  border: 0.5vmin solid rgba(61.36734375, 61.36734375, 61.36734375, 0.9);
+  transform: rotate(var(--knob-rotation));
+  will-change: transform;
+  transition: transform 0.1s linear;
+  cursor: ns-resize;
+}
+
+.knob-container > div:has(.knob-dial) {
+  border-radius: 50%;
+  box-shadow: inset 0 1vmin 2vmin hsla(244, 50%, 9%, 0.7), 0 2vmin 3vmin hsla(244, 50%, 9%, 0.6);
+}
+
+.knob-dial::after {
+  content: "";
+  position: absolute;
+  top: -0.5vmin;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0.75vmin;
+  height: 0.75vmin;
+  border-radius: 50%;
+  background-color: hsl(58, 94%, 48%);
+  box-shadow: 0 0 0.25vmin hsl(58, 94%, 48%);
+}
+
+.knob-value-input {
+  width: 7vmin;
+  text-align: center;
+  color: hsl(66, 100%, 50%);
+  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  border-radius: 3px;
 }
 
 /*# sourceMappingURL=style.css.map */

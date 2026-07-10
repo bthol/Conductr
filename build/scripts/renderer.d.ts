@@ -82,4 +82,14 @@ declare function sequencerEvent(event: Event): void;
 declare function oscillatorEvent(event: Event): void;
 declare let cache: ReturnType<typeof setTimeout>;
 declare function setup(): Promise<void>;
+declare const dial: HTMLElement | null;
+declare const input: HTMLInputElement | null;
+declare const minVal: number;
+declare const maxVal: number;
+declare const minDeg = -135;
+declare const maxDeg = 135;
+declare let isDragging: boolean;
+declare let startY: number;
+declare let startVal: number;
+declare function renderKnob(value: number): void;
 //# sourceMappingURL=renderer.d.ts.map

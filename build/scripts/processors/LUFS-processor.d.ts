@@ -27,19 +27,4 @@ declare class BiquadFilter44100 {
     constructor(b0: number, b1: number, b2: number, a1: number, a2: number);
     process(x: number): number;
 }
-declare class RingBuffer {
-    private buffer;
-    private writeIndex;
-    private readIndex;
-    private capacity;
-    constructor(capacity: number);
-    write(data: Float32Array): void;
-    read(): void;
-}
-declare class CircularAudioBuffer {
-    private buffer;
-    private writePointer;
-    constructor(capacity: number);
-    write(data: Float32Array): void;
-}
 //# sourceMappingURL=LUFS-processor.d.ts.map

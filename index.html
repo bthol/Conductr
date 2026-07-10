@@ -1145,8 +1145,11 @@
             <div class="panel">
                 <div>
                     <!-- maximum out gain value scalar -->
-                    <div>Master</div>
-                    <input id="master-gain" type="number" placeholder="Out Gain" min="0" max="100" value="100">
+                    <div class="knob-container">
+                        <div>Master</div>
+                        <div><div class="knob-dial"></div></div>
+                        <input id="master-gain" class="knob-value-input second-border" type="number" placeholder="Out Gain" min="0" max="100" value="100">
+                    </div>
                 </div>
                 <div>
                     <!-- Pan position modifier -->

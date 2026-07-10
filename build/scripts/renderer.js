@@ -8,17 +8,17 @@ const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
 const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 const targetPeak = 1.0;
-const upperEnergyThreshhold = 0.0009765625;
-const lowerEnergyThreshhold = 0.00048828;
+const upperEnergyThreshhold = 0.0630957;
+const lowerEnergyThreshhold = 0.0158;
 let macros = {
     'master': .75,
     'pan': 0,
     'tempo': 128,
     'beatsPerMeasure': 4,
     'FortePiano': 1,
-    'creciendo': 5,
-    'expressivity': 4,
-    'variance': 4,
+    'creciendo': 0,
+    'expressivity': 0,
+    'variance': 2,
     'driveMult': 1,
     'Attack': 3,
     'Sustain': 5,
@@ -212,7 +212,6 @@ function LUFSLevel(input, root, selector) {
         const processor = new AudioWorkletNode(audioContext, 'LUFS-processor');
         audioWorkletNodes.push(processor);
         processor.port.onmessage = (event) => {
-            console.log('LUFS-processor thread: ', event.data);
             renderMeterLevel(event.data.data, root, selector);
         };
         input.connect(processor);
@@ -328,7 +327,7 @@ function initOscillators() {
                         componentAmps[c] = amp;
                     }
                 }
-                const E = meanSquare(componentAmps);
+                const E = meanSquare(componentAmps) * partials;
                 const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                 const realE = new Float32Array(partials);
                 const imagE = new Float32Array(partials);
@@ -878,7 +877,8 @@ function updateOscillator(oscID) {
                             componentAmps[c] = amp;
                         }
                     }
-                    const E = meanSquare(componentAmps);
+                    const E = meanSquare(componentAmps) * partials;
+                    console.log(E);
                     const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                     const realE = new Float32Array(partialsVal);
                     const imagE = new Float32Array(partialsVal);
@@ -1742,4 +1742,53 @@ async function setup() {
 }
 ;
 setup();
+const dial = document.querySelector('.knob-dial');
+const input = document.querySelector('.knob-input');
+const minVal = input !== null ? parseInt(input.min) : 0;
+const maxVal = input !== null ? parseInt(input.max) : 100;
+const minDeg = -135;
+const maxDeg = 135;
+let isDragging = false;
+let startY = 0;
+let startVal = 0;
+function renderKnob(value) {
+    const percent = (value - minVal) / (maxVal - minVal);
+    const currentDeg = minDeg + percent * (maxDeg - minDeg);
+    dial?.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+}
+;
+renderKnob(Number(input?.value));
+dial?.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startY = e.clientY;
+    startVal = parseInt(input?.value || '0') || 0;
+    document.body.style.userSelect = 'none';
+});
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging)
+        return;
+    const deltaY = startY - e.clientY;
+    const sensitivity = 0.5;
+    let newVal = startVal + Math.round(deltaY * sensitivity);
+    newVal = Math.max(minVal, Math.min(maxVal, newVal));
+    if (input !== null) {
+        input.value = newVal.toString();
+    }
+    renderKnob(newVal);
+});
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+    document.body.style.userSelect = 'auto';
+});
+if (input !== null) {
+    input.addEventListener('input', (e) => {
+        const event = e.target;
+        let val = parseInt(event.value) || 0;
+        if (val < minVal)
+            val = minVal;
+        if (val > maxVal)
+            val = maxVal;
+        renderKnob(val);
+    });
+}
 //# sourceMappingURL=renderer.js.map

@@ -48,33 +48,47 @@ const audioContext: AudioContext = new AudioContext(options);
 // declare contant features
 const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 const targetPeak = 1.0; // peak normalize to this gain level
-// 0.25 is -12 dB on meter scale
-// √2/8 is -15 dB on meter scale
-// 0.03125 is -30 dB on meter scale
-// 0.00390625 is -48 dB on meter scale
-// 0.0009765625 is -60 dB on meter scale
-// 0.00048828 is -66 dB on meter scale
-// 0.0000969 is -80 dB on meter scale
-const upperEnergyThreshhold: number = 0.0009765625; // -60 dB maximum waveform energy
-const lowerEnergyThreshhold: number = 0.00048828; // -66 dB minimum waveform energy
+
+// On natural log meter scale 
+// 0.25 is -12 dB
+// √2/8 is -15 dB
+// 0.03125 is -30 dB
+// 0.00390625 is -48 dB
+// 0.0009765625 is -60 dB
+// 0.00048828 is -66 dB
+// 0.0000969 is -80 dB
+
+// On log 10 meter scale
+// 0.5012 is -3 dB
+// 0.3162 is -5 dB
+// 0.2512 is -6 dB
+// 0.1 is -10 dB
+// 0.0630957 is -12 dB
+// 0.0158 is -18 dB
+// 0.01 is -20 dB
+// 0.004 is -24 dB
+// 0.001 is -30 dB
+
+const upperEnergyThreshhold: number = 0.0630957; // -12 dB maximum waveform energy
+const lowerEnergyThreshhold: number = 0.0158; // -18 dB minimum waveform energy
 
 // Preset structures
 let macros: { [key: string]: any} = {
     // player control macros
-    'master': .75, // 0 - 0.99
+    'master': .75, // 0 - 1
     'pan': 0, // -50 - 50
     'tempo': 128, // 1 - 200
     'beatsPerMeasure': 4, // 1 - 100
     // Conductor Macros
     'FortePiano': 1, // 0 - 2
-    'creciendo': 5, // 1 - 10
-    'expressivity': 4, // 1 - 10
-    'variance': 4, // 1 - 10
+    'creciendo': 0, // -10 - 10
+    'expressivity': 0, // -10 - 10
+    'variance': 2, // 1 - 10
     'driveMult': 1, // 1 - 10
     // dynamic modifiers
     'Attack': 3, // 1 - 10
     'Sustain': 5, // 1 - 10
-    'Release': 4, // 1 - 1
+    'Release': 4, // 1 - 10
 }; // stores the parameters for each macro from user parameters; data for preset
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
 let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
@@ -628,7 +642,7 @@ function initOscillators(): void {
                 }
 
                 // calculate average energy in one waveform cycle
-                const E: number = meanSquare(componentAmps);
+                const E: number = meanSquare(componentAmps) * partials;
                 const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                 const realE: Float32Array = new Float32Array(partials); // real coefficients
                 const imagE: Float32Array = new Float32Array(partials); // imaginary coefficients
@@ -1310,7 +1324,8 @@ function updateOscillator(oscID: string): boolean {
                     }
 
                     // calculate average energy in one waveform cycle
-                    const E: number = meanSquare(componentAmps);
+                    const E: number = meanSquare(componentAmps) * partials;
+                    console.log(E);
 
                     // adjust average energy to be between upper and lower energy threshold
                     const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
@@ -2533,3 +2548,74 @@ async function setup(): Promise<void> {
     }
 };
 setup();
+
+
+
+const dial: HTMLElement | null = document.querySelector('.knob-dial');
+const input: HTMLInputElement | null = document.querySelector('.knob-input');
+
+// Configuration variables
+const minVal = input !== null ? parseInt(input.min) : 0;
+const maxVal = input !== null ? parseInt(input.max) : 100;
+const minDeg = -135; // Left rotation bound
+const maxDeg = 135;  // Right rotation bound
+
+let isDragging = false;
+let startY = 0;
+let startVal = 0;
+
+// Updates visual CSS variable rotation based on internal input value
+function renderKnob(value: number): void {
+    // Map the value linear range to the degree range
+    const percent = (value - minVal) / (maxVal - minVal);
+    const currentDeg = minDeg + percent * (maxDeg - minDeg);
+    
+    // Set rotation variable dynamically 
+    dial?.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+};
+
+// Initialize state on load
+renderKnob(Number(input?.value));
+
+// Logic for mouse drag detection
+dial?.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    startY = e.clientY;
+    startVal = parseInt(input?.value || '0') || 0;
+    document.body.style.userSelect = 'none'; // Prevent highlighting page text
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+
+    // Calculate vertical movement speed modifier
+    const deltaY = startY - e.clientY; 
+    const sensitivity = 0.5; // Change value scale speed here
+    
+    let newVal = startVal + Math.round(deltaY * sensitivity);
+    
+    // Enforce input bounds
+    newVal = Math.max(minVal, Math.min(maxVal, newVal));
+    
+    if (input !== null) {
+        input.value = newVal.toString();
+    } 
+    renderKnob(newVal);
+});
+
+document.addEventListener('mouseup', () => {
+    isDragging = false;
+    document.body.style.userSelect = 'auto';
+});
+
+// Sync visual dial if user decides to manually type a number into the input field
+if (input !== null) {
+    input.addEventListener('input', (e) => {
+        const event: HTMLInputElement = e.target as HTMLInputElement; // typecast EventTarget type into HTMLInputElement
+        let val = parseInt(event.value) || 0;
+        if (val < minVal) val = minVal;
+        if (val > maxVal) val = maxVal;
+        renderKnob(val);
+    });
+}
+
