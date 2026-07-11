@@ -1743,52 +1743,81 @@ async function setup() {
 ;
 setup();
 const dial = document.querySelector('.knob-dial');
-const input = document.querySelector('.knob-input');
-const minVal = input !== null ? parseInt(input.min) : 0;
-const maxVal = input !== null ? parseInt(input.max) : 100;
+const knobs = document.querySelectorAll('.knob-container');
 const minDeg = -135;
 const maxDeg = 135;
-let isDragging = false;
-let startY = 0;
-let startVal = 0;
-function renderKnob(value) {
-    const percent = (value - minVal) / (maxVal - minVal);
-    const currentDeg = minDeg + percent * (maxDeg - minDeg);
-    dial?.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+const rangeDeg = maxDeg - minDeg;
+const knobSensitivity = 1.2;
+function renderKnob(value, ID) {
+    const input = document.getElementById(ID);
+    if (input === null)
+        return;
+    const knob = input.parentElement?.querySelector('.knob-dial');
+    if (knob === null || knob === undefined)
+        return;
+    const min = parseInt(input.min);
+    const max = parseInt(input.max);
+    const valRange = max - min;
+    if (valRange === 0)
+        return;
+    const percent = (value - min) / valRange;
+    const currentDeg = minDeg + percent * rangeDeg;
+    knob.style.setProperty('--knob-rotation', `${currentDeg}deg`);
 }
 ;
-renderKnob(Number(input?.value));
-dial?.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    startY = e.clientY;
-    startVal = parseInt(input?.value || '0') || 0;
-    document.body.style.userSelect = 'none';
-});
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging)
-        return;
-    const deltaY = startY - e.clientY;
-    const sensitivity = 0.5;
-    let newVal = startVal + Math.round(deltaY * sensitivity);
-    newVal = Math.max(minVal, Math.min(maxVal, newVal));
-    if (input !== null) {
-        input.value = newVal.toString();
+knobs.forEach((container) => {
+    const input = container.querySelector('input');
+    renderKnob(parseInt(input.value), input.id);
+    const knob = container.querySelector('.knob-dial');
+    if (knob) {
+        let isDragging = false;
+        let startY = 0;
+        let startVal = 0;
+        let Ts;
+        let Ti;
+        const ID = input.id;
+        const max = parseInt(input.max);
+        const min = parseInt(input.min);
+        knob.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startVal = parseInt(input.value);
+            Ts = Ti = performance.now();
+            document.body.style.userSelect = 'none';
+        });
+        container.addEventListener('mousemove', (e) => {
+            if (!isDragging)
+                return;
+            const Tf = performance.now();
+            Ti = Tf;
+            const duration = (Tf - Ti) / 1000;
+            const T = Math.max(duration, 1);
+            const deltaY = startY - e.clientY;
+            let newVal = startVal + Math.round(deltaY / T * knobSensitivity);
+            newVal = Math.max(min, Math.min(max, newVal));
+            input.value = newVal.toString();
+            renderKnob(newVal, ID);
+        });
+        ['mouseup', 'mouseleave'].forEach((eventType) => {
+            container.addEventListener(eventType, () => {
+                if (isDragging)
+                    input.dispatchEvent(new Event('input'));
+                isDragging = false;
+                document.body.style.userSelect = 'auto';
+            });
+        });
+        input.addEventListener('input', (e) => {
+            const event = e.target;
+            let val = parseInt(event.value) || 0;
+            if (val < min)
+                val = min;
+            if (val > max)
+                val = max;
+            renderKnob(val, ID);
+        });
     }
-    renderKnob(newVal);
+    else {
+        console.log('knob listener disconnected');
+    }
 });
-document.addEventListener('mouseup', () => {
-    isDragging = false;
-    document.body.style.userSelect = 'auto';
-});
-if (input !== null) {
-    input.addEventListener('input', (e) => {
-        const event = e.target;
-        let val = parseInt(event.value) || 0;
-        if (val < minVal)
-            val = minVal;
-        if (val > maxVal)
-            val = maxVal;
-        renderKnob(val);
-    });
-}
 //# sourceMappingURL=renderer.js.map

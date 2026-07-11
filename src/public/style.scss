@@ -5,7 +5,7 @@
 // set defaults
 body {
     background: index.$background-color-1;
-    background: linear-gradient(0deg, index.$background-color-4 0%, index.$background-color-1 10%, index.$background-color-1 60%, index.$background-color-4 65%, index.$background-color-1 100%);
+    background: linear-gradient(0deg, index.$background-color-4 0%, index.$background-color-1 10%, index.$background-color-1 63%, index.$background-color-4 65%, index.$background-color-1 100%);
     color: index.$text-color-1;
     font-size: index.$font-size-default;
 }
@@ -174,8 +174,6 @@ $lvl-number: 2; // number of levels in a stage
     gap: 15px;
     background: color.adjust(index.$detailing-gradient-solid-cover, $lightness: -0%, $saturation: 0%);
     padding: 15px;
-    // box-shadow: inset 0vmin 0vmin 2vmin .1vmin rgba(0,0,0,0.25);
-    // @include index.break-corners;
 }
 
 // dial outer styling
@@ -213,7 +211,7 @@ $lvl-number: 2; // number of levels in a stage
 }
 
 // number input style
-.knob-value-input {
+.knob-input {
     width: 7vmin;
     text-align: center;
     color: index.$text-color-1;

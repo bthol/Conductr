@@ -2552,70 +2552,112 @@ setup();
 
 
 const dial: HTMLElement | null = document.querySelector('.knob-dial');
-const input: HTMLInputElement | null = document.querySelector('.knob-input');
+const knobs: NodeListOf<HTMLElement> = document.querySelectorAll('.knob-container');
 
-// Configuration variables
-const minVal = input !== null ? parseInt(input.min) : 0;
-const maxVal = input !== null ? parseInt(input.max) : 100;
-const minDeg = -135; // Left rotation bound
-const maxDeg = 135;  // Right rotation bound
-
-let isDragging = false;
-let startY = 0;
-let startVal = 0;
+// Knob Configuration variables
+const minDeg: number = -135; // Left rotation bound
+const maxDeg: number = 135;  // Right rotation bound
+const rangeDeg: number = maxDeg - minDeg; // range of degree
+const knobSensitivity = 1.2; // Change value scale speed here
 
 // Updates visual CSS variable rotation based on internal input value
-function renderKnob(value: number): void {
-    // Map the value linear range to the degree range
-    const percent = (value - minVal) / (maxVal - minVal);
-    const currentDeg = minDeg + percent * (maxDeg - minDeg);
+function renderKnob(value: number, ID: string): void {
     
     // Set rotation variable dynamically 
-    dial?.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+    const input: HTMLInputElement | null = document.getElementById(ID) as HTMLInputElement;
+    if (input === null) return;
+    // get knob from input
+    const knob: HTMLElement | null | undefined = input.parentElement?.querySelector('.knob-dial');
+    if (knob === null || knob === undefined) return;
+    // Map the value linear range to the degree range
+    const min: number = parseInt(input.min);
+    const max: number = parseInt(input.max);
+    const valRange: number = max - min;
+    if (valRange === 0) return; // prevent division by zero
+    const percent = (value - min) / valRange;
+    const currentDeg = minDeg + percent * rangeDeg;
+    knob.style.setProperty('--knob-rotation', `${currentDeg}deg`);
 };
 
 // Initialize state on load
-renderKnob(Number(input?.value));
+knobs.forEach((container) => {
 
-// Logic for mouse drag detection
-dial?.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    startY = e.clientY;
-    startVal = parseInt(input?.value || '0') || 0;
-    document.body.style.userSelect = 'none'; // Prevent highlighting page text
+    // initialize knob values
+    const input = container.querySelector('input') as HTMLInputElement;
+    renderKnob(parseInt(input.value), input.id);
+
+    // setup listeners for each knob
+    const knob: HTMLElement | null = container.querySelector('.knob-dial');
+    if (knob) {
+
+        // knob variables
+        let isDragging: boolean = false;
+        let startY: number = 0;
+        let startVal: number = 0;
+        let Ts: DOMHighResTimeStamp; // time of drag start
+        let Ti: DOMHighResTimeStamp; // time from last drag event
+
+        // knob properties
+        const ID: string = input.id;
+        const max: number = parseInt(input.max);
+        const min: number = parseInt(input.min);
+        
+        // mouse drag detection
+        knob.addEventListener('mousedown', (e) => {
+            // console.log('mouse drag start');
+            isDragging = true;
+            startY = e.clientY;
+            startVal = parseInt(input.value);
+            Ts = Ti = performance.now(); // drag start and last drag event are the same on first event
+            document.body.style.userSelect = 'none'; // Prevent highlighting page text
+        });
+
+        // mouse drag behavior
+        container.addEventListener('mousemove', (e) => {
+            if (!isDragging) return; // prevent
+            // console.log('mouse dragging');
+
+            // calculate vertical velocity
+            const Tf: DOMHighResTimeStamp = performance.now();
+            Ti = Tf;
+            // duration in seconds between mouse drag events
+            const duration: number = (Tf - Ti) / 1000;
+            const T: number = Math.max(duration, 1); // minimum duration of 1 second
+            const deltaY = startY - e.clientY; // Y displacement
+            
+            // calcualte value with velocity
+            let newVal = startVal + Math.round(deltaY/T * knobSensitivity);
+            
+            // enforce range
+            newVal = Math.max(min, Math.min(max, newVal));
+            
+            // update with new value
+            input.value = newVal.toString();
+            renderKnob(newVal, ID);
+        });
+
+        // mouse drag end event
+        ['mouseup', 'mouseleave'].forEach((eventType: string) => {
+            container.addEventListener(eventType, () => {
+                // console.log('mouse drag end');
+                // dispatch input event to trigger update
+                if (isDragging) input.dispatchEvent(new Event('input'));
+                isDragging = false;
+                document.body.style.userSelect = 'auto';
+            });
+        })
+
+        // sync visual dial if user decides to manually type a number into the input field
+        input.addEventListener('input', (e: Event) => {
+            // console.log('input on knob');
+            const event: HTMLInputElement = e.target as HTMLInputElement; // typecast EventTarget type into HTMLInputElement
+            let val = parseInt(event.value) || 0;
+            if (val < min) val = min;
+            if (val > max) val = max;
+            renderKnob(val, ID);
+        });
+
+    } else {
+        console.log('knob listener disconnected');
+    }
 });
-
-document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-
-    // Calculate vertical movement speed modifier
-    const deltaY = startY - e.clientY; 
-    const sensitivity = 0.5; // Change value scale speed here
-    
-    let newVal = startVal + Math.round(deltaY * sensitivity);
-    
-    // Enforce input bounds
-    newVal = Math.max(minVal, Math.min(maxVal, newVal));
-    
-    if (input !== null) {
-        input.value = newVal.toString();
-    } 
-    renderKnob(newVal);
-});
-
-document.addEventListener('mouseup', () => {
-    isDragging = false;
-    document.body.style.userSelect = 'auto';
-});
-
-// Sync visual dial if user decides to manually type a number into the input field
-if (input !== null) {
-    input.addEventListener('input', (e) => {
-        const event: HTMLInputElement = e.target as HTMLInputElement; // typecast EventTarget type into HTMLInputElement
-        let val = parseInt(event.value) || 0;
-        if (val < minVal) val = minVal;
-        if (val > maxVal) val = maxVal;
-        renderKnob(val);
-    });
-}
-

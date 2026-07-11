@@ -1,6 +1,6 @@
 body {
   background: hsl(250, 50%, 24%);
-  background: linear-gradient(0deg, hsl(0, 50%, 22%) 0%, hsl(250, 50%, 24%) 10%, hsl(250, 50%, 24%) 60%, hsl(0, 50%, 22%) 65%, hsl(250, 50%, 24%) 100%);
+  background: linear-gradient(0deg, hsl(0, 50%, 22%) 0%, hsl(250, 50%, 24%) 10%, hsl(250, 50%, 24%) 63%, hsl(0, 50%, 22%) 65%, hsl(250, 50%, 24%) 100%);
   color: hsl(66, 100%, 50%);
   font-size: medium;
 }
@@ -164,7 +164,6 @@ body {
   gap: 15px;
   background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
   padding: 15px;
-  border-radius: 3px;
 }
 
 .knob-dial {
@@ -198,7 +197,7 @@ body {
   box-shadow: 0 0 0.25vmin hsl(58, 94%, 48%);
 }
 
-.knob-value-input {
+.knob-input {
   width: 7vmin;
   text-align: center;
   color: hsl(66, 100%, 50%);
