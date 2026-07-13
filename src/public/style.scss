@@ -75,6 +75,11 @@ body {
 // Levelver Style
 $lvl-bar-height: 214.4px; // total height of stage = height of neighbor nodelist - 8 px top and bottom padding
 $lvl-number: 2; // number of levels in a stage
+$leveler-stage-background: color.adjust(index.$background-color-3, $lightness: 12%, $saturation: 12%);
+
+// noise parameters
+$noise-octaves: 2;
+$noise-base-freq: 10.65;
 
 .leveler-layout {
     display: flex;
@@ -88,8 +93,13 @@ $lvl-number: 2; // number of levels in a stage
 .leveler-stage-style {
     height: $lvl-bar-height;
     width: 24px;
-    background: color.adjust(index.$background-color-3, $lightness: 12%, $saturation: 12%);
-    box-shadow: inset 0px 3px 10px -2px color.adjust(index.$shadow-color,  $alpha: -.25);
+    background: $leveler-stage-background;
+    background-image:
+        linear-gradient( 0deg,
+        color.adjust($leveler-stage-background, $lightness: -10%) 0%,
+        color.adjust($leveler-stage-background, $lightness: -5%) 20%,
+        color.adjust($leveler-stage-background, $lightness: 5%) 100%);
+    box-shadow: inset 0px 3px 8px -2px color.adjust(index.$shadow-color,  $alpha: -.4);
     display: flex;
     flex-direction: column-reverse;
 }
@@ -99,7 +109,7 @@ $lvl-number: 2; // number of levels in a stage
 }
 
 .level-style {
-    box-shadow: 0px 5px 10px 0px color.adjust(index.$shadow-color, $alpha: -.4);
+    box-shadow: 0px 5px 8px 0px color.adjust(index.$shadow-color, $alpha: -.4);
     background: index.$detailing;
 }
 
