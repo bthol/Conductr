@@ -1325,7 +1325,7 @@ function updateOscillator(oscID: string): boolean {
 
                     // calculate average energy in one waveform cycle
                     const E: number = meanSquare(componentAmps) * partials;
-                    console.log(E);
+                    // console.log(E);
 
                     // adjust average energy to be between upper and lower energy threshold
                     const EFactor: number = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;

@@ -38,7 +38,7 @@ $detailing: hsl(58, 94%, 48%);
 // srgb or oklab color-spaces
 $detailing-gradient-solid-cover: color.adjust(color.mix(color.mix(color.adjust($detailing-gradient-fallback, $hue: $grad-deg-2), color.adjust($detailing-gradient-fallback, $hue: $grad-deg-3)), color.adjust($detailing-gradient-fallback, $hue: $grad-deg-1)), $alpha: -.1, $saturation: 20%);
 
-// knob colors
-$knob-dot-color: hsl(183, 100%, 35%);
+// input colors
 $knob-grad-1: #444;
 $knob-grad-2: #222;
+$background-input: color.adjust($detailing-gradient-solid-cover, $lightness: -15%, $saturation: -50%);

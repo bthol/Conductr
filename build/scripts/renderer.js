@@ -878,7 +878,6 @@ function updateOscillator(oscID) {
                         }
                     }
                     const E = meanSquare(componentAmps) * partials;
-                    console.log(E);
                     const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
                     const realE = new Float32Array(partialsVal);
                     const imagE = new Float32Array(partialsVal);
