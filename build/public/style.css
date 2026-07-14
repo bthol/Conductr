@@ -1,6 +1,6 @@
 body {
   background: hsl(250, 50%, 24%);
-  background: linear-gradient(0deg, hsl(0, 50%, 22%) 0%, hsl(250, 50%, 24%) 10%, hsl(250, 50%, 24%) 63%, hsl(0, 50%, 22%) 65%, hsl(250, 50%, 24%) 100%);
+  background: linear-gradient(0deg, hsl(0, 50%, 22%) 0%, hsl(250, 50%, 24%) 10%, hsl(250, 50%, 24%) 50%, hsl(0, 50%, 22%) 65%, hsl(250, 50%, 24%) 100%);
   color: hsl(66, 100%, 50%);
   font-size: medium;
 }
@@ -17,7 +17,7 @@ body {
   background: -webkit-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   background: -moz-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   background: linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
-  border: 1.5px solid hsl(240, 95%, 22%);
+  border: 2px solid hsl(240, 50%, 27%);
   box-shadow: inset 0px 0px 5px 0px hsl(244, 50%, 9%);
   border-radius: 3px;
 }
@@ -47,7 +47,7 @@ body {
 }
 
 .border-alternate {
-  border: 1px solid hsl(240, 95%, 22%);
+  border: 2px solid hsl(240, 50%, 27%);
   box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
   outline: 3px solid hsl(325, 31%, 33%);
 }
@@ -63,6 +63,13 @@ body {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 1vw;
+}
+
+.oscillator-layout {
+  display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .leveler-layout {
@@ -151,9 +158,23 @@ body {
 .button {
   padding: 8px;
   margin: 5px;
-  border-radius: 3px;
-  background: hsl(235, 31%, 33%);
+  background: #333333;
+  border-top: 3px solid rgb(63.75, 63.75, 63.75);
+  border-right: 4px solid rgb(45.9, 45.9, 45.9);
+  border-bottom: 6px solid rgb(30.6, 30.6, 30.6);
+  border-left: 4px solid rgb(45.9, 45.9, 45.9);
+  box-shadow: 0px 5px 7px -3px hsla(244, 50%, 9%, 0.7);
   color: hsl(66, 100%, 50%);
+  border-radius: 5px;
+}
+
+.button:active {
+  background: rgb(38.25, 38.25, 38.25);
+  border-top: 3px solid #333333;
+  border-right: 4px solid rgb(33.15, 33.15, 33.15);
+  border-bottom: 6px solid rgb(17.85, 17.85, 17.85);
+  border-left: 4px solid rgb(33.15, 33.15, 33.15);
+  box-shadow: none;
 }
 
 .knob-container {
@@ -163,16 +184,16 @@ body {
   justify-content: center;
   gap: 15px;
   background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
-  padding: 25px;
+  padding: 25px 12.5px;
 }
 
 .knob-dial {
   position: relative;
-  width: 5vmin;
-  height: 5vmin;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: radial-gradient(circle, #444 0%, #222 100%);
-  border: 0.5vmin solid rgba(61.36734375, 61.36734375, 61.36734375, 0.9);
+  border: 5px solid rgba(61.36734375, 61.36734375, 61.36734375, 0.9);
   transform: rotate(var(--knob-rotation));
   will-change: transform;
   transition: transform 0.1s linear;
@@ -182,43 +203,49 @@ body {
 .knob-container > div:has(.knob-dial) {
   border-radius: 50%;
   padding: 3px;
-  box-shadow: inset 0 1vmin 2vmin hsla(244, 50%, 9%, 0.7), 0 2vmin 3vmin hsla(244, 50%, 9%, 0.6);
+  box-shadow: inset 0 5px 8px hsla(244, 50%, 9%, 0.7), 0 10px 10px -5px hsla(244, 50%, 9%, 0.7);
 }
 
 .knob-dial::after {
   content: "";
   position: absolute;
-  top: -0.5vmin;
+  top: -5px;
   left: 50%;
   transform: translateX(-50%);
-  width: 0.75vmin;
-  height: 0.75vmin;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background-color: hsl(58, 94%, 48%);
-  box-shadow: 0 0 0.25vmin hsl(58, 94%, 48%);
 }
 
 .knob-input {
-  width: 7vmin;
+  width: 65px;
   text-align: center;
   color: hsl(66, 100%, 50%);
   background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  cursor: pointer;
   border-radius: 3px;
 }
 
 .numeral-input {
-  width: 7vmin;
-  text-align: center;
+  width: 65px;
   color: hsl(66, 100%, 50%);
   background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  cursor: pointer;
   border-radius: 3px;
 }
 
+div:has(.numeral-input) {
+  text-align: center;
+}
+
 .select-input {
+  width: 100%;
   padding: 3px 15px 3px 8px;
   margin: 14.6px 0px;
   color: hsl(66, 100%, 50%);
   background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  cursor: pointer;
   border-radius: 3px;
 }
 

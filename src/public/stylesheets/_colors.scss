@@ -15,7 +15,7 @@ $background-color-1: hsl(250, 50%, 24%);
 $background-color-2: hsl(242, 16%, 63%);
 $background-color-3: hsl(235, 31%, 33%);
 $background-color-4: hsl(0, 50%, 22%);
-$border-color: hsl(240, 95%, 22%);
+$border-color: hsl(240, 50%, 27%);
 $shadow-color: hsl(244, 50%, 9%);
 
 // $color-on: rgb(17, 224, 17);
@@ -42,3 +42,5 @@ $detailing-gradient-solid-cover: color.adjust(color.mix(color.mix(color.adjust($
 $knob-grad-1: #444;
 $knob-grad-2: #222;
 $background-input: color.adjust($detailing-gradient-solid-cover, $lightness: -15%, $saturation: -50%);
+
+$button-background: color.mix($knob-grad-1, $knob-grad-2);

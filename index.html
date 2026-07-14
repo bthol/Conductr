@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="./build/public/style.css">
     <!-- whitelist source domain for GUI noise generation (Base64 Inline Image)  -->
     <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:image/svg+xml; style-src 'self' 'unsafe-inline';"> -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self';">
 </head>
 <body id="root">
 
@@ -1259,14 +1258,12 @@
                                 <input id="legato" class="knob-input second-border" type="number" placeholder="legato" min="1" max="10" value="2">
                             </div>
                         </div>
-                        
-                        <div>
-                            <div class="knob-container">
-                                <div>Variability</div>
-                                <div><div class="knob-dial"></div></div>
-                                <!-- argument scalar for the variability engine -->
-                                <input id="variability" class="knob-input second-border" type="number" placeholder="variability" min="1" max="10" value="2">
-                            </div>
+
+                        <div class="knob-container">
+                            <div>Expressivity</div>
+                            <div><div class="knob-dial"></div></div>
+                            <!-- bipolar adjustment for ammount of FX, Dry/Wet control -->
+                            <input id="expressivity" class="knob-input second-border" type="number" placeholder="Dry/Wet" min="-10" max="10" value="0">
                         </div>
                     </div>
     
@@ -1286,13 +1283,13 @@
                             <input id="creciendo" class="knob-input second-border" type="number" placeholder="Intensity" min="-10" max="10" value="0">
                         </div>
                     </div>
-    
+
                     <div>
                         <div class="knob-container">
-                            <div>Expressivity</div>
+                            <div>Variability</div>
                             <div><div class="knob-dial"></div></div>
-                            <!-- bipolar adjustment for ammount of FX, Dry/Wet control -->
-                            <input id="expressivity" class="knob-input second-border" type="number" placeholder="Dry/Wet" min="-10" max="10" value="0">
+                            <!-- argument scalar for the variability engine -->
+                            <input id="variability" class="knob-input second-border" type="number" placeholder="variability" min="1" max="10" value="2">
                         </div>
                     </div>
     
@@ -1333,6 +1330,7 @@
                             </div>
                         </div>
                     </div>
+                    
                     <div>
                         <div>Character</div>
                         <select name="type" class="type select-input second-border">
@@ -1354,22 +1352,29 @@
                             <option value="sigmoid3">Sigmoid 3</option>
                         </select>
                     </div>
-                    <div>
-                        <div>Root</div>
-                        <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="65.4075">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Root</div>
+                            <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="65.4075">
+                        </div>
+                        <div>
+                            <div>Register</div>
+                            <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
+                        </div>
                     </div>
-                    <div>
-                        <div>Plurals</div>
-                        <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Plurals</div>
+                            <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                        </div>
+                        <div>
+                            <div>Unison</div>
+                            <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="0">
+                        </div>
                     </div>
-                    <div>
-                        <div>Unison</div>
-                        <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="0">
-                    </div>
-                    <div>
-                        <div>Register</div>
-                        <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
-                    </div>
+
                 </div>
             </div>
             
@@ -1393,6 +1398,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div>
                         <div>Character</div>
                         <select name="type" class="type select-input second-border">
@@ -1414,21 +1420,27 @@
                             <option value="sigmoid3">Sigmoid 3</option>
                         </select>
                     </div>
-                    <div>
-                        <div>Root</div>
-                        <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="82.4075">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Root</div>
+                            <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="65.4075">
+                        </div>
+                        <div>
+                            <div>Register</div>
+                            <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
+                        </div>
                     </div>
-                    <div>
-                        <div>Plurals</div>
-                        <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="3">
-                    </div>
-                    <div>
-                        <div>Unison</div>
-                        <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
-                    </div>
-                    <div>
-                        <div>Register</div>
-                        <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Plurals</div>
+                            <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                        </div>
+                        <div>
+                            <div>Unison</div>
+                            <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="0">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1453,6 +1465,7 @@
                             </div>
                         </div>
                     </div>
+
                     <div>
                         <div>Character</div>
                         <select name="type" class="type select-input second-border">
@@ -1474,21 +1487,27 @@
                             <option value="sigmoid3">Sigmoid 3</option>
                         </select>
                     </div>
-                    <div>
-                        <div>Root</div>
-                        <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="98.0">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Root</div>
+                            <input class="frequency numeral-input second-border" type="number" placeholder="frequency" min="20" max="20000" value="65.4075">
+                        </div>
+                        <div>
+                            <div>Register</div>
+                            <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
+                        </div>
                     </div>
-                    <div>
-                        <div>Plurals</div>
-                        <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="3">
-                    </div>
-                    <div>
-                        <div>Unison</div>
-                        <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="-0.63">
-                    </div>
-                    <div>
-                        <div>Register</div>
-                        <input class="partials numeral-input second-border" type="number" placeholder="partials" min="4" max="4096" value="256">
+
+                    <div class="oscillator-layout">
+                        <div>
+                            <div>Plurals</div>
+                            <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                        </div>
+                        <div>
+                            <div>Unison</div>
+                            <input class="detune numeral-input second-border" type="number" placeholder="detune" min="-24" max="24" value="0">
+                        </div>
                     </div>
                 </div>
             </div>
