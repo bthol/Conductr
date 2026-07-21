@@ -90,6 +90,9 @@ let macros: { [key: string]: any} = {
     'Sustain': 5, // 1 - 10
     'Release': 4, // 1 - 10
 }; // stores the parameters for each macro from user parameters; data for preset
+let FXdata: { [key: string]: any} = {
+    'DryWet': 1, // 0 - 2
+}; // stores the parameters for FX controls; data for preset
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
 let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
 
@@ -110,19 +113,22 @@ let sequencersInitialized: boolean = false; // boolean for testing initializatio
 // Meters
 const meterMaster = document.getElementById('meter-master'); // master levels
 const meterFX = document.getElementById('meter-FX'); // FX levels
-const meter1 = document.getElementById('meter-1'); // 
-const meter2 = document.getElementById('meter-2'); // 
-const meter3 = document.getElementById('meter-3'); // 
+const meter1 = document.getElementById('meter-1'); // 1st section
+const meter2 = document.getElementById('meter-2'); // 2nd section
+const meter3 = document.getElementById('meter-3'); // 3rd section
 
 // Player Controls
+const breakerBtn: HTMLElement | null = document.getElementById('breaker');
+const playBtn: HTMLElement | null = document.getElementById('play-btn');
+const stopBtn: HTMLElement | null = document.getElementById('stop-btn');
+
 const masterGain = document.getElementById('master-gain') as HTMLInputElement; // Master Gain out
 const masterPan = document.getElementById('master-pan') as HTMLInputElement; // Master Stereo Pan
 const masterTempo = document.getElementById('master-tempo') as HTMLInputElement; // Tempo = Beats per Minute
 const masterMeasure = document.getElementById('master-beat-per-measure') as HTMLInputElement; // Time Signature = Beats per Measure
 
-const breakerBtn: HTMLElement | null = document.getElementById('breaker');
-const playBtn: HTMLElement | null = document.getElementById('play-btn');
-const stopBtn: HTMLElement | null = document.getElementById('stop-btn');
+// FX
+const DryWetFX = document.getElementById('dry-wet-fx') as HTMLInputElement;
 
 // Conductor
 
@@ -134,11 +140,11 @@ const DMControl = document.getElementById('drive-multiplier') as HTMLInputElemen
 const SControl = document.getElementById('staccato') as HTMLInputElement; // ASR dynamic control: attack
 const LControl = document.getElementById('legato') as HTMLInputElement; // ASR dynamic control: release
 const TControl = document.getElementById('tenuto') as HTMLInputElement; // ASR dynamic control: sustain
-const VControl = document.getElementById('variability') as HTMLInputElement; // increases range of variability engine
+const EControl = document.getElementById('expressivity') as HTMLInputElement; // Envelope Magnitude control
 
 // Saggital Plane
-const EControl = document.getElementById('expressivity') as HTMLInputElement; // dry-wet FX control
 const CControl = document.getElementById('creciendo') as HTMLInputElement; // intensity control
+const VControl = document.getElementById('variability') as HTMLInputElement; // increases range of variability engine
 
 // Circuit
 
@@ -512,10 +518,10 @@ function initMacros(): void {
     // Conductor Macros
     macros['FortePiano'] = 1; // 0 - 2
     macros['creciendo'] = 0; // -10 - 10
-    macros['expressivity'] = 0; // -10 - 10
     macros['variance'] = 2; // 1 - 10
     macros['driveMult'] = 1; // 1 - 10
     // dynamic modifiers
+    macros['expressivity'] = 0; // -10 - 10
     macros['Attack'] = 3; // 1 - 10
     macros['Sustain'] = 5; // 1 - 10
     macros['Release'] = 4; // 1 - 1
@@ -820,6 +826,16 @@ function initSequencers(): void {
     sequencersInitialized = true;
 };
 
+function initFX(): void {
+    // model
+    FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
+    
+    // display
+    if (DryWetFX) {
+        DryWetFX.value = '0'; // -50 - 50
+    }
+};
+
 // data update from user input
 function updateMacros(): boolean {
     // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
@@ -903,7 +919,7 @@ function updateMacros(): boolean {
             console.log('macro range error: creciendo/diminuendo');
         }
 
-        // Expressivity = Dry Wet Control for FX Chain
+        // Expressivity = Envelope Amplifier
         let expVal: number = Number(EControl.value);
         const expRange: number = 10;
         // enforce range
@@ -1495,6 +1511,36 @@ function updateSequence(seqID: string): boolean {
     }
 };
 
+function updateFX(): boolean {
+    if (DryWetFX) {
+
+        // DryWet
+        let dryWetVal: number = Number(DryWetFX.value); // -50 - 50
+        const DWrange: number = 50; // range of symetrical control
+        // enforce range
+        if (dryWetVal > DWrange) {
+            dryWetVal = DWrange;
+        } else if (dryWetVal < -DWrange) {
+            dryWetVal = -DWrange;
+        } else if (dryWetVal % 1 !== 0) {
+            dryWetVal = Math.ceil(dryWetVal);
+        }
+        // convert scale
+        if (dryWetVal === 0) {
+            dryWetVal = 1;
+        } else if (dryWetVal > 0) {
+            dryWetVal = 1 + dryWetVal/DWrange;
+        } else if (dryWetVal < 0) {
+            dryWetVal = 1 + dryWetVal/DWrange;
+        }
+        FXdata['DryWet'] = dryWetVal;
+        
+        return true;
+    } else {
+        return false;
+    }
+};
+
 // setup functions
 function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:AudioNode): BiquadFilterNode | boolean {
     if (sequencersInitialized) {
@@ -1746,15 +1792,17 @@ function soundAll(update = 'all'): void {
     // plays all voices
 
     // update data
-    let gotit: boolean = ['all', 'osc', 'seq'].includes(update); // falsification = terminates function
+    let gotit: boolean = ['all', 'osc', 'seq', 'FX'].includes(update); // falsification = terminates function
     !gotit && console.log('passed bad argument to update parameter in soundAll function');
     
-    // clear your throat
-    if (gotit) {
-        if (playback) {shutup()};
+    // clear your throat (delete previous build to prepare for new build)
+    if (gotit && playback) {
+        shutup();
     }
+
+    // Update Data
     
-    // always update macros
+    // macros
     if (gotit) {
         if (update === 'all') {
             if (!updateMacros()) {gotit = false};
@@ -1762,7 +1810,7 @@ function soundAll(update = 'all'): void {
         }
     }
     
-    // conditionally update oscillators
+    // oscillators
     if (gotit) {
         if (update === 'all' || update === 'osc') {
             const oscKeys: Array<string> = Object.keys(oscillators);
@@ -1781,9 +1829,9 @@ function soundAll(update = 'all'): void {
         }
     }
 
-    // conditionally update sequencers
+    // sequencers
     if (gotit) {
-        if (update === 'all' || update === 'seq' || update === 'osc') {
+        if (update === 'all' || update === 'osc' || update === 'seq') {
             const seqKeys: Array<string> = Object.keys(sequencers);
             if (seqKeys.length > 0) {
                 for (const key of seqKeys) {
@@ -1800,14 +1848,24 @@ function soundAll(update = 'all'): void {
         }
     }
 
-    // generate voices from data + setup node routing
+    // FX
+    if (gotit) {
+        if (update === 'all' || update === 'FX') {
+            if (!updateFX()) {
+                gotit = false;
+            }
+        }
+    }
+
+    // generate voices from data + setup new build
     if (gotit && playback) {
 
         // console.log(macros);
         // console.log(oscillators);
         // console.log(sequencers);
+        // console.log(FXdata);
 
-        // create out nodes to route to after each voice generation
+        // create nodes to control dry wet signal leveling of FX
         const dry: GainNode = audioContext.createGain(); // no FX processing
         const wet: GainNode = audioContext.createGain(); // FX processing
 
@@ -1817,10 +1875,10 @@ function soundAll(update = 'all'): void {
         
         // iterate over every oscillator
         const oscKeys: Array<string> = Object.keys(oscillators);
-        const oscKeysLength: number = oscKeys.length;
         const seqKeys: Array<string> = Object.keys(sequencers);
         let seqKeyIndex: number = 0;
         let mutedOscillatorCount: number = 0;
+        let gainSum: number = 0;
         for (const key of oscKeys) {
     
             // collect oscillator properties
@@ -1835,12 +1893,14 @@ function soundAll(update = 'all'): void {
 
             if (oscVol === 0) {
                 mutedOscillatorCount += 1;
+            } else {
+                gainSum += oscVol;
             }
             
             // generator process route map
             // oscillator: voice > gain > waveshaper > makeup > sequencer    > gain > dry
             //             voice >      > preAnalyzer         > postAnalyzer        > seqAnalyzer
-            //             voice >                                                  > wet
+            //             voice >                                                  > startFX
             //             voice >
             
             // create gain node to apply pre gain value
@@ -1875,7 +1935,7 @@ function soundAll(update = 'all'): void {
             // pre-analysis (section meter)
             const preAnalyzer: AnalyserNode = audioContext.createAnalyser();
             // store in global structure
-            analysis[key] = []; // init key for osc in structure
+            analysis[key] = []; // initialize key for osc in structure
             analysis[key].push(preAnalyzer); // add node to array at key in structure
             transient.connect(preAnalyzer);
 
@@ -1884,7 +1944,7 @@ function soundAll(update = 'all'): void {
             if (oscDrive > 1) {
                 // build
                 const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
-                const oversample: OverSampleType = '2x';
+                const oversample: OverSampleType = '4x';
                 const drive: number = oscDrive * macros['driveMult']; // apply drive multiplier macro (X0 - X6), max drive = 60
                 let waveshaperCurve: Float32Array<ArrayBuffer>;
                 if (oscDriCh === 'sigmoid1') {
@@ -1960,23 +2020,26 @@ function soundAll(update = 'all'): void {
         }
 
         // FX Process Route Map
-        // Dry                           > mix
-        // startFX > Wet > chain > endFX > mix
+        // Dry                              > mix
+        // startFX > Wet > FX chain > endFX > mix
 
-        // expressivity control range : -10 - 10 => 0 - 2
+        // dry/wet control range : -50 - 50 => 0 - 2
         // control :   dry    ,  wet
         // 1 - 2   :  .5 - 0  , .5 - 1
         // 0 - 1   :  1 - .5  , 0 - .5
-        const exp: number = macros['expressivity']; // 0 - 2
-        const dryVal: number = exp > 1 ? .5 - ((exp - 1)/2)  : exp < 1 ? .5 + (.5 - (exp/2)) : 0.5; // store dry ammount
-        const wetVal: number = exp > 1 ? .5 + ((exp - 1)/2)  : exp < 1 ? .5 - (.5 - (exp/2)) : 0.5; // store wet ammount
+        const DWC: number = FXdata['DryWet']; // Dry Wet Control
+        const dryVal: number = DWC > 1 ? .5 - ((DWC - 1)/2)  : DWC < 1 ? .5 + (.5 - (DWC/2)) : 0.5; // store dry ammount
+        const wetVal: number = DWC > 1 ? .5 + ((DWC - 1)/2)  : DWC < 1 ? .5 - (.5 - (DWC/2)) : 0.5; // store wet ammount
 
-        // apply calculated wet value
+        // console.log(dryVal);
+        // console.log(wetVal);
+
+        // apply calculated wet value 
         wet.gain.value = wetVal;
         
-        // adjust initial gain values by number of unmuted oscilators to prevent excessive signal summing
-        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        startFX.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : 1 / (oscKeysLength - mutedOscillatorCount);
+        // adjust initial gain values to prevent excessive signal summing
+        dry.gain.value = dryVal === 0 || gainSum === 0 ? 0 : dryVal / gainSum;
+        startFX.gain.value = wetVal === 0 || gainSum === 0 ? 0 : 1 / gainSum;
         
         // ensure level is not affected FX endpoint
         endFX.gain.value = 1;
@@ -1995,13 +2058,14 @@ function soundAll(update = 'all'): void {
         analysis['FX'].push(postAnalysis) // store in global structure
         
         // route nodes
-        dry.connect(mix); // add to mix
-        endFX.connect(mix); // add to mix
-        startFX.connect(wet); // adjust with wet control after metering summed seq out
+        startFX.connect(wet); // adjust wet node after metering startFX
         startFX.connect(preAnalysis); // pre analysis
+        endFX.connect(mix); // add to mix
         endFX.connect(postAnalysis); // post analysis
+        dry.connect(mix); // add to mix
 
-        // FX Chain
+        // FX Chain Route Map
+        // wet > something > something > endFX
 
         // Modulations
         //  - Ring Modulation (RM)
@@ -2158,6 +2222,7 @@ function soundAll(update = 'all'): void {
     }
 };
 
+// event functions
 function sequencerEvent(event: Event): void {
     // determine functionality by target of event
     // console.log('seq event');
@@ -2166,7 +2231,7 @@ function sequencerEvent(event: Event): void {
         const parent: HTMLElement | null = target.parentElement;
         if (parent) {
             // determine sequencer ID
-            const seqID: string | undefined = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+            const seqID: string | undefined = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
             if (seqID) {
                 // sequencer[seqID] == sequencer in which the event occured
     
@@ -2329,10 +2394,13 @@ function oscillatorEvent(event: Event): void {
     // determine functionality by target of event
     // console.log('osc event');
     const target = event.target as HTMLElement;
-    if (event.type === 'change' && target.classList.contains('type')) {
+    if (event.type === 'input' && target.classList.contains('type')) {
         soundAll('osc');
     }
-    if (target.classList.contains('amplitude')  || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+    if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+        soundAll('osc');
+    }
+    if (event.type === 'input' && target.classList.contains('knob-input')) {
         soundAll('osc');
     }
 };
@@ -2344,7 +2412,7 @@ async function setup(): Promise<void> {
     // initialize data and setup listeners
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && meterMaster && meterFX && meter1 && meter2 && meter3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
 
         // load processor modules
         await getProcessorModules();
@@ -2353,10 +2421,12 @@ async function setup(): Promise<void> {
         initMacros();
         initOscillators();
         initSequencers();
+        initFX();
 
         // console.log(macros);
         // console.log(oscillators);
         // console.log(sequencers);
+        // console.log(FXdata);
 
         // setup listeners for user controls
         const latency: number = 150; // millisecs
@@ -2475,7 +2545,7 @@ async function setup(): Promise<void> {
             }
         });
         
-        // controls wet/dry for whole FX Chain
+        // controls envelope amplitude
         EControl.addEventListener('input', () => {
             if (listening && playback) {
                 clearTimeout(cache);
@@ -2501,6 +2571,43 @@ async function setup(): Promise<void> {
             }
         });
 
+        // FX Chain
+
+        // Dry/Wet Control
+        DryWetFX.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll('FX'); // don't listen until sound is done
+                    listening = true;
+                }, latency)
+            }
+        });
+        
+        // listener delegation for oscillator events
+        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+        if (oscsNodeList.length > 0) {
+            for (const oscEl of oscsNodeList) {
+                if (oscEl) {
+                    ['input'].forEach((eventType) => {
+                        oscEl.addEventListener(eventType, (event) => {
+                            clearTimeout(cache);
+                            cache = setTimeout(() => {
+                                clearTimeout(cache);
+                                listening = false;
+                                oscillatorEvent(event);
+                                listening = true;
+                            }, latency);
+                        });
+                    })
+                }
+            }
+        } else {
+            console.log('oscillator elements not found during listener setup');
+        }
+
         // listener delegation for sequence events
         const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
         if (seqsNodeList.length > 0) {
@@ -2520,28 +2627,6 @@ async function setup(): Promise<void> {
             console.log('sequencer elements not found during listener setup');
         }
         
-        // listener delegation for oscillator events
-        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
-        if (oscsNodeList.length > 0) {
-            for (const oscEl of oscsNodeList) {
-                if (oscEl) {
-                    ['change'].forEach((eventType) => {
-                        oscEl.addEventListener(eventType, (event) => {
-                            clearTimeout(cache);
-                            cache = setTimeout(() => {
-                                clearTimeout(cache);
-                                listening = false;
-                                oscillatorEvent(event);
-                                listening = true;
-                            }, 10);
-                        });
-                    })
-                }
-            }
-        } else {
-            console.log('oscillator elements not found during listener setup');
-        }
-        
 
     } else {
         console.log('Element Integrity Degraded during listener setup');
@@ -2549,18 +2634,18 @@ async function setup(): Promise<void> {
 };
 setup();
 
+// knob logic
 
-
-const dial: HTMLElement | null = document.querySelector('.knob-dial');
+// knob element list
 const knobs: NodeListOf<HTMLElement> = document.querySelectorAll('.knob-container');
 
-// Knob Configuration variables
+// parameters
 const minDeg: number = -135; // Left rotation bound
 const maxDeg: number = 135;  // Right rotation bound
 const rangeDeg: number = maxDeg - minDeg; // range of degree
 const knobSensitivity = 1.2; // Change value scale speed here
 
-// Updates visual CSS variable rotation based on internal input value
+// Updates visual CSS variable rotation
 function renderKnob(value: number, ID: string): void {
     
     // Set rotation variable dynamically 
@@ -2579,7 +2664,7 @@ function renderKnob(value: number, ID: string): void {
     knob.style.setProperty('--knob-rotation', `${currentDeg}deg`);
 };
 
-// Initialize state on load
+// Initialize knob state on load
 knobs.forEach((container) => {
 
     // initialize knob values
@@ -2601,6 +2686,7 @@ knobs.forEach((container) => {
         const ID: string = input.id;
         const max: number = parseInt(input.max);
         const min: number = parseInt(input.min);
+        const paramRange: number = Math.abs(max - min); // number of knob positions
         
         // mouse drag detection
         knob.addEventListener('mousedown', (e) => {
@@ -2619,14 +2705,15 @@ knobs.forEach((container) => {
 
             // calculate vertical velocity
             const Tf: DOMHighResTimeStamp = performance.now();
-            Ti = Tf;
             // duration in seconds between mouse drag events
             const duration: number = (Tf - Ti) / 1000;
-            const T: number = Math.max(duration, 1); // minimum duration of 1 second
+            // update initial time with final
+            Ti = Tf;
+            const T: number = Math.max(duration, 1); // min duration of 1 second
             const deltaY = startY - e.clientY; // Y displacement
             
             // calcualte value with velocity
-            let newVal = startVal + Math.round(deltaY/T * knobSensitivity);
+            let newVal = startVal + Math.round(deltaY/T * paramRange/(paramRange + knobSensitivity));
             
             // enforce range
             newVal = Math.max(min, Math.min(max, newVal));
@@ -2641,7 +2728,9 @@ knobs.forEach((container) => {
             container.addEventListener(eventType, () => {
                 // console.log('mouse drag end');
                 // dispatch input event to trigger update
-                if (isDragging) input.dispatchEvent(new Event('input'));
+                if (isDragging) {
+                    input.dispatchEvent(new Event('input', {bubbles: true}));
+                };
                 isDragging = false;
                 document.body.style.userSelect = 'auto';
             });

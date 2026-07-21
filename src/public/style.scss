@@ -15,22 +15,26 @@ body {
     align-items: center;
 }
 
+.button-panel {
+    display: flex;
+    justify-content: space-around;
+}
+
 .module {
-    padding: 8px;
-    margin: 10px 0px;
+    padding: 8px 24px 24px 24px;
+    margin: 4px;
     background: index.$background-color-3;
     background: -webkit-linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
     background: -moz-linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
     background: linear-gradient(180deg, color.adjust(index.$background-color-3, $hue: 0deg) 0%, color.adjust(index.$background-color-3, $hue: 30deg) 50%, color.adjust(index.$background-color-3, $hue: 90deg) 100%);
-    border: 2px solid index.$border-color;
-    box-shadow: inset 0px 0px 5px 0px index.$shadow-color;
+    border: 1px solid index.$shadow-color;
+    box-shadow: inset 0px 0px 3px 0px index.$shadow-color;
     @include index.break-corners;
 }
 
 .bordering {
     position: relative;
     padding: 8px;
-    margin: 10px 0px;
     border: 1.5px solid index.$detailing;
     background: index.$detailing-gradient-fallback;
     background: -webkit-linear-gradient(180deg, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-1) 0%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-2) 50%, color.adjust(index.$detailing-gradient-fallback, $hue: index.$grad-deg-3) 100%);
@@ -57,19 +61,29 @@ body {
     outline: 3px solid color.adjust(index.$background-color-3, $hue: 90deg);
 }
 
+.module-layout {
+    display: grid;
+    grid-template-columns: auto auto;
+}
+
 .section-layout {
     display: flex;
-    flex-wrap: wrap;
-    // justify-content: center;
-    gap: 1vw;
+    flex-wrap: nowrap;
+    // gap: 5px;
 }
 
 .wire-layout {
     display: flex;
-    flex-wrap: wrap;
-    // justify-content: center;
+    flex-wrap: nowrap;
     align-items: flex-start;
-    gap: 1vw;
+    gap: 8px;
+    margin-left: 8px;
+}
+
+.leveler-scrollbox {
+    display: flex;
+    width: 1050px;
+    overflow-x: scroll;
 }
 
 .oscillator-layout {
@@ -77,6 +91,34 @@ body {
     flex-wrap: nowrap;
     justify-content: space-between;
     align-items: center;
+}
+
+#meters {
+    grid-column: 1 / span 2;
+    gap: 8px;
+    margin-left: 4px;
+}
+
+#control {
+    grid-column: 1 / span 2;
+}
+
+#conductor {
+    grid-column: 1;
+    .section-layout {
+        justify-content: center;
+    }
+}
+
+#orchestra {
+    grid-column: 2;
+    .section-layout {
+        justify-content: center;
+    }
+}
+
+#circuit {
+    grid-column: 1 / span 2;
 }
 
 // Levelver Style
@@ -132,6 +174,7 @@ $noise-base-freq: 10.65;
 
 .title {
     font-size: index.$font-medium;
+    margin-bottom: 8px;
 }
 
 .dark-font {
@@ -178,6 +221,7 @@ $noise-base-freq: 10.65;
 .button {
     padding: 8px;
     margin: 5px;
+    min-width: 60px;
     background: index.$button-background;
     border-top: 3px solid color.adjust(index.$button-background, $lightness: 5%);
     border-right: 4px solid color.adjust(index.$button-background, $lightness: -2%);
@@ -203,10 +247,10 @@ $noise-base-freq: 10.65;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    // min-height: 100px;
     gap: 15px;
     background: color.adjust(index.$detailing-gradient-solid-cover, $lightness: -0%, $saturation: 0%);
     padding: 25px 12.5px;
+    text-wrap: nowrap;
 }
 
 // dial outer styling
@@ -275,4 +319,26 @@ div:has(.numeral-input) {
     background: index.$background-input;
     cursor: pointer;
     @include index.break-corners;
-} 
+}
+
+// scrollbar style
+
+::-webkit-scrollbar {
+    width: 10px; // Width of vertical scrollbar
+    height: 10px; // Height of horizontal scrollbar
+}
+
+::-webkit-scrollbar-track {
+    background: index.$scroll-track-background;
+    @include index.break-corners;
+}
+
+::-webkit-scrollbar-thumb {
+    background: index.$scroll-thumb-background;
+    border: 2px solid index.$scroll-thumb-border;
+    @include index.break-corners;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: index.$scroll-thumb-hover;
+}

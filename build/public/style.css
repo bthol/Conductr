@@ -10,22 +10,26 @@ body {
   align-items: center;
 }
 
+.button-panel {
+  display: flex;
+  justify-content: space-around;
+}
+
 .module {
-  padding: 8px;
-  margin: 10px 0px;
+  padding: 8px 24px 24px 24px;
+  margin: 4px;
   background: hsl(235, 31%, 33%);
   background: -webkit-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   background: -moz-linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   background: linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
-  border: 2px solid hsl(240, 50%, 27%);
-  box-shadow: inset 0px 0px 5px 0px hsl(244, 50%, 9%);
+  border: 1px solid hsl(244, 50%, 9%);
+  box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
   border-radius: 3px;
 }
 
 .bordering {
   position: relative;
   padding: 8px;
-  margin: 10px 0px;
   border: 1.5px solid hsl(58, 94%, 48%);
   background: hsl(205, 31%, 33%);
   background: -webkit-linear-gradient(180deg, hsl(205, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(205, 31%, 33%) 100%);
@@ -52,17 +56,28 @@ body {
   outline: 3px solid hsl(325, 31%, 33%);
 }
 
+.module-layout {
+  display: grid;
+  grid-template-columns: auto auto;
+}
+
 .section-layout {
   display: flex;
-  flex-wrap: wrap;
-  gap: 1vw;
+  flex-wrap: nowrap;
 }
 
 .wire-layout {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 1vw;
+  gap: 8px;
+  margin-left: 8px;
+}
+
+.leveler-scrollbox {
+  display: flex;
+  width: 1050px;
+  overflow-x: scroll;
 }
 
 .oscillator-layout {
@@ -70,6 +85,34 @@ body {
   flex-wrap: nowrap;
   justify-content: space-between;
   align-items: center;
+}
+
+#meters {
+  grid-column: 1/span 2;
+  gap: 8px;
+  margin-left: 4px;
+}
+
+#control {
+  grid-column: 1/span 2;
+}
+
+#conductor {
+  grid-column: 1;
+}
+#conductor .section-layout {
+  justify-content: center;
+}
+
+#orchestra {
+  grid-column: 2;
+}
+#orchestra .section-layout {
+  justify-content: center;
+}
+
+#circuit {
+  grid-column: 1/span 2;
 }
 
 .leveler-layout {
@@ -111,6 +154,7 @@ body {
 
 .title {
   font-size: x-large;
+  margin-bottom: 8px;
 }
 
 .dark-font {
@@ -158,6 +202,7 @@ body {
 .button {
   padding: 8px;
   margin: 5px;
+  min-width: 60px;
   background: #333333;
   border-top: 3px solid rgb(63.75, 63.75, 63.75);
   border-right: 4px solid rgb(45.9, 45.9, 45.9);
@@ -185,6 +230,7 @@ body {
   gap: 15px;
   background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
   padding: 25px 12.5px;
+  text-wrap: nowrap;
 }
 
 .knob-dial {
@@ -247,6 +293,26 @@ div:has(.numeral-input) {
   background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
   cursor: pointer;
   border-radius: 3px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #4b4b65;
+  border: 2px solid #2d2d31;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #666683;
 }
 
 /*# sourceMappingURL=style.css.map */

@@ -43,4 +43,11 @@ $knob-grad-1: #444;
 $knob-grad-2: #222;
 $background-input: color.adjust($detailing-gradient-solid-cover, $lightness: -15%, $saturation: -50%);
 
+// button
 $button-background: color.mix($knob-grad-1, $knob-grad-2);
+
+// scrollbar
+$scroll-track-background: color.adjust($detailing-gradient-solid-cover, $lightness: -15%, $saturation: -50%);
+$scroll-thumb-background: #4b4b65;
+$scroll-thumb-hover: #666683;
+$scroll-thumb-border: #2d2d31;

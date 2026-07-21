@@ -12,28 +12,24 @@ const template = [
         click: () => { console.log('Open'); }
       },
       {
-        label: 'Save New Preset',
+        label: 'Save Preset',
         click: () => { console.log('Save New Preset'); }
       },
       {
-        label: 'Save New Circuit',
-        click: () => { console.log('Save New Circuit'); }
+        label: 'Save Conductor',
+        click: () => { console.log('Save New Conductor'); }
       },
       {
-        label: 'Save New Orchestra',
+        label: 'Save Orchestra',
         click: () => { console.log('Save New Orchestra'); }
       },
       {
-        label: 'Overwrite Preset',
-        click: () => { console.log('Overwrite Preset'); }
+        label: 'Save Circuit',
+        click: () => { console.log('Save New Circuit'); }
       },
       {
-        label: 'Overwrite Circuit',
-        click: () => { console.log('Overwrite Circuit'); }
-      },
-      {
-        label: 'Overwrite Orchestra',
-        click: () => { console.log('Overwrite Orchestra'); }
+        label: 'Save FX',
+        click: () => { console.log('Save New Circuit'); }
       },
     ]
   },

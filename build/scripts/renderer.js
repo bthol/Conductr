@@ -24,6 +24,9 @@ let macros = {
     'Sustain': 5,
     'Release': 4,
 };
+let FXdata = {
+    'DryWet': 1,
+};
 let oscillators = {};
 let sequencers = {};
 let voices = [];
@@ -39,21 +42,22 @@ const meterFX = document.getElementById('meter-FX');
 const meter1 = document.getElementById('meter-1');
 const meter2 = document.getElementById('meter-2');
 const meter3 = document.getElementById('meter-3');
+const breakerBtn = document.getElementById('breaker');
+const playBtn = document.getElementById('play-btn');
+const stopBtn = document.getElementById('stop-btn');
 const masterGain = document.getElementById('master-gain');
 const masterPan = document.getElementById('master-pan');
 const masterTempo = document.getElementById('master-tempo');
 const masterMeasure = document.getElementById('master-beat-per-measure');
-const breakerBtn = document.getElementById('breaker');
-const playBtn = document.getElementById('play-btn');
-const stopBtn = document.getElementById('stop-btn');
+const DryWetFX = document.getElementById('dry-wet-fx');
 const FPControl = document.getElementById('forte-piano');
 const DMControl = document.getElementById('drive-multiplier');
 const SControl = document.getElementById('staccato');
 const LControl = document.getElementById('legato');
 const TControl = document.getElementById('tenuto');
-const VControl = document.getElementById('variability');
 const EControl = document.getElementById('expressivity');
 const CControl = document.getElementById('creciendo');
+const VControl = document.getElementById('variability');
 const seq1 = document.getElementById('seq1');
 const seq2 = document.getElementById('seq2');
 const seq3 = document.getElementById('seq3');
@@ -228,9 +232,9 @@ function initMacros() {
     macros['beatsPerMeasure'] = 4;
     macros['FortePiano'] = 1;
     macros['creciendo'] = 0;
-    macros['expressivity'] = 0;
     macros['variance'] = 2;
     macros['driveMult'] = 1;
+    macros['expressivity'] = 0;
     macros['Attack'] = 3;
     macros['Sustain'] = 5;
     macros['Release'] = 4;
@@ -460,6 +464,13 @@ function initSequencers() {
         }
     }
     sequencersInitialized = true;
+}
+;
+function initFX() {
+    FXdata['DryWet'] = 0;
+    if (DryWetFX) {
+        DryWetFX.value = '0';
+    }
 }
 ;
 function updateMacros() {
@@ -1037,6 +1048,36 @@ function updateSequence(seqID) {
     }
 }
 ;
+function updateFX() {
+    if (DryWetFX) {
+        let dryWetVal = Number(DryWetFX.value);
+        const DWrange = 50;
+        if (dryWetVal > DWrange) {
+            dryWetVal = DWrange;
+        }
+        else if (dryWetVal < -DWrange) {
+            dryWetVal = -DWrange;
+        }
+        else if (dryWetVal % 1 !== 0) {
+            dryWetVal = Math.ceil(dryWetVal);
+        }
+        if (dryWetVal === 0) {
+            dryWetVal = 1;
+        }
+        else if (dryWetVal > 0) {
+            dryWetVal = 1 + dryWetVal / DWrange;
+        }
+        else if (dryWetVal < 0) {
+            dryWetVal = 1 + dryWetVal / DWrange;
+        }
+        FXdata['DryWet'] = dryWetVal;
+        return true;
+    }
+    else {
+        return false;
+    }
+}
+;
 function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     if (sequencersInitialized) {
         const seq = sequencers[seqID];
@@ -1187,13 +1228,10 @@ function shutup() {
 }
 ;
 function soundAll(update = 'all') {
-    let gotit = ['all', 'osc', 'seq'].includes(update);
+    let gotit = ['all', 'osc', 'seq', 'FX'].includes(update);
     !gotit && console.log('passed bad argument to update parameter in soundAll function');
-    if (gotit) {
-        if (playback) {
-            shutup();
-        }
-        ;
+    if (gotit && playback) {
+        shutup();
     }
     if (gotit) {
         if (update === 'all') {
@@ -1221,7 +1259,7 @@ function soundAll(update = 'all') {
         }
     }
     if (gotit) {
-        if (update === 'all' || update === 'seq' || update === 'osc') {
+        if (update === 'all' || update === 'osc' || update === 'seq') {
             const seqKeys = Object.keys(sequencers);
             if (seqKeys.length > 0) {
                 for (const key of seqKeys) {
@@ -1237,16 +1275,23 @@ function soundAll(update = 'all') {
             }
         }
     }
+    if (gotit) {
+        if (update === 'all' || update === 'FX') {
+            if (!updateFX()) {
+                gotit = false;
+            }
+        }
+    }
     if (gotit && playback) {
         const dry = audioContext.createGain();
         const wet = audioContext.createGain();
         const startFX = audioContext.createGain();
         const endFX = audioContext.createGain();
         const oscKeys = Object.keys(oscillators);
-        const oscKeysLength = oscKeys.length;
         const seqKeys = Object.keys(sequencers);
         let seqKeyIndex = 0;
         let mutedOscillatorCount = 0;
+        let gainSum = 0;
         for (const key of oscKeys) {
             const oscil = oscillators[key];
             const oscVoic = oscil['oscVoices'];
@@ -1258,6 +1303,9 @@ function soundAll(update = 'all') {
             const waveform = oscil['waveform'];
             if (oscVol === 0) {
                 mutedOscillatorCount += 1;
+            }
+            else {
+                gainSum += oscVol;
             }
             const gainNode = audioContext.createGain();
             gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic;
@@ -1283,7 +1331,7 @@ function soundAll(update = 'all') {
             const makeupGainNode = audioContext.createGain();
             if (oscDrive > 1) {
                 const waveshaper = audioContext.createWaveShaper();
-                const oversample = '2x';
+                const oversample = '4x';
                 const drive = oscDrive * macros['driveMult'];
                 let waveshaperCurve;
                 if (oscDriCh === 'sigmoid1') {
@@ -1338,12 +1386,12 @@ function soundAll(update = 'all') {
             analysis[key].push(seqAnalyzer);
             seqOut.connect(seqAnalyzer);
         }
-        const exp = macros['expressivity'];
-        const dryVal = exp > 1 ? .5 - ((exp - 1) / 2) : exp < 1 ? .5 + (.5 - (exp / 2)) : 0.5;
-        const wetVal = exp > 1 ? .5 + ((exp - 1) / 2) : exp < 1 ? .5 - (.5 - (exp / 2)) : 0.5;
+        const DWC = FXdata['DryWet'];
+        const dryVal = DWC > 1 ? .5 - ((DWC - 1) / 2) : DWC < 1 ? .5 + (.5 - (DWC / 2)) : 0.5;
+        const wetVal = DWC > 1 ? .5 + ((DWC - 1) / 2) : DWC < 1 ? .5 - (.5 - (DWC / 2)) : 0.5;
         wet.gain.value = wetVal;
-        dry.gain.value = oscKeysLength === 0 || dryVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : dryVal / (oscKeysLength - mutedOscillatorCount);
-        startFX.gain.value = oscKeysLength === 0 || wetVal === 0 || (oscKeysLength - mutedOscillatorCount) === 0 ? 0 : 1 / (oscKeysLength - mutedOscillatorCount);
+        dry.gain.value = dryVal === 0 || gainSum === 0 ? 0 : dryVal / gainSum;
+        startFX.gain.value = wetVal === 0 || gainSum === 0 ? 0 : 1 / gainSum;
         endFX.gain.value = 1;
         const mix = audioContext.createGain();
         const mixFactor = .5;
@@ -1353,11 +1401,11 @@ function soundAll(update = 'all') {
         analysis['FX'].push(preAnalysis);
         const postAnalysis = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis);
-        dry.connect(mix);
-        endFX.connect(mix);
         startFX.connect(wet);
         startFX.connect(preAnalysis);
+        endFX.connect(mix);
         endFX.connect(postAnalysis);
+        dry.connect(mix);
         wet.connect(endFX);
         const compressor = audioContext.createDynamicsCompressor();
         compressor.threshold.value = -12;
@@ -1447,7 +1495,7 @@ function sequencerEvent(event) {
     if (event.type === 'click') {
         const parent = target.parentElement;
         if (parent) {
-            const seqID = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
+            const seqID = parent.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.parentElement?.id;
             if (seqID) {
                 if (parent.classList.contains('leveler-stage-style')) {
                     if (!target.classList.contains('level-style')) {
@@ -1566,21 +1614,25 @@ function sequencerEvent(event) {
 ;
 function oscillatorEvent(event) {
     const target = event.target;
-    if (event.type === 'change' && target.classList.contains('type')) {
+    if (event.type === 'input' && target.classList.contains('type')) {
         soundAll('osc');
     }
     if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+        soundAll('osc');
+    }
+    if (event.type === 'input' && target.classList.contains('knob-input')) {
         soundAll('osc');
     }
 }
 ;
 let cache = setTimeout(() => { }, 0);
 async function setup() {
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && meterMaster && meterFX && meter1 && meter2 && meter3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
         await getProcessorModules();
         initMacros();
         initOscillators();
         initSequencers();
+        initFX();
         const latency = 150;
         let listening = true;
         playBtn.addEventListener('click', () => {
@@ -1696,6 +1748,38 @@ async function setup() {
                 }, latency);
             }
         });
+        DryWetFX.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    soundAll('FX');
+                    listening = true;
+                }, latency);
+            }
+        });
+        const oscsNodeList = document.querySelectorAll('.oscs');
+        if (oscsNodeList.length > 0) {
+            for (const oscEl of oscsNodeList) {
+                if (oscEl) {
+                    ['input'].forEach((eventType) => {
+                        oscEl.addEventListener(eventType, (event) => {
+                            clearTimeout(cache);
+                            cache = setTimeout(() => {
+                                clearTimeout(cache);
+                                listening = false;
+                                oscillatorEvent(event);
+                                listening = true;
+                            }, latency);
+                        });
+                    });
+                }
+            }
+        }
+        else {
+            console.log('oscillator elements not found during listener setup');
+        }
         const seqsNodeList = document.querySelectorAll('.seqs');
         if (seqsNodeList.length > 0) {
             for (const seqEl of seqsNodeList) {
@@ -1713,27 +1797,6 @@ async function setup() {
         else {
             console.log('sequencer elements not found during listener setup');
         }
-        const oscsNodeList = document.querySelectorAll('.oscs');
-        if (oscsNodeList.length > 0) {
-            for (const oscEl of oscsNodeList) {
-                if (oscEl) {
-                    ['change'].forEach((eventType) => {
-                        oscEl.addEventListener(eventType, (event) => {
-                            clearTimeout(cache);
-                            cache = setTimeout(() => {
-                                clearTimeout(cache);
-                                listening = false;
-                                oscillatorEvent(event);
-                                listening = true;
-                            }, 10);
-                        });
-                    });
-                }
-            }
-        }
-        else {
-            console.log('oscillator elements not found during listener setup');
-        }
     }
     else {
         console.log('Element Integrity Degraded during listener setup');
@@ -1741,7 +1804,6 @@ async function setup() {
 }
 ;
 setup();
-const dial = document.querySelector('.knob-dial');
 const knobs = document.querySelectorAll('.knob-container');
 const minDeg = -135;
 const maxDeg = 135;
@@ -1777,6 +1839,7 @@ knobs.forEach((container) => {
         const ID = input.id;
         const max = parseInt(input.max);
         const min = parseInt(input.min);
+        const paramRange = Math.abs(max - min);
         knob.addEventListener('mousedown', (e) => {
             isDragging = true;
             startY = e.clientY;
@@ -1788,19 +1851,21 @@ knobs.forEach((container) => {
             if (!isDragging)
                 return;
             const Tf = performance.now();
-            Ti = Tf;
             const duration = (Tf - Ti) / 1000;
+            Ti = Tf;
             const T = Math.max(duration, 1);
             const deltaY = startY - e.clientY;
-            let newVal = startVal + Math.round(deltaY / T * knobSensitivity);
+            let newVal = startVal + Math.round(deltaY / T * paramRange / (paramRange + knobSensitivity));
             newVal = Math.max(min, Math.min(max, newVal));
             input.value = newVal.toString();
             renderKnob(newVal, ID);
         });
         ['mouseup', 'mouseleave'].forEach((eventType) => {
             container.addEventListener(eventType, () => {
-                if (isDragging)
-                    input.dispatchEvent(new Event('input'));
+                if (isDragging) {
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                ;
                 isDragging = false;
                 document.body.style.userSelect = 'auto';
             });
