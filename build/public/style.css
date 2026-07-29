@@ -89,7 +89,7 @@ body {
 
 #meters {
   grid-column: 1/span 2;
-  gap: 8px;
+  justify-content: space-between;
   margin-left: 4px;
 }
 

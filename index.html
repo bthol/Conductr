@@ -1188,7 +1188,7 @@
                                 <!-- Tempo Setter -->
                                 <div class="knob-container">
                                     <div>Beats/Minute</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <input id="master-tempo" class="knob-input second-border" type="number" placeholder="tempo" min="1" max="200" value="128">
                                 </div>
                             </div>
@@ -1196,7 +1196,7 @@
                                 <!-- Time Signature Setter -->
                                 <div class="knob-container">
                                     <div>Beats/Measure</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <input id="master-beat-per-measure" class="knob-input second-border" type="number" placeholder="beats per measure" min="1" max="100" value="4">
                                 </div>
                             </div>
@@ -1240,7 +1240,7 @@
                                 <div>Major Forte-Piano</div>
                                 <div><div class="knob-dial"></div></div>
                                 <!-- bipolar multiplier for oscs gain -->
-                                <input id="forte-piano" class="knob-input second-border" type="number" placeholder="input gain multiplier" min="-50" max="50" value="0">
+                                <input id="forte-piano" class="knob-input second-border" type="number" placeholder="input gain multiplier" min="-10" max="30" value="0">
                             </div>
                         </div>
         
@@ -1265,7 +1265,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Staccato</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <!-- argument scalar -->
                                     <input id="staccato" class="knob-input second-border" type="number" placeholder="staccato" min="1" max="10" value="2">
                                 </div>
@@ -1274,7 +1274,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Tenuto</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <!-- argument scalar -->
                                     <input id="tenuto" class="knob-input second-border" type="number" placeholder="tenuto" min="1" max="10" value="10">
                                 </div>
@@ -1285,7 +1285,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Legato</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <!-- argument scalar -->
                                     <input id="legato" class="knob-input second-border" type="number" placeholder="legato" min="1" max="10" value="2">
                                 </div>
@@ -1295,7 +1295,7 @@
                                 <div>Expressivity</div>
                                 <div><div class="knob-dial"></div></div>
                                 <!-- bipolar knob for ammount of enveloping -->
-                                <input id="expressivity" class="knob-input second-border" type="number" placeholder="envelope amplifier" min="-10" max="10" value="0">
+                                <input id="expressivity" class="knob-input second-border" type="number" placeholder="envelope amplifier" min="-10" max="10" value="-10">
                             </div>
                         </div>
         
@@ -1319,7 +1319,7 @@
                         <div>
                             <div class="knob-container">
                                 <div>Variability</div>
-                                <div><div class="knob-dial"></div></div>
+                                <div><div class="knob-dial on-dbl"></div></div>
                                 <!-- argument scalar for the variability engine -->
                                 <input id="variability" class="knob-input second-border" type="number" placeholder="variability" min="1" max="10" value="2">
                             </div>
@@ -1354,7 +1354,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Gusto</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <input id="osc-gusto-1" class="knob-input second-border drive" type="number" placeholder="drive" min="1" max="10" value="1">
                                 </div>
                             </div>
@@ -1396,7 +1396,7 @@
                         <div class="oscillator-layout">
                             <div>
                                 <div>Plurals</div>
-                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="0" max="3" value="2">
                             </div>
                             <div>
                                 <div>Unison</div>
@@ -1422,7 +1422,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Gusto</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <input id="osc-gusto-2" class="knob-input second-border drive" type="number" placeholder="drive" min="1" max="10" value="1">
                                 </div>
                             </div>
@@ -1464,7 +1464,7 @@
                         <div class="oscillator-layout">
                             <div>
                                 <div>Plurals</div>
-                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="0" max="3" value="2">
                             </div>
                             <div>
                                 <div>Unison</div>
@@ -1489,7 +1489,7 @@
                             <div>
                                 <div class="knob-container">
                                     <div>Gusto</div>
-                                    <div><div class="knob-dial"></div></div>
+                                    <div><div class="knob-dial on-dbl"></div></div>
                                     <input id="osc-gusto-3" class="knob-input second-border drive" type="number" placeholder="drive" min="1" max="10" value="1">
                                 </div>
                             </div>
@@ -1531,7 +1531,7 @@
                         <div class="oscillator-layout">
                             <div>
                                 <div>Plurals</div>
-                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="1" max="4" value="1">
+                                <input class="voices numeral-input second-border" type="number" placeholder="voices" min="0" max="3" value="2">
                             </div>
                             <div>
                                 <div>Unison</div>
@@ -1564,7 +1564,7 @@
                                     <!-- Stages -->
                                     <div>
                                         <div>Stages</div>
-                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="36" value="4">
                                     </div>
     
                                     <!-- Levels -->
@@ -1607,7 +1607,7 @@
                                     </div>
                                     <div>
                                         <div>Cutoff</div>
-                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="20" max="20000" value="1680">
+                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="100" max="20000" value="1680">
                                     </div>
                                     <div>
                                         <div>Resonance</div>
@@ -2027,7 +2027,7 @@
                                     <!-- Stages -->
                                     <div>
                                         <div>Stages</div>
-                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="36" value="4">
                                     </div>
     
                                     <!-- Levels -->
@@ -2070,7 +2070,7 @@
                                     </div>
                                     <div>
                                         <div>Cutoff</div>
-                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="20" max="20000" value="1680">
+                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="100" max="20000" value="1680">
                                     </div>
                                     <div>
                                         <div>Resonance</div>
@@ -2490,7 +2490,7 @@
                                     <!-- Stages -->
                                     <div>
                                         <div>Stages</div>
-                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="16" value="4">
+                                        <input class="stages numeral-input second-border" type="number" placeholder="sequence stages" min="2" max="36" value="4">
                                     </div>
     
                                     <!-- Levels -->
@@ -2533,7 +2533,7 @@
                                     </div>
                                     <div>
                                         <div>Cutoff</div>
-                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="20" max="20000" value="1680">
+                                        <input class="filter-cutoff numeral-input second-border" type="number" placeholder="filter cutoff" min="100" max="20000" value="1680">
                                     </div>
                                     <div>
                                         <div>Resonance</div>

@@ -26,6 +26,7 @@ declare let voices: Array<OscillatorNode>;
 declare let sequences: {
     [key: string]: ReturnType<typeof setTimeout>;
 };
+declare let sequencesGain: Array<GainNode>;
 declare let analysis: {
     [key: string]: Array<AnalyserNode>;
 };
@@ -63,6 +64,14 @@ declare const osc2: HTMLElement | null;
 declare const osc3: HTMLElement | null;
 declare function renderLeveler(stages: number, levels: number, container: Element): void;
 declare function renderMeterLevel(level: number, root: HTMLElement | null, selector: string): void;
+declare function normEngine(partials: number, real: Float32Array, imag: Float32Array): PeriodicWave;
+declare function varyEngine(gain: number, freq: number): {
+    gainCalc: number;
+    freqCalc: number;
+    phi: number;
+    phaze: number;
+    timbFactor: number;
+};
 declare function meanSquare(data: Float32Array<ArrayBuffer>): number;
 declare function linear(): Float32Array<ArrayBuffer>;
 declare function sigmoid1(amount?: number): Float32Array<ArrayBuffer>;
@@ -81,6 +90,7 @@ declare function updateMacros(): boolean;
 declare function updateOscillator(oscID: string): boolean;
 declare function updateSequence(seqID: string): boolean;
 declare function updateFX(): boolean;
+declare function transientAmp(delay: number, duration: number, initGain: number, gain: number, gainNode: GainNode): void;
 declare function setupSequencer(seqID: string, oscFreq: number, oscVoic: number, inputNode: AudioNode): BiquadFilterNode | boolean;
 declare function shutup(): void;
 declare function soundAll(update?: string): void;

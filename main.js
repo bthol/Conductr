@@ -40,6 +40,10 @@ const template = [
         label: 'settings',
         click: () => { console.log('settings'); }
       },
+      {
+        label: 'logs',
+        click: () => { console.log('logs'); }
+      },
     ]
   },
   {

@@ -16,10 +16,10 @@ let macros = {
     'tempo': 128,
     'beatsPerMeasure': 4,
     'FortePiano': 1,
-    'creciendo': 0,
-    'expressivity': 0,
-    'variance': 2,
     'driveMult': 1,
+    'creciendo': 0,
+    'variance': 2,
+    'expressivity': 0,
     'Attack': 3,
     'Sustain': 5,
     'Release': 4,
@@ -31,6 +31,7 @@ let oscillators = {};
 let sequencers = {};
 let voices = [];
 let sequences = {};
+let sequencesGain = [];
 let analysis = { 'master': [], 'FX': [] };
 let audioWorkletNodes = [];
 let playback = false;
@@ -109,6 +110,94 @@ function renderMeterLevel(level, root, selector) {
     else {
         console.log('meter level rerender failed due to missing root element');
     }
+}
+;
+function normEngine(partials, real, imag) {
+    let maxPeak = 0;
+    const r = real[0];
+    const i = imag[0];
+    let fallback = false;
+    if (r !== undefined && i !== undefined) {
+        maxPeak += Math.sqrt(r ** 2 + i ** 2);
+        for (let p = 1; p < partials; p++) {
+            const r = real[p];
+            const i = imag[p];
+            if (r !== undefined && i !== undefined) {
+                const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                maxPeak += amp;
+            }
+            else {
+                fallback = true;
+                break;
+            }
+        }
+        const scalingFactor = targetPeak / maxPeak;
+        const normReal = new Float32Array(partials);
+        const normImag = new Float32Array(partials);
+        for (let i = 0; i < real.length; i++) {
+            let rea = real[i];
+            let ima = imag[i];
+            if (rea !== undefined && ima !== undefined) {
+                normReal[i] = rea * scalingFactor;
+                normImag[i] = ima * scalingFactor;
+            }
+            else {
+                fallback = true;
+                break;
+            }
+        }
+        let componentAmps = new Float32Array(partials);
+        for (let c = 0; c < real.length; c++) {
+            const r = normReal[c];
+            const i = normImag[c];
+            if (r !== undefined && i !== undefined) {
+                const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
+                componentAmps[c] = amp;
+            }
+        }
+        const E = meanSquare(componentAmps) * partials;
+        const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+        const realE = new Float32Array(partials);
+        const imagE = new Float32Array(partials);
+        for (let c = 0; c < real.length; c++) {
+            const r = normReal[c];
+            const i = normImag[c];
+            if (i !== undefined && r !== undefined) {
+                realE[c] = r * EFactor;
+                imagE[c] = i * EFactor;
+            }
+        }
+        if (!fallback) {
+            return audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
+        }
+    }
+    else {
+        fallback = true;
+    }
+    if (fallback) {
+        console.log('fell back to default normalization');
+        return audioContext.createPeriodicWave(real, imag);
+    }
+    return audioContext.createPeriodicWave(real, imag);
+}
+;
+function varyEngine(gain, freq) {
+    const v = (macros['variance'] * (freq / 20000));
+    const gainFactor = .25;
+    const freqFactor = .5;
+    const stereoFactor = .15;
+    const timbFactor = .1;
+    const gainV = Math.random() * v * gainFactor;
+    const freqV = Math.random() * v * freqFactor;
+    const stereoV = Math.random() * v * stereoFactor;
+    const timbreV = Math.random() * v * timbFactor;
+    const xAty1 = 99;
+    const curve = gain === 0 ? 0 : (-Math.log10(-(gain / 100) + 1) / 2) * xAty1 - gainV;
+    const gainCalc = macros['FortePiano'] / 4 * curve;
+    const freqCalc = freq - (Math.abs(freq - 20) / 15 * freqV);
+    const phi = (45 + timbreV * 30) * Math.PI / 180;
+    const phaze = Math.pow(Math.E, phi);
+    return { gainCalc: gainCalc, freqCalc: freqCalc, phi: phi, phaze: phaze, timbFactor: timbFactor };
 }
 ;
 function meanSquare(data) {
@@ -234,17 +323,17 @@ function initMacros() {
     macros['creciendo'] = 0;
     macros['variance'] = 2;
     macros['driveMult'] = 1;
-    macros['expressivity'] = 0;
-    macros['Attack'] = 3;
-    macros['Sustain'] = 5;
-    macros['Release'] = 4;
+    macros['expressivity'] = -1;
+    macros['Attack'] = 2;
+    macros['Release'] = 8;
+    macros['Sustain'] = 1;
     if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) {
         masterGain.value = '100';
         masterPan.value = '0';
         DMControl.value = '0';
         FPControl.value = '0';
         CControl.value = '0';
-        EControl.value = '0';
+        EControl.value = '-10';
         VControl.value = '2';
     }
     else {
@@ -259,18 +348,14 @@ function initOscillators() {
     let count = 0;
     for (const osc of oscsNodeList) {
         count += 1;
+        const gain = .9;
         const frequency = 65.4;
         const detune = -3;
         const partials = 256;
         const ID = crypto.randomUUID().split('-')[0];
         if (typeof ID === 'string') {
             osc.id = ID;
-            const v = (macros['variance'] * (frequency / 20000));
-            const timbFactor = .1;
-            const stereoFactor = .15;
-            const stereoV = Math.random() * v * stereoFactor / 1.5;
-            const phi = (45 + stereoV * 30) * Math.PI / 180;
-            const phaze = Math.pow(Math.E, phi);
+            const { gainCalc, freqCalc, phi, phaze, timbFactor } = varyEngine(gain, frequency);
             const real = new Float32Array(partials);
             const imag = new Float32Array(partials);
             let waveform;
@@ -289,78 +374,13 @@ function initOscillators() {
             }
             real[0] = 0;
             imag[0] = 0;
-            let maxPeak = 0;
-            const r = real[0];
-            const i = imag[0];
-            let fallback = false;
-            if (r !== undefined && i !== undefined) {
-                maxPeak += Math.sqrt(r ** 2 + i ** 2);
-                for (let p = 1; p < partials; p++) {
-                    const r = real[p];
-                    const i = imag[p];
-                    if (r !== undefined && i !== undefined) {
-                        const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
-                        maxPeak += amp;
-                    }
-                    else {
-                        fallback = true;
-                        break;
-                    }
-                }
-                const scalingFactor = targetPeak / maxPeak;
-                const normReal = new Float32Array(partials);
-                const normImag = new Float32Array(partials);
-                for (let i = 0; i < real.length; i++) {
-                    let rea = real[i];
-                    let ima = imag[i];
-                    if (rea !== undefined && ima !== undefined) {
-                        normReal[i] = rea * scalingFactor;
-                        normImag[i] = ima * scalingFactor;
-                    }
-                    else {
-                        fallback = true;
-                        break;
-                    }
-                }
-                let componentAmps = new Float32Array(partials);
-                for (let c = 0; c < real.length; c++) {
-                    const r = normReal[c];
-                    const i = normImag[c];
-                    if (r !== undefined && i !== undefined) {
-                        const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
-                        componentAmps[c] = amp;
-                    }
-                }
-                const E = meanSquare(componentAmps) * partials;
-                const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
-                const realE = new Float32Array(partials);
-                const imagE = new Float32Array(partials);
-                for (let c = 0; c < real.length; c++) {
-                    const r = normReal[c];
-                    const i = normImag[c];
-                    if (i !== undefined && r !== undefined) {
-                        realE[c] = r * EFactor;
-                        imagE[c] = i * EFactor;
-                    }
-                }
-                if (!fallback) {
-                    waveform = audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
-                }
-            }
-            else {
-                fallback = true;
-            }
-            if (fallback) {
-                console.log('fell back to default normalization');
-                waveform = audioContext.createPeriodicWave(real, imag);
-            }
-            waveform = audioContext.createPeriodicWave(real, imag);
+            waveform = normEngine(partials, real, imag);
             oscillators[ID] = {
-                'gain': .5,
+                'gain': gainCalc,
                 'drive': 1,
                 'driveCharacter': 'sigmoid1',
                 'oscVoices': 3,
-                'freq': frequency,
+                'freq': freqCalc,
                 'detune': detune,
                 'waveform': waveform,
                 'meterID': `meter-${count}`,
@@ -381,7 +401,7 @@ function initOscillators() {
             oscGain.value = '50';
             oscDriv.value = '1';
             oscDrCh.value = 'sigmoid1';
-            oscVoic.value = '3';
+            oscVoic.value = '2';
             oscFreq.value = `${frequency}`;
             oscDetu.value = `${detune}`;
             oscPart.value = `${partials}`;
@@ -561,16 +581,16 @@ function updateMacros() {
             expVal = Math.floor(expVal);
         }
         if (expVal === 0) {
-            macros['expressivity'] = 1;
+            macros['expressivity'] = 0;
         }
         else if (expVal > 0) {
-            macros['expressivity'] = 1 + expVal / expRange;
+            macros['expressivity'] = expVal / expRange;
         }
         else if (expVal < 0) {
-            macros['expressivity'] = 1 + expVal / expRange;
+            macros['expressivity'] = expVal / expRange;
         }
         else {
-            macros['expressivity'] = 1;
+            macros['expressivity'] = 0;
             console.log('macro range error: Expressivity');
         }
         let driveMultiplier = Number(DMControl.value);
@@ -602,12 +622,11 @@ function updateMacros() {
             console.log('macro range error: Drive Multiplier');
         }
         let inVal = Number(FPControl.value);
-        const inRange = 50;
-        if (inVal > inRange) {
-            inVal = inRange;
+        if (inVal > 30) {
+            inVal = 30;
         }
-        else if (inVal < -inRange) {
-            inVal = -inRange;
+        else if (inVal < -10) {
+            inVal = -10;
         }
         else if (inVal > 0 && inVal % 1 !== 0) {
             inVal = Math.ceil(inVal);
@@ -619,10 +638,10 @@ function updateMacros() {
             macros['FortePiano'] = 1;
         }
         else if (inVal > 0) {
-            macros['FortePiano'] = (1 + inVal / inRange) * macros['creciendo'];
+            macros['FortePiano'] = (1 + inVal / 10) * macros['creciendo'];
         }
         else if (inVal < 0) {
-            macros['FortePiano'] = (1 + inVal / inRange) * macros['creciendo'];
+            macros['FortePiano'] = macros['creciendo'] !== 0 ? (1 + inVal / 10) / macros['creciendo'] : 0;
         }
         else {
             macros['FortePiano'] = 1;
@@ -684,41 +703,30 @@ function updateOscillator(oscID) {
                 const detune = Number(oscDetu.value);
                 const partials = Number(oscPart.value);
                 const type = oscType.value;
-                const v = (macros['variance'] * (freq / 20000));
-                const gainFactor = .25;
-                const freqFactor = .5;
-                const stereoFactor = .15;
-                const timbFactor = .1;
-                const gainV = Math.random() * v * gainFactor;
-                const freqV = Math.random() * v * freqFactor;
-                const stereoV = Math.random() * v * stereoFactor / 1.5;
-                const xAty1 = 99;
-                const curve = gain === 0 ? 0 : (-Math.log10(-(gain / 100) + 1) / 2) * xAty1 - gainV;
-                const gainCalc = macros['FortePiano'] / 4 * curve;
-                const freqCalc = freq - freqV;
+                const { gainCalc, freqCalc, phi, phaze, timbFactor } = varyEngine(gain, freq);
                 let gainVal = gainCalc;
                 if (gainCalc >= 1) {
-                    gainVal = 1 - gainV;
+                    gainVal = 1 - Math.random() * .1;
                 }
                 else if (gainCalc < 0) {
-                    gainVal = gainV;
+                    gainVal = Math.random() * .1;
                 }
                 else if (gainVal % 1 !== 0) {
                     gainVal = Math.ceil(gainVal);
                 }
                 let freqVal = freqCalc;
                 if (freqVal > 20000) {
-                    freqVal = 20000 - freqV;
+                    freqVal = 20000 - Math.random() * 1000;
                 }
                 else if (freqVal < 20) {
-                    freqVal = 20 + freqV;
+                    freqVal = 20 + Math.random() * 10;
                 }
                 let voiceVal = voices;
-                if (voiceVal > 4) {
-                    voiceVal = 4;
+                if (voiceVal > 3) {
+                    voiceVal = 3;
                 }
-                else if (voiceVal < 1) {
-                    voiceVal = 1;
+                else if (voiceVal < 0) {
+                    voiceVal = 0;
                 }
                 else if (voiceVal % 1 !== 0) {
                     voiceVal = Math.ceil(voiceVal);
@@ -753,8 +761,6 @@ function updateOscillator(oscID) {
                 else if (partialsVal % 1 !== 0) {
                     partialsVal = Math.ceil(partials);
                 }
-                const phi = (45 + stereoV * 30) * Math.PI / 180;
-                const phaze = Math.pow(Math.E, phi);
                 const real = new Float32Array(partialsVal);
                 const imag = new Float32Array(partialsVal);
                 let waveform = [];
@@ -846,73 +852,9 @@ function updateOscillator(oscID) {
                 }
                 real[0] = 0;
                 imag[0] = 0;
-                let maxPeak = 0;
-                const r = real[0];
-                const i = imag[0];
-                let fallback = false;
-                if (r !== undefined && i !== undefined) {
-                    maxPeak += Math.sqrt(r ** 2 + i ** 2);
-                    for (let p = 1; p < partialsVal; p++) {
-                        const r = real[p];
-                        const i = imag[p];
-                        if (r !== undefined && i !== undefined) {
-                            const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
-                            maxPeak += amp;
-                        }
-                        else {
-                            fallback = true;
-                            break;
-                        }
-                    }
-                    const scalingFactor = targetPeak / maxPeak;
-                    const normReal = new Float32Array(partialsVal);
-                    const normImag = new Float32Array(partialsVal);
-                    for (let i = 0; i < real.length; i++) {
-                        let rea = real[i];
-                        let ima = imag[i];
-                        if (rea !== undefined && ima !== undefined) {
-                            normReal[i] = rea * scalingFactor;
-                            normImag[i] = ima * scalingFactor;
-                        }
-                        else {
-                            fallback = true;
-                            break;
-                        }
-                    }
-                    let componentAmps = new Float32Array(partialsVal);
-                    for (let c = 0; c < real.length; c++) {
-                        const r = normReal[c];
-                        const i = normImag[c];
-                        if (r !== undefined && i !== undefined) {
-                            const amp = 2 * Math.sqrt(r ** 2 + i ** 2);
-                            componentAmps[c] = amp;
-                        }
-                    }
-                    const E = meanSquare(componentAmps) * partials;
-                    const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
-                    const realE = new Float32Array(partialsVal);
-                    const imagE = new Float32Array(partialsVal);
-                    for (let c = 0; c < real.length; c++) {
-                        const r = normReal[c];
-                        const i = normImag[c];
-                        if (i !== undefined && r !== undefined) {
-                            realE[c] = r * EFactor;
-                            imagE[c] = i * EFactor;
-                        }
-                    }
-                    if (!fallback) {
-                        waveform = audioContext.createPeriodicWave(realE, imagE, { disableNormalization: true });
-                    }
-                }
-                else {
-                    fallback = true;
-                }
-                if (fallback) {
-                    console.log('fell back to default normalization');
-                    waveform = audioContext.createPeriodicWave(real, imag);
-                }
+                waveform = normEngine(partialsVal, real, imag);
                 oscillators[oscID]['waveform'] = waveform;
-                oscillators[oscID]['oscVoices'] = voiceVal;
+                oscillators[oscID]['oscVoices'] = voiceVal + 1;
                 oscillators[oscID]['gain'] = gainVal;
                 oscillators[oscID]['drive'] = driveVal;
                 oscillators[oscID]['driveCharacter'] = driveCharacter;
@@ -1018,15 +960,15 @@ function updateSequence(seqID) {
                         freqLvls.push(NaN);
                     }
                 }
-                sequencers[seqID]['stages'] = stages > 16 ? 16 : stages < 2 ? 2 : stages;
-                sequencers[seqID]['levels'] = levels > 25 ? 25 : levels < 2 ? 2 : levels;
+                sequencers[seqID]['stages'] = Math.max(2, Math.min(36, stages));
+                sequencers[seqID]['levels'] = Math.max(2, Math.min(25, levels));
                 sequencers[seqID]['seqRate'] = seqRate;
                 sequencers[seqID]['filtType'] = filtType;
-                sequencers[seqID]['cutoff'] = cutoff > 20000 ? 20000 : cutoff < 20 ? 20 : cutoff;
-                sequencers[seqID]['resonance'] = resonance > 25 ? 25 : resonance < 0.1 ? 0.1 : resonance;
-                sequencers[seqID]['ampMod'] = ampMod > 10 ? 10 : ampMod < 0 ? 0 : ampMod;
-                sequencers[seqID]['filtMod'] = filtMod > 10 ? 10 : filtMod < -10 ? -10 : filtMod;
-                sequencers[seqID]['freqMod'] = freqMod > 24 ? 24 : freqMod < -24 ? -24 : freqMod;
+                sequencers[seqID]['cutoff'] = Math.max(100, Math.min(20000, cutoff));
+                sequencers[seqID]['resonance'] = Math.max(0.1, Math.min(25, resonance));
+                sequencers[seqID]['ampMod'] = Math.max(0, Math.min(10, ampMod));
+                sequencers[seqID]['filtMod'] = Math.max(-10, Math.min(10, filtMod));
+                sequencers[seqID]['freqMod'] = Math.max(-24, Math.min(24, freqMod));
                 sequencers[seqID]['ampLvls'] = ampLvls;
                 sequencers[seqID]['filtLvls'] = filtLvls;
                 sequencers[seqID]['freqLvls'] = freqLvls;
@@ -1078,6 +1020,38 @@ function updateFX() {
     }
 }
 ;
+function transientAmp(delay, duration, initGain, gain, gainNode) {
+    if (gain === 0) {
+        return;
+    }
+    ;
+    const steps = duration * 1000 | 0;
+    const gainDelta = gain / steps;
+    if (!isFinite(gainDelta)) {
+        return;
+    }
+    ;
+    const curve = new Float32Array(steps + 1);
+    let g = initGain;
+    for (let i = 0; i < steps + 1; i++) {
+        curve[i] = g;
+        g += gainDelta;
+        g = Math.max(0, Math.min(1, g));
+        if (g < .0001) {
+            g = 0;
+        }
+        ;
+    }
+    console.log(curve);
+    try {
+        gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+        gainNode.gain.setValueCurveAtTime(curve, delay, duration);
+    }
+    catch (err) {
+        console.log(err);
+    }
+}
+;
 function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     if (sequencersInitialized) {
         const seq = sequencers[seqID];
@@ -1095,35 +1069,8 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const measureDuration = 1 / (macros['tempo'] / macros['beatsPerMeasure']) * 60 * 1000;
         const rate = Number(seq['seqRate'].split('/')[0]) / Number(seq['seqRate'].split('/')[1]);
         const stageDuration = measureDuration * rate;
-        if (ampMod > 10) {
-            ampMod = 10;
-        }
-        else if (ampMod < 0) {
-            ampMod = 0;
-        }
-        else if (ampMod % 1 !== 0) {
-            ampMod = Math.ceil(ampMod);
-        }
         ampMod = ampMod / 10;
-        if (filtMod > 10) {
-            filtMod = 10;
-        }
-        else if (filtMod < -10) {
-            filtMod = -10;
-        }
-        else if (filtMod % 1 !== 0) {
-            filtMod = Math.ceil(filtMod);
-        }
-        filtMod = (cutoff - 200) * (filtMod / 10);
-        if (freqMod > 24) {
-            freqMod = 24;
-        }
-        else if (freqMod < -24) {
-            freqMod = -24;
-        }
-        else if (freqMod % 1 !== 0) {
-            freqMod = Math.ceil(freqMod);
-        }
+        filtMod = Math.abs(cutoff - 100) * (filtMod / 10);
         let oscs = [];
         for (let voice = voices.length - oscVoic; voice < voices.length; voice++) {
             const v = voices[voice];
@@ -1133,6 +1080,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             ;
         }
         const gainNode = audioContext.createGain();
+        sequencesGain.push(gainNode);
         const filterNode = new BiquadFilterNode(audioContext, {
             type: type,
             frequency: cutoff,
@@ -1157,10 +1105,50 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             }
         }
         const root = oscFreq;
+        const minFreqDelta = 0.000061;
+        const expMac = macros['expressivity'];
+        const envelope = expMac === 0 ? 0 : Math.abs(expMac);
+        const Amac = macros['Attack'];
+        const Rmac = macros['Release'];
+        const Smac = macros['Sustain'];
+        const whole = Amac + Rmac + Smac;
+        const interTransient = .0003;
+        const stageSeconds = stageDuration / 1000;
+        const A = Amac / whole * (stageSeconds - 3 * interTransient);
+        const R = Rmac / whole * (stageSeconds - 3 * interTransient);
+        const S = Smac / whole * (stageSeconds - 3 * interTransient);
+        const Astart = interTransient / 2;
+        const Rstart = Astart + A + interTransient;
+        const Sstart = Rstart + R + interTransient;
+        const condA = A >= .002;
+        const condR = R >= .002;
+        const condS = S >= .002;
+        const condLen = Sstart + S + interTransient / 2 <= stageSeconds;
+        const envelopeEnabled = condA && condR && condS && condLen;
         if (ampMod !== 0) {
             const amp = ampLvls[0];
             if (amp !== undefined) {
-                gainNode.gain.value = amp;
+                if (envelopeEnabled && expMac > 0) {
+                    const initGain = 1 - envelope;
+                    const gainChange = amp - initGain;
+                    console.log(`A: ${A * 1000 | 0} R: ${R * 1000 | 0} S: ${S * 1000 | 0}`);
+                    console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                    const current = audioContext.currentTime;
+                    transientAmp(current + Astart, A, initGain, -(gainChange), gainNode);
+                    transientAmp(current + Rstart, R, amp, gainChange, gainNode);
+                    transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                }
+                else if (envelopeEnabled && expMac < 0) {
+                    const initGain = 1 - envelope;
+                    const gainChange = amp - initGain;
+                    const current = audioContext.currentTime;
+                    transientAmp(current + Astart, A, initGain, gainChange, gainNode);
+                    transientAmp(current + Rstart, R, amp, -(gainChange), gainNode);
+                    transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                }
+                else {
+                    gainNode.gain.value = amp;
+                }
             }
         }
         if (filtMod !== 0) {
@@ -1173,7 +1161,17 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             const ratio = freqLvls[0];
             if (ratio !== undefined) {
                 oscs.forEach((osc) => {
-                    osc.frequency.value = root * ratio;
+                    if (Math.abs(root * ratio - root) < minFreqDelta) {
+                        if (ratio > 1) {
+                            osc.frequency.value = root + minFreqDelta;
+                        }
+                        else {
+                            osc.frequency.value = root - minFreqDelta;
+                        }
+                    }
+                    else {
+                        osc.frequency.value = root * ratio;
+                    }
                 });
             }
         }
@@ -1182,7 +1180,25 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             if (ampMod !== 0) {
                 const amp = ampLvls[stage];
                 if (amp !== undefined) {
-                    gainNode.gain.value = amp;
+                    if (envelopeEnabled && expMac > 0) {
+                        const initGain = 1 - envelope;
+                        const gainChange = amp - initGain;
+                        const current = audioContext.currentTime;
+                        transientAmp(current + Astart, A, initGain, -(gainChange), gainNode);
+                        transientAmp(current + Rstart, R, amp, gainChange, gainNode);
+                        transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                    }
+                    else if (envelopeEnabled && expMac < 0) {
+                        const initGain = 1 - envelope;
+                        const gainChange = amp - initGain;
+                        const current = audioContext.currentTime;
+                        transientAmp(current + Astart, A, initGain, gainChange, gainNode);
+                        transientAmp(current + Rstart, R, amp, -(gainChange), gainNode);
+                        transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                    }
+                    else {
+                        gainNode.gain.value = amp;
+                    }
                 }
             }
             if (filtMod !== 0) {
@@ -1195,7 +1211,17 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
                 const ratio = freqLvls[stage];
                 if (ratio !== undefined) {
                     oscs.forEach((osc) => {
-                        osc.frequency.value = root * ratio;
+                        if (Math.abs(root * ratio - root) < minFreqDelta) {
+                            if (ratio > 1) {
+                                osc.frequency.value = root + minFreqDelta;
+                            }
+                            else {
+                                osc.frequency.value = root - minFreqDelta;
+                            }
+                        }
+                        else {
+                            osc.frequency.value = root * ratio;
+                        }
                     });
                 }
             }
@@ -1214,6 +1240,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
 ;
 function shutup() {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
+    sequencesGain.forEach((gainNode) => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); });
     const sequenceKeys = Object.keys(sequences);
     for (const seqID of sequenceKeys) {
         clearInterval(sequences[seqID]);
@@ -1223,6 +1250,8 @@ function shutup() {
         node.port.postMessage({ 'action': 'deactivate' });
     }
     voices = [];
+    sequences = {};
+    sequencesGain = [];
     analysis = {};
     audioWorkletNodes = [];
 }
@@ -1840,6 +1869,17 @@ knobs.forEach((container) => {
         const max = parseInt(input.max);
         const min = parseInt(input.min);
         const paramRange = Math.abs(max - min);
+        knob.addEventListener('dblclick', (event) => {
+            const target = event.target;
+            if (target.classList.contains('on-dbl')) {
+                input.value = '1';
+                renderKnob(parseInt(input.value), input.id);
+            }
+            else {
+                input.value = '0';
+                renderKnob(parseInt(input.value), input.id);
+            }
+        });
         knob.addEventListener('mousedown', (e) => {
             isDragging = true;
             startY = e.clientY;
@@ -1855,7 +1895,7 @@ knobs.forEach((container) => {
             Ti = Tf;
             const T = Math.max(duration, 1);
             const deltaY = startY - e.clientY;
-            let newVal = startVal + Math.round(deltaY / T * paramRange / (paramRange + knobSensitivity));
+            let newVal = startVal + Math.round(deltaY / T * knobSensitivity);
             newVal = Math.max(min, Math.min(max, newVal));
             input.value = newVal.toString();
             renderKnob(newVal, ID);

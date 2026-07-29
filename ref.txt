@@ -142,3 +142,16 @@ Biquad Filters are differentiated and classified by their number of zeroes and p
 Poles are the zeros of the denominator expression and zeroes are the zeroes of the numerator expression
 Cascading Biquad Filters allows for more stable complex filtering circuits/programs than other approaches
 Infinite Impulse Response (IIR), as opposed to Finite Impulse Response (FIR), 
+
+
+200 beats/minute at 1 beat/meter with a sequencer at 1/32 rate will have a stage duration of 9 3/8 milliseconds
+transient detail is scheduled every millisecond, so any transient section less than two milliseconds long will disable enveloping
+187 beats/minute is the maximum tempo before the smallest attack value becomes less than two milliseconds and amp enveloping becomes disabled not accounting for intertransient periods
+
+9.375 - 3*.1 = 9.375 - .3 = 9.075
+1 - 10 : 3X
+1, 10, 10 => 1 / (1 + 10 + 10) = 1 / 21 = 0.04761904761904761904761904761905
+0.04761904761904761904761904761905 * 9.075 = 0.43214285714285714285714285714286 < 2
+
+0.04761904761904761904761904761905 * x = 2
+x = 42 ms minimum per stage to not disable enveloping
