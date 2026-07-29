@@ -32,12 +32,14 @@ let sequencers = {};
 let voices = [];
 let sequences = {};
 let sequencesGain = [];
-let analysis = { 'master': [], 'FX': [] };
+let analysis = {};
 let audioWorkletNodes = [];
 let playback = false;
 let macrosInitialized = false;
 let oscillatorsInitialized = false;
 let sequencersInitialized = false;
+let FXInitialized = false;
+let analysisInitialized = false;
 const meterMaster = document.getElementById('meter-master');
 const meterFX = document.getElementById('meter-FX');
 const meter1 = document.getElementById('meter-1');
@@ -491,10 +493,17 @@ function initFX() {
     if (DryWetFX) {
         DryWetFX.value = '0';
     }
+    FXInitialized = true;
+}
+;
+function initAnalysis() {
+    analysis['master'] = [];
+    analysis['FX'] = [];
+    analysisInitialized = true;
 }
 ;
 function updateMacros() {
-    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) {
+    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) {
         let masterVal = Number(masterGain.value);
         if (masterVal > 100) {
             masterVal = 100;
@@ -671,7 +680,7 @@ function updateMacros() {
 }
 ;
 function updateOscillator(oscID) {
-    if (osc1 && osc2 && osc3) {
+    if (oscillatorsInitialized && osc1 && osc2 && osc3) {
         const oscsNodeList = document.querySelectorAll('.oscs');
         const oscsKeyArray = Object.keys(oscillators);
         let osc = undefined;
@@ -879,7 +888,7 @@ function updateOscillator(oscID) {
 }
 ;
 function updateSequence(seqID) {
-    if (seq1 && seq2 && seq3) {
+    if (sequencersInitialized && seq1 && seq2 && seq3) {
         const seqs = document.querySelectorAll('.seqs');
         const seqsKeyArray = Object.keys(sequencers);
         let seq = undefined;
@@ -991,7 +1000,7 @@ function updateSequence(seqID) {
 }
 ;
 function updateFX() {
-    if (DryWetFX) {
+    if (FXInitialized && DryWetFX) {
         let dryWetVal = Number(DryWetFX.value);
         const DWrange = 50;
         if (dryWetVal > DWrange) {
@@ -1042,7 +1051,6 @@ function transientAmp(delay, duration, initGain, gain, gainNode) {
         }
         ;
     }
-    console.log(curve);
     try {
         gainNode.gain.cancelScheduledValues(audioContext.currentTime);
         gainNode.gain.setValueCurveAtTime(curve, delay, duration);
@@ -1107,7 +1115,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const root = oscFreq;
         const minFreqDelta = 0.000061;
         const expMac = macros['expressivity'];
-        const envelope = expMac === 0 ? 0 : Math.abs(expMac);
+        const envelope = Math.abs(expMac);
         const Amac = macros['Attack'];
         const Rmac = macros['Release'];
         const Smac = macros['Sustain'];
@@ -1130,13 +1138,11 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             if (amp !== undefined) {
                 if (envelopeEnabled && expMac > 0) {
                     const initGain = 1 - envelope;
-                    const gainChange = amp - initGain;
-                    console.log(`A: ${A * 1000 | 0} R: ${R * 1000 | 0} S: ${S * 1000 | 0}`);
-                    console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                    const gainChange = initGain - amp;
                     const current = audioContext.currentTime;
-                    transientAmp(current + Astart, A, initGain, -(gainChange), gainNode);
-                    transientAmp(current + Rstart, R, amp, gainChange, gainNode);
-                    transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                    transientAmp(current + Astart, A, amp, gainChange, gainNode);
+                    transientAmp(current + Rstart, R, initGain, -(gainChange), gainNode);
+                    transientAmp(current + Sstart, S, amp, 0, gainNode);
                 }
                 else if (envelopeEnabled && expMac < 0) {
                     const initGain = 1 - envelope;
@@ -1182,11 +1188,11 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
                 if (amp !== undefined) {
                     if (envelopeEnabled && expMac > 0) {
                         const initGain = 1 - envelope;
-                        const gainChange = amp - initGain;
+                        const gainChange = initGain - amp;
                         const current = audioContext.currentTime;
-                        transientAmp(current + Astart, A, initGain, -(gainChange), gainNode);
-                        transientAmp(current + Rstart, R, amp, gainChange, gainNode);
-                        transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                        transientAmp(current + Astart, A, amp, gainChange, gainNode);
+                        transientAmp(current + Rstart, R, initGain, -(gainChange), gainNode);
+                        transientAmp(current + Sstart, S, amp, 0, gainNode);
                     }
                     else if (envelopeEnabled && expMac < 0) {
                         const initGain = 1 - envelope;
@@ -1245,6 +1251,7 @@ function shutup() {
     for (const seqID of sequenceKeys) {
         clearInterval(sequences[seqID]);
     }
+    ;
     for (const node of audioWorkletNodes) {
         node.disconnect();
         node.port.postMessage({ 'action': 'deactivate' });
@@ -1259,7 +1266,7 @@ function shutup() {
 function soundAll(update = 'all') {
     let gotit = ['all', 'osc', 'seq', 'FX'].includes(update);
     !gotit && console.log('passed bad argument to update parameter in soundAll function');
-    if (gotit && playback) {
+    if (gotit) {
         shutup();
     }
     if (gotit) {
@@ -1468,47 +1475,49 @@ function soundAll(update = 'all') {
         masterGainNode.connect(masterAnalysis);
     }
     if (gotit && playback) {
-        const keys = Object.keys(analysis);
-        for (let key of keys) {
-            const nodeList = analysis[key];
-            if (nodeList) {
-                if (key === 'master') {
-                    const out = nodeList[0];
-                    if (out) {
-                        peakLevel(out, meterMaster, 'true-peak-container');
-                        RMSLevel(out, meterMaster, 'RMS-container');
-                        LUFSLevel(out, meterMaster, 'LUFS-container');
+        if (analysisInitialized) {
+            const keys = Object.keys(analysis);
+            for (let key of keys) {
+                const nodeList = analysis[key];
+                if (nodeList) {
+                    if (key === 'master') {
+                        const out = nodeList[0];
+                        if (out) {
+                            peakLevel(out, meterMaster, 'true-peak-container');
+                            RMSLevel(out, meterMaster, 'RMS-container');
+                            LUFSLevel(out, meterMaster, 'LUFS-container');
+                        }
                     }
-                }
-                else if (key === 'FX') {
-                    const pre = nodeList[0];
-                    if (pre) {
-                        RMSLevel(pre, meterFX, 'pre-peak-container');
-                    }
-                    const post = nodeList[1];
-                    if (post) {
-                        RMSLevel(post, meterFX, 'post-peak-container');
-                    }
-                }
-                else {
-                    const meterID = oscillators[key]['meterID'];
-                    const root = document.getElementById(meterID);
-                    if (root) {
+                    else if (key === 'FX') {
                         const pre = nodeList[0];
                         if (pre) {
-                            RMSLevel(pre, root, 'pre-peak-container');
+                            RMSLevel(pre, meterFX, 'pre-peak-container');
                         }
                         const post = nodeList[1];
                         if (post) {
-                            RMSLevel(post, root, 'post-peak-container');
-                        }
-                        const seq = nodeList[2];
-                        if (seq) {
-                            RMSLevel(seq, root, 'seq-peak-container');
+                            RMSLevel(post, meterFX, 'post-peak-container');
                         }
                     }
                     else {
-                        console.log('oscillator meter setup failed due to missing oscillator element');
+                        const meterID = oscillators[key]['meterID'];
+                        const root = document.getElementById(meterID);
+                        if (root) {
+                            const pre = nodeList[0];
+                            if (pre) {
+                                RMSLevel(pre, root, 'pre-peak-container');
+                            }
+                            const post = nodeList[1];
+                            if (post) {
+                                RMSLevel(post, root, 'post-peak-container');
+                            }
+                            const seq = nodeList[2];
+                            if (seq) {
+                                RMSLevel(seq, root, 'seq-peak-container');
+                            }
+                        }
+                        else {
+                            console.log('oscillator meter setup failed due to missing oscillator element');
+                        }
                     }
                 }
             }
@@ -1662,6 +1671,7 @@ async function setup() {
         initOscillators();
         initSequencers();
         initFX();
+        initAnalysis();
         const latency = 150;
         let listening = true;
         playBtn.addEventListener('click', () => {

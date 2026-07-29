@@ -100,7 +100,7 @@ let sequencers: { [key: string]: any } = {}; // stores parameters for each seque
 let voices: Array<OscillatorNode> = []; // stores voices generated with oscillator parameters
 let sequences: {[key:string]: ReturnType<typeof setTimeout> } = {}; // stores cache for sequencer schedule caches
 let sequencesGain: Array<GainNode> = []; // stores gain node for sequence for cancelling schdeuled transients
-let analysis: {[key: string]: Array<AnalyserNode>} = {'master': [], 'FX': []}; // first index = oscillator or sequencer, second index = analyzer node for that oscillator
+let analysis: {[key: string]: Array<AnalyserNode>} = {}; // first index = oscillator or sequencer, second index = analyzer node for that oscillator
 let audioWorkletNodes: Array<AudioWorkletNode> = [];
 
 // Status Booleans
@@ -108,6 +108,8 @@ let playback: boolean = false; // stores the program run state (run: true, off: 
 let macrosInitialized: boolean = false; // boolean for testing initialization status
 let oscillatorsInitialized: boolean = false; // boolean for testing initialization status
 let sequencersInitialized: boolean = false; // boolean for testing initialization status
+let FXInitialized: boolean = false; // boolean for testing initialization status
+let analysisInitialized: boolean = false; // boolean for testing initialization status
 
 // DOM elements
 
@@ -904,13 +906,24 @@ function initFX(): void {
     if (DryWetFX) {
         DryWetFX.value = '0'; // -50 - 50
     }
+
+    // update status
+    FXInitialized = true;
+};
+
+function initAnalysis(): void {
+    analysis['master'] = [];
+    analysis['FX'] = [];
+
+    // update status
+    analysisInitialized = true;
 };
 
 // data update from user input
 function updateMacros(): boolean {
     // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
     
-    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
+    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
 
         // Master Gain
         let masterVal: number = Number(masterGain.value);
@@ -1091,7 +1104,7 @@ function updateMacros(): boolean {
 function updateOscillator(oscID: string): boolean {
     // collects, validates, structures and stores oscillator data
     
-    if (osc1 && osc2 && osc3) { // test element integrity
+    if (oscillatorsInitialized && osc1 && osc2 && osc3) { // test element integrity
 
         // get user data + add data to oscillators structure
         const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
@@ -1332,7 +1345,7 @@ function updateOscillator(oscID: string): boolean {
 
 function updateSequence(seqID: string): boolean {
     // collects, validates, structures and stores sequencer data
-    if (seq1 && seq2 && seq3) {
+    if (sequencersInitialized && seq1 && seq2 && seq3) {
             
         // get user data + add to sequencers structure
         const seqs: NodeListOf<Element> = document.querySelectorAll('.seqs');
@@ -1445,7 +1458,7 @@ function updateSequence(seqID: string): boolean {
 };
 
 function updateFX(): boolean {
-    if (DryWetFX) {
+    if (FXInitialized && DryWetFX) {
 
         // DryWet
         let dryWetVal: number = Number(DryWetFX.value); // -50 - 50
@@ -1492,7 +1505,7 @@ function transientAmp(delay: number, duration: number, initGain: number, gain: n
         g = Math.max(0, Math.min(1, g)); // clamp at ends
         if (g < .0001) {g = 0}; // gate values
     }
-    console.log(curve);
+    // console.log(curve);
     try {
         gainNode.gain.cancelScheduledValues(audioContext.currentTime); // prevent overlap
         gainNode.gain.setValueCurveAtTime(curve, delay, duration);
@@ -1623,7 +1636,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 
         // ARS Envelope Characteristics
         const expMac: number = macros['expressivity']; // -1 - 1
-        const envelope: number = expMac === 0 ? 0 : Math.abs(expMac);
+        const envelope: number = Math.abs(expMac); // 
         const Amac: number = macros['Attack']; // 1 - 10
         const Rmac: number = macros['Release']; // 1 - 10
         const Smac: number = macros['Sustain']; // 1 - 10
@@ -1657,15 +1670,15 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 
                     // positive envelope mode
                     const initGain: number = 1 - envelope;
-                    const gainChange: number = amp - initGain;
+                    const gainChange: number = initGain - amp;
                     // console.log('Positive Envelope Mode');
-                    console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                    console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                    // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
+                    // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
                     // delay, duration, initial gain, gain change amount, gain node
                     const current = audioContext.currentTime;
-                    transientAmp(current + Astart, A,  initGain,    -(gainChange),  gainNode); // Attack
-                    transientAmp(current + Rstart, R,  amp,           gainChange,   gainNode); // Release
-                    transientAmp(current + Sstart, S,  initGain,      0,            gainNode); // Sustain
+                    transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
+                    transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
+                    transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
 
                 } else if (envelopeEnabled && expMac < 0) {
 
@@ -1674,7 +1687,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                     const gainChange: number = amp - initGain;
                     // console.log('Negative Envelope Mode');
                     // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                    // console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                    // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
 
                     // delay, duration, initial gain, gain change, gain node
                     const current = audioContext.currentTime;
@@ -1743,15 +1756,15 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 
                         // positive envelope mode
                         const initGain: number = 1 - envelope;
-                        const gainChange: number = amp - initGain;
+                        const gainChange: number = initGain - amp;
                         // console.log('Positive Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                        // console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                        // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
                         // delay, duration, initial gain, gain change amount, gain node
                         const current = audioContext.currentTime;
-                        transientAmp(current + Astart, A,  initGain,    -(gainChange),  gainNode); // Attack
-                        transientAmp(current + Rstart, R,  amp,           gainChange,   gainNode); // Release
-                        transientAmp(current + Sstart, S,  initGain,      0,            gainNode); // Sustain
+                        transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
+                        transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
+                        transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
 
                     } else if (envelopeEnabled && expMac < 0) {
 
@@ -1760,7 +1773,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                         const gainChange: number = amp - initGain;
                         // console.log('Negative Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                        // console.log(`amp: ${amp}ms, envelope: ${envelope}ms, initial gain: ${initGain}ms, gain change: ${gainChange}ms`);
+                        // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
 
                         // delay, duration, initial gain, gain change, gain node
                         const current = audioContext.currentTime;
@@ -1868,7 +1881,7 @@ function soundAll(update = 'all'): void {
     !gotit && console.log('passed bad argument to update parameter in soundAll function');
     
     // clear your throat (delete previous build to prepare for new build)
-    if (gotit && playback) {
+    if (gotit) {
         shutup();
     }
 
@@ -2221,69 +2234,71 @@ function soundAll(update = 'all'): void {
 
     // setup analysis
     if (gotit && playback) {
-        const keys: Array<string> = Object.keys(analysis);
-        for (let key of keys) {
-            const nodeList: AnalyserNode[] | undefined = analysis[key];
-            if (nodeList) {
-                // control which analyzers log data here
-                // analysis[keys[key]] = list of AnalyzerNodes
-                
-                // Analyzer Nodes
-                // generated ID key: pre analysis and post analysis for each oscillator
-                // 'FX' key : pre FX analysis and post FX analysis
-                // 'master' key:  master output analysis
-
-                if (key === 'master') {
-                    const out: AnalyserNode | undefined = nodeList[0];
-                    if (out) {
-                        // send to peak meter
-                        peakLevel(out, meterMaster, 'true-peak-container');
-                        // send to RMS meter
-                        RMSLevel(out, meterMaster, 'RMS-container');
-                        // send to LUFS meter
-                        LUFSLevel(out, meterMaster, 'LUFS-container');
-                    }
-                } else if (key === 'FX') {
-                    // distinguish pre from post
-                    const pre: AnalyserNode | undefined = nodeList[0];
-                    if (pre) { // before FX chain
-                       // send to pre FX meter
-                       RMSLevel(pre, meterFX, 'pre-peak-container');
-                    }
-
-                    const post: AnalyserNode | undefined = nodeList[1];
-                    if (post) { // after FX chain
-                        // send to post FX meter
-                        RMSLevel(post, meterFX, 'post-peak-container');
-                    }
-                } else { // oscillator
-                    // get oscillator
-                    const meterID = oscillators[key]['meterID'];
-                    const root: HTMLElement | null = document.getElementById(meterID);
-                    if (root) {
-                        // distinguish pre from post from seq
+        if (analysisInitialized) {
+            const keys: Array<string> = Object.keys(analysis);
+            for (let key of keys) {
+                const nodeList: AnalyserNode[] | undefined = analysis[key];
+                if (nodeList) {
+                    // control which analyzers log data here
+                    // analysis[keys[key]] = list of AnalyzerNodes
+                    
+                    // Analyzer Nodes
+                    // generated ID key: pre analysis and post analysis for each oscillator
+                    // 'FX' key : pre FX analysis and post FX analysis
+                    // 'master' key:  master output analysis
+    
+                    if (key === 'master') {
+                        const out: AnalyserNode | undefined = nodeList[0];
+                        if (out) {
+                            // send to peak meter
+                            peakLevel(out, meterMaster, 'true-peak-container');
+                            // send to RMS meter
+                            RMSLevel(out, meterMaster, 'RMS-container');
+                            // send to LUFS meter
+                            LUFSLevel(out, meterMaster, 'LUFS-container');
+                        }
+                    } else if (key === 'FX') {
+                        // distinguish pre from post
                         const pre: AnalyserNode | undefined = nodeList[0];
-                        if (pre) { // before distortion
-                            // send to section meter
-                            RMSLevel(pre, root, 'pre-peak-container');
+                        if (pre) { // before FX chain
+                           // send to pre FX meter
+                           RMSLevel(pre, meterFX, 'pre-peak-container');
                         }
     
                         const post: AnalyserNode | undefined = nodeList[1];
-                        if (post) { // after distortion
-                            // send to gusto meter
-                            RMSLevel(post, root, 'post-peak-container');
+                        if (post) { // after FX chain
+                            // send to post FX meter
+                            RMSLevel(post, meterFX, 'post-peak-container');
                         }
-                        
-                        const seq: AnalyserNode | undefined = nodeList[2];
-                        if (seq) { // after sequencer
-                            // send to wire meter
-                            RMSLevel(seq, root, 'seq-peak-container');
+                    } else { // oscillator
+                        // get oscillator
+                        const meterID = oscillators[key]['meterID'];
+                        const root: HTMLElement | null = document.getElementById(meterID);
+                        if (root) {
+                            // distinguish pre from post from seq
+                            const pre: AnalyserNode | undefined = nodeList[0];
+                            if (pre) { // before distortion
+                                // send to section meter
+                                RMSLevel(pre, root, 'pre-peak-container');
+                            }
+        
+                            const post: AnalyserNode | undefined = nodeList[1];
+                            if (post) { // after distortion
+                                // send to gusto meter
+                                RMSLevel(post, root, 'post-peak-container');
+                            }
+                            
+                            const seq: AnalyserNode | undefined = nodeList[2];
+                            if (seq) { // after sequencer
+                                // send to wire meter
+                                RMSLevel(seq, root, 'seq-peak-container');
+                            }
+                        } else {
+                            console.log('oscillator meter setup failed due to missing oscillator element');
                         }
-                    } else {
-                        console.log('oscillator meter setup failed due to missing oscillator element');
                     }
+                    
                 }
-                
             }
         }
         
@@ -2494,11 +2509,14 @@ async function setup(): Promise<void> {
         initOscillators();
         initSequencers();
         initFX();
+        initAnalysis();
 
+        // check correct initialization
         // console.log(macros);
         // console.log(oscillators);
         // console.log(sequencers);
         // console.log(FXdata);
+        // console.log(analysis);
 
         // setup listeners for user controls
         const latency: number = 150; // millisecs
