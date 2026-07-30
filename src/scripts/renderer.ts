@@ -2141,6 +2141,10 @@ function soundAll(update = 'all'): void {
         // after FX
         const postAnalysis: AnalyserNode = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis) // store in global structure
+
+        // dry signal
+        const dryAnalysis: AnalyserNode = audioContext.createAnalyser();
+        analysis['FX'].push(dryAnalysis); // store in global structure
         
         // route nodes
         startFX.connect(wet); // adjust wet node after metering startFX
@@ -2148,6 +2152,7 @@ function soundAll(update = 'all'): void {
         endFX.connect(mix); // add to mix
         endFX.connect(postAnalysis); // post analysis
         dry.connect(mix); // add to mix
+        dry.connect(dryAnalysis); // dry analysis
 
         // FX Chain Route Map
         // wet > something > something > endFX
@@ -2269,6 +2274,12 @@ function soundAll(update = 'all'): void {
                         if (post) { // after FX chain
                             // send to post FX meter
                             RMSLevel(post, meterFX, 'post-peak-container');
+                        }
+
+                        const dry: AnalyserNode | undefined = nodeList[2];
+                        if (dry) { // dry signal level
+                            // send to Dry FX Meter
+                            RMSLevel(dry, meterFX, 'dry-peak-container');
                         }
                     } else { // oscillator
                         // get oscillator

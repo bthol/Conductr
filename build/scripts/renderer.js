@@ -1437,11 +1437,14 @@ function soundAll(update = 'all') {
         analysis['FX'].push(preAnalysis);
         const postAnalysis = audioContext.createAnalyser();
         analysis['FX'].push(postAnalysis);
+        const dryAnalysis = audioContext.createAnalyser();
+        analysis['FX'].push(dryAnalysis);
         startFX.connect(wet);
         startFX.connect(preAnalysis);
         endFX.connect(mix);
         endFX.connect(postAnalysis);
         dry.connect(mix);
+        dry.connect(dryAnalysis);
         wet.connect(endFX);
         const compressor = audioContext.createDynamicsCompressor();
         compressor.threshold.value = -12;
@@ -1496,6 +1499,10 @@ function soundAll(update = 'all') {
                         const post = nodeList[1];
                         if (post) {
                             RMSLevel(post, meterFX, 'post-peak-container');
+                        }
+                        const dry = nodeList[2];
+                        if (dry) {
+                            RMSLevel(dry, meterFX, 'dry-peak-container');
                         }
                     }
                     else {
