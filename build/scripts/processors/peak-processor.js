@@ -23,8 +23,7 @@ class PeakProcessor extends AudioWorkletProcessor {
             return false;
         }
         this.frames += 128;
-        if (inputs.length > 0 && this.frames >= this.interval) {
-            this.frames = 0;
+        if (inputs.length > 0) {
             for (let put = 0; put < inputs.length; put++) {
                 const input = inputs[put];
                 if (input && input.every(item => item instanceof Float32Array)) {
@@ -34,25 +33,35 @@ class PeakProcessor extends AudioWorkletProcessor {
                         if (inputChannel instanceof Float32Array) {
                             for (let i = 0; i < inputChannel.length; i++) {
                                 const x = inputChannel[i];
-                                if (x && x > Math.abs(peak)) {
-                                    peak = x;
+                                if (x !== undefined) {
+                                    const xabs = Math.abs(x);
+                                    if (xabs > peak) {
+                                        peak = xabs;
+                                    }
                                 }
                             }
                         }
                     }
-                    const logConvert = 10 * Math.log10(peak);
-                    const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
-                    let index = 0;
-                    for (let i = 0; i < meterLevels.length; i++) {
-                        const level = meterLevels[i];
-                        if (level !== undefined && logConvert < level) {
-                            index = i;
-                        }
+                    if (peak > this.peak) {
+                        this.peak = peak;
                     }
-                    const out = meterLevels[index];
-                    if (out !== undefined && this.logging) {
-                        this.peak = out;
-                        this.port.postMessage({ msg: 'peak', data: out, input: put });
+                    ;
+                    if (this.frames >= this.interval) {
+                        const logConvert = 10 * Math.log10(this.peak);
+                        const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+                        let index = 0;
+                        for (let i = 0; i < meterLevels.length; i++) {
+                            const level = meterLevels[i];
+                            if (level !== undefined && logConvert < level) {
+                                index = i;
+                            }
+                        }
+                        const out = meterLevels[index];
+                        if (out !== undefined && this.logging) {
+                            this.frames = 0;
+                            this.peak = 0;
+                            this.port.postMessage({ msg: 'peak', data: out, input: put });
+                        }
                     }
                 }
             }

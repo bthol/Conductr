@@ -43,8 +43,7 @@ class PeakProcessor extends AudioWorkletProcessor {
     
     // iterate for number of inputs
     this.frames += 128;
-    if (inputs.length > 0 && this.frames >= this.interval) {
-      this.frames = 0;
+    if (inputs.length > 0) {
       for (let put = 0; put < inputs.length; put++) {
         
         // Take an input at a put index
@@ -76,38 +75,46 @@ class PeakProcessor extends AudioWorkletProcessor {
               // Caclulate peak level
               for (let i = 0; i < inputChannel.length; i++) {
                 const x: number | undefined = inputChannel[i];
-                if (x && x > Math.abs(peak)) {
-                  peak = x;
+                if (x !== undefined) {
+                  const xabs: number = Math.abs(x);
+                  if (xabs > peak) {
+                    peak = xabs;
+                  }
                 }
               }
 
             }
           }
 
-          // convert to logarithmic scale (let an RMS of 0.5 yield a value of -6 dB)
-          // input range : 0 - 1
-          // log range : -inf - 0
-          // 8.655 = {.5, -5.999}, 8.658 = {.5, -6.001}, 8.6562 = {.5, -6.00002}, 8.65617 = {.5, -6} but {1, not 0}, 8.65617025 = {1, 0} and {.5, -6}
-          // const logConvert: number = Math.log(peak)*8.65617025;
-          const logConvert: number = 10 * Math.log10(peak);
-
-          // calculate nearest meter level (out)
-          const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
-          let index: number = 0;
-          for (let i = 0; i < meterLevels.length; i++) {
-            const level: number | undefined = meterLevels[i];
-            if (level !== undefined && logConvert < level) {
-              index = i;
-            }
-          }
-          const out: number | undefined = meterLevels[index];
+          // update peak across 128 sample blocks
+          if (peak > this.peak) {this.peak = peak};
           
           // send calculated level as message to main process
-          if (out !== undefined && this.logging) {
-            this.peak = out;
-            this.port.postMessage({ msg: 'peak', data: out, input: put});
-          }
+          if (this.frames >= this.interval) {
+            // convert to logarithmic scale (let an RMS of 0.5 yield a value of -6 dB)
+            // input range : 0 - 1
+            // log range : -inf - 0
+            // 8.655 = {.5, -5.999}, 8.658 = {.5, -6.001}, 8.6562 = {.5, -6.00002}, 8.65617 = {.5, -6} but {1, not 0}, 8.65617025 = {1, 0} and {.5, -6}
+            // const logConvert: number = Math.log(peak)*8.65617025;
+            const logConvert: number = 10 * Math.log10(this.peak);
+  
+            // calculate nearest meter level (out)
+            const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
+            let index: number = 0;
+            for (let i = 0; i < meterLevels.length; i++) {
+              const level: number | undefined = meterLevels[i];
+              if (level !== undefined && logConvert < level) {
+                index = i;
+              }
+            }
+            const out: number | undefined = meterLevels[index];
 
+            if (out !== undefined && this.logging) {
+              this.frames = 0;
+              this.peak = 0;
+              this.port.postMessage({ msg: 'peak', data: out, input: put});
+            }
+          }
         }
       }
     }
