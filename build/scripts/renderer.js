@@ -8,8 +8,8 @@ const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);
 const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 const targetPeak = 1.0;
-const upperEnergyThreshhold = 0.0630957;
-const lowerEnergyThreshhold = 0.0158;
+const upperEnergyThreshhold = 0.15;
+const lowerEnergyThreshhold = 0.025;
 let macros = {
     'master': .75,
     'pan': 0,
@@ -158,7 +158,7 @@ function normEngine(partials, real, imag) {
             }
         }
         const E = meanSquare(componentAmps) * partials;
-        const EFactor = E > upperEnergyThreshhold ? (E - (E - upperEnergyThreshhold)) / E : E < lowerEnergyThreshhold ? (E - (E - lowerEnergyThreshhold)) / E : 1;
+        const EFactor = E > upperEnergyThreshhold ? upperEnergyThreshhold / E : E < lowerEnergyThreshhold ? lowerEnergyThreshhold / E : 1;
         const realE = new Float32Array(partials);
         const imagE = new Float32Array(partials);
         for (let c = 0; c < real.length; c++) {
@@ -193,8 +193,7 @@ function varyEngine(gain, freq) {
     const freqV = Math.random() * v * freqFactor;
     const stereoV = Math.random() * v * stereoFactor;
     const timbreV = Math.random() * v * timbFactor;
-    const xAty1 = 99;
-    const curve = gain === 0 ? 0 : (-Math.log10(-(gain / 100) + 1) / 2) * xAty1 - gainV;
+    const curve = (gain / 100 - gainV) ** 2;
     const gainCalc = macros['FortePiano'] / 4 * curve;
     const freqCalc = freq - (Math.abs(freq - 20) / 15 * freqV);
     const phi = (45 + timbreV * 30) * Math.PI / 180;
@@ -321,10 +320,10 @@ function initMacros() {
     macros['pan'] = 0;
     macros['tempo'] = 128;
     macros['beatsPerMeasure'] = 4;
-    macros['FortePiano'] = 1;
+    macros['FortePiano'] = 4;
+    macros['driveMult'] = 1;
     macros['creciendo'] = 0;
     macros['variance'] = 2;
-    macros['driveMult'] = 1;
     macros['expressivity'] = -1;
     macros['Attack'] = 2;
     macros['Release'] = 8;
@@ -333,7 +332,7 @@ function initMacros() {
         masterGain.value = '100';
         masterPan.value = '0';
         DMControl.value = '0';
-        FPControl.value = '0';
+        FPControl.value = '30';
         CControl.value = '0';
         EControl.value = '-10';
         VControl.value = '2';
@@ -350,8 +349,8 @@ function initOscillators() {
     let count = 0;
     for (const osc of oscsNodeList) {
         count += 1;
-        const gain = .9;
-        const frequency = 65.4;
+        const gain = .5;
+        const frequency = 261.6;
         const detune = -3;
         const partials = 256;
         const ID = crypto.randomUUID().split('-')[0];
@@ -650,7 +649,7 @@ function updateMacros() {
             macros['FortePiano'] = (1 + inVal / 10) * macros['creciendo'];
         }
         else if (inVal < 0) {
-            macros['FortePiano'] = macros['creciendo'] !== 0 ? (1 + inVal / 10) / macros['creciendo'] : 0;
+            macros['FortePiano'] = macros['creciendo'] === 0 ? 0 : (1 + inVal / 10) / macros['creciendo'];
         }
         else {
             macros['FortePiano'] = 1;
@@ -714,14 +713,11 @@ function updateOscillator(oscID) {
                 const type = oscType.value;
                 const { gainCalc, freqCalc, phi, phaze, timbFactor } = varyEngine(gain, freq);
                 let gainVal = gainCalc;
-                if (gainCalc >= 1) {
+                if (gainCalc > 1) {
                     gainVal = 1 - Math.random() * .1;
                 }
                 else if (gainCalc < 0) {
                     gainVal = Math.random() * .1;
-                }
-                else if (gainVal % 1 !== 0) {
-                    gainVal = Math.ceil(gainVal);
                 }
                 let freqVal = freqCalc;
                 if (freqVal > 20000) {
@@ -974,7 +970,7 @@ function updateSequence(seqID) {
                 sequencers[seqID]['seqRate'] = seqRate;
                 sequencers[seqID]['filtType'] = filtType;
                 sequencers[seqID]['cutoff'] = Math.max(100, Math.min(20000, cutoff));
-                sequencers[seqID]['resonance'] = Math.max(0.1, Math.min(25, resonance));
+                sequencers[seqID]['resonance'] = Math.max(0.1, Math.min(10, resonance));
                 sequencers[seqID]['ampMod'] = Math.max(0, Math.min(10, ampMod));
                 sequencers[seqID]['filtMod'] = Math.max(-10, Math.min(10, filtMod));
                 sequencers[seqID]['freqMod'] = Math.max(-24, Math.min(24, freqMod));
@@ -1115,7 +1111,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const root = oscFreq;
         const minFreqDelta = 0.000061;
         const expMac = macros['expressivity'];
-        const envelope = Math.abs(expMac);
+        const envelope = Math.abs(expMac) ** .5;
         const Amac = macros['Attack'];
         const Rmac = macros['Release'];
         const Smac = macros['Sustain'];
@@ -1244,7 +1240,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     }
 }
 ;
-function shutup() {
+function breakdown() {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
     sequencesGain.forEach((gainNode) => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); });
     const sequenceKeys = Object.keys(sequences);
@@ -1263,11 +1259,12 @@ function shutup() {
     audioWorkletNodes = [];
 }
 ;
-function soundAll(update = 'all') {
+function buildup(update = 'all') {
     let gotit = ['all', 'osc', 'seq', 'FX'].includes(update);
-    !gotit && console.log('passed bad argument to update parameter in soundAll function');
+    !gotit && console.log('passed bad argument to update parameter in buildup function');
+    update = 'all';
     if (gotit) {
-        shutup();
+        breakdown();
     }
     if (gotit) {
         if (update === 'all') {
@@ -1295,7 +1292,7 @@ function soundAll(update = 'all') {
         }
     }
     if (gotit) {
-        if (update === 'all' || update === 'osc' || update === 'seq') {
+        if (update === 'all' || update === 'seq') {
             const seqKeys = Object.keys(sequencers);
             if (seqKeys.length > 0) {
                 for (const key of seqKeys) {
@@ -1321,7 +1318,6 @@ function soundAll(update = 'all') {
     if (gotit && playback) {
         const dry = audioContext.createGain();
         const wet = audioContext.createGain();
-        const startFX = audioContext.createGain();
         const endFX = audioContext.createGain();
         const oscKeys = Object.keys(oscillators);
         const seqKeys = Object.keys(sequencers);
@@ -1417,7 +1413,7 @@ function soundAll(update = 'all') {
             }
             seqKeyIndex += 1;
             seqOut.connect(dry);
-            seqOut.connect(startFX);
+            seqOut.connect(wet);
             const seqAnalyzer = audioContext.createAnalyser();
             analysis[key].push(seqAnalyzer);
             seqOut.connect(seqAnalyzer);
@@ -1425,9 +1421,8 @@ function soundAll(update = 'all') {
         const DWC = FXdata['DryWet'];
         const dryVal = DWC > 1 ? .5 - ((DWC - 1) / 2) : DWC < 1 ? .5 + (.5 - (DWC / 2)) : 0.5;
         const wetVal = DWC > 1 ? .5 + ((DWC - 1) / 2) : DWC < 1 ? .5 - (.5 - (DWC / 2)) : 0.5;
-        wet.gain.value = wetVal;
         dry.gain.value = dryVal === 0 || gainSum === 0 ? 0 : dryVal / gainSum;
-        startFX.gain.value = wetVal === 0 || gainSum === 0 ? 0 : 1 / gainSum;
+        wet.gain.value = wetVal === 0 || gainSum === 0 ? 0 : wetVal / gainSum;
         endFX.gain.value = 1;
         const mix = audioContext.createGain();
         const mixFactor = .5;
@@ -1439,8 +1434,7 @@ function soundAll(update = 'all') {
         analysis['FX'].push(postAnalysis);
         const dryAnalysis = audioContext.createAnalyser();
         analysis['FX'].push(dryAnalysis);
-        startFX.connect(wet);
-        startFX.connect(preAnalysis);
+        wet.connect(preAnalysis);
         endFX.connect(mix);
         endFX.connect(postAnalysis);
         dry.connect(mix);
@@ -1562,7 +1556,7 @@ function sequencerEvent(event) {
                                     }
                                 }
                                 sequencers[seqID]['ampLvls'][stage] = level;
-                                soundAll('seq');
+                                buildup('seq');
                             }
                             else if (leveler.classList.contains('filt-sequence-leveler-container')) {
                                 const stageNum = Number(parent.classList[1]?.split('-')[1]);
@@ -1580,7 +1574,7 @@ function sequencerEvent(event) {
                                     }
                                 }
                                 sequencers[seqID]['filtLvls'][stage] = level;
-                                soundAll('seq');
+                                buildup('seq');
                             }
                             else if (leveler.classList.contains('freq-sequence-leveler-container')) {
                                 const stageNum = Number(parent.classList[1]?.split('-')[1]);
@@ -1598,7 +1592,7 @@ function sequencerEvent(event) {
                                     }
                                 }
                                 sequencers[seqID]['freqLvls'][stage] = level;
-                                soundAll('seq');
+                                buildup('seq');
                             }
                         }
                     }
@@ -1622,7 +1616,7 @@ function sequencerEvent(event) {
                     for (const container of containers) {
                         renderLeveler(stages, levels, container);
                     }
-                    soundAll();
+                    buildup();
                 }
             }
             else {
@@ -1644,7 +1638,7 @@ function sequencerEvent(event) {
                     for (const container of containers) {
                         renderLeveler(stages, levels, container);
                     }
-                    soundAll();
+                    buildup();
                 }
             }
             else {
@@ -1652,7 +1646,7 @@ function sequencerEvent(event) {
             }
         }
         else {
-            soundAll('seq');
+            buildup('seq');
         }
     }
 }
@@ -1660,19 +1654,19 @@ function sequencerEvent(event) {
 function oscillatorEvent(event) {
     const target = event.target;
     if (event.type === 'input' && target.classList.contains('type')) {
-        soundAll('osc');
+        buildup('osc');
     }
     if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
-        soundAll('osc');
+        buildup('osc');
     }
     if (event.type === 'input' && target.classList.contains('knob-input')) {
-        soundAll('osc');
+        buildup('osc');
     }
 }
 ;
 let cache = setTimeout(() => { }, 0);
 async function setup() {
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && DMControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
         await getProcessorModules();
         initMacros();
         initOscillators();
@@ -1688,7 +1682,7 @@ async function setup() {
                     clearTimeout(cache);
                     listening = false;
                     playback = true;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1699,7 +1693,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    shutup();
+                    breakdown();
                     playback = false;
                     listening = true;
                 }, latency);
@@ -1712,7 +1706,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1723,7 +1717,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1734,7 +1728,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1745,7 +1739,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1756,7 +1750,18 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
+                    listening = true;
+                }, latency);
+            }
+        });
+        DMControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1767,7 +1772,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1778,7 +1783,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1789,7 +1794,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll();
+                    buildup();
                     listening = true;
                 }, latency);
             }
@@ -1800,7 +1805,7 @@ async function setup() {
                 cache = setTimeout(() => {
                     clearTimeout(cache);
                     listening = false;
-                    soundAll('FX');
+                    buildup('FX');
                     listening = true;
                 }, latency);
             }

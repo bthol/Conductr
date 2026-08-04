@@ -86,7 +86,7 @@ class LUFSProcessor extends AudioWorkletProcessor {
                         }
                         const powerSum = weighted.reduce((accumulator, value) => accumulator + value ** 2, 0);
                         const MS = powerSum / n;
-                        const logConvert = 10 * Math.log10(MS) + 24;
+                        const logConvert = 10 * Math.log10(MS);
                         if (this.logging) {
                             if (this.LUFS <= logConvert || Math.abs(this.LUFS - logConvert) < 10) {
                                 const levels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];

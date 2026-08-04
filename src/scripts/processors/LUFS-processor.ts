@@ -220,8 +220,8 @@ class LUFSProcessor extends AudioWorkletProcessor {
             const powerSum: number = weighted.reduce((accumulator:number, value:number) => accumulator + value**2, 0);
             const MS: number = powerSum / n;
             
-            // standard curve for dBFS (deciebels full scale) (except for +24 for meter adjustment)
-            const logConvert: number = 10 * Math.log10(MS) + 24;
+            // standard curve for dBFS (deciebels full scale)
+            const logConvert: number = 10 * Math.log10(MS);
 
             if (this.logging) {
               // apply relative gating (remove 10+ LU drop)
