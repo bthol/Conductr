@@ -1,7 +1,7 @@
 // renderer file/ main process
 
 // handles element navigation events
-console.log("linked script");
+// console.log("linked script");
 
 // extend window interface with electronAPI for IPC
 interface Window {
@@ -84,11 +84,11 @@ let macros: { [key: string]: any} = {
     'driveMult': 1, // 1 - 10
     'creciendo': 0, // 0 - 2
     'variance': 2, // 1 - 10
-    // dynamic modifiers
+    // ARS Envelope dynamic modifiers
     'expressivity': 0, // -1 - 1
     'Attack': 3, // 1 - 10
-    'Sustain': 5, // 1 - 10
     'Release': 4, // 1 - 10
+    'Sustain': 5, // 1 - 10
 }; // stores the parameters for each macro from user parameters; data for preset
 let FXdata: { [key: string]: any} = {
     'DryWet': 1, // 0 - 2
@@ -140,10 +140,10 @@ const FPControl = document.getElementById('forte-piano') as HTMLInputElement; //
 const DMControl = document.getElementById('drive-multiplier') as HTMLInputElement; // Master Drive
 
 // Horizontal Plane
+const EControl = document.getElementById('expressivity') as HTMLInputElement; // Envelope Magnitude control
 const SControl = document.getElementById('staccato') as HTMLInputElement; // ARS dynamic control: attack
 const LControl = document.getElementById('legato') as HTMLInputElement; // ARS dynamic control: release
 const TControl = document.getElementById('tenuto') as HTMLInputElement; // ARS dynamic control: sustain
-const EControl = document.getElementById('expressivity') as HTMLInputElement; // Envelope Magnitude control
 
 // Saggital Plane
 const CControl = document.getElementById('creciendo') as HTMLInputElement; // intensity control
@@ -170,6 +170,7 @@ const osc2: HTMLElement | null = document.getElementById('osc2');
 
 // 3rd Section
 const osc3: HTMLElement | null = document.getElementById('osc3');
+
 
 // GUI functions
 function renderLeveler(stages:number, levels:number, container:Element): void {
@@ -359,7 +360,7 @@ function varyEngine(gain: number, freq: number) {
     // gain calculation
     // const xAty1: number = 99; // x input which produces y = 1
     // const curve: number = gain === 0 ? 0 : (-Math.log10(-(gain/100) + 1)/2)*xAty1 - gainV; // put on logarithmic curve with output interval [0, 1]
-    const curve: number = (gain/100 - gainV)**2; // apply an exponential curve to gain inputs
+    const curve: number = gain === 0 || gain/100 < gainV**2 ? 0 : (gain/100)**2 - gainV**2; // apply an exponential curve to gain inputs
     const gainCalc: number = macros['FortePiano'] / 4 * curve; // scale curve: divide scalar by maximum scalar value to prevent overscaling
     
     // frequency variation
@@ -678,21 +679,28 @@ function initMacros(): void {
     macros['driveMult'] = 1; // .1 - 3, 1 is null
     macros['creciendo'] = 0; // 0 - 2
     macros['variance'] = 2; // 1 - 10
-    // dynamic modifiers
-    macros['expressivity'] = -1; // -1 - 1
-    macros['Attack'] = 2; // 1 - 10
-    macros['Release'] = 8; // 1 - 10
-    macros['Sustain'] = 1; // 1 - 10
+
+    // ARS Envelope macros
+    macros['expressivity'] = 0; // -1 - 1
+    macros['Attack'] = 3; // 1 - 10
+    macros['Release'] = 10; // 1 - 10
+    macros['Sustain'] = 3.5; // 1 - 10
 
     // display
-    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
+    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
         masterGain.value = '100'; // 0 - 100
         masterPan.value = '0'; // -50 - 50
         DMControl.value = '0'; // -10 - 30
         FPControl.value = '30'; // -10 - 30
         CControl.value = '0'; // -10 - 10
-        EControl.value = '-10'; // -10 - 10
         VControl.value = '2'; // 1 - 10
+
+        // ARS Envelope macros
+        EControl.value = '0'; // -10 - 10
+        SControl.value = '1'; // 1 - 10
+        LControl.value = '5'; // 1 - 10
+        TControl.value = '5'; // 1 - 10
+
     } else {
         console.log('macro display initialization failed');
     }
@@ -709,16 +717,20 @@ function initOscillators(): void {
         count += 1;
 
         // Model parameters
-        const gain: number = .5;
+        const gain: number = 0.244089621695242;
         const frequency: number = 261.6; // 65.4, 130.8, 261.6, 523.2, 1046.4
         const detune: number = -3;
         const partials: number = 256;
 
-        // Generate a unique Oscillator ID
-        const ID: string | undefined = crypto.randomUUID().split('-')[0];
-        if (typeof ID === 'string') {
+        // Generate a unique string
+        const unique: string | undefined = crypto.randomUUID().split('-')[0];
+        if (typeof unique === 'string') {
+            
+            // create Oscillator ID with unique string
+            const ID: string = `${count}-${unique}`;
+
             // apply ID to HTML element
-            osc.id = ID;
+            osc.id = ID; // prepend osc count to unique ID string
 
             // get values from VARIABILITY ENGINE
             const {gainCalc, freqCalc, phi, phaze, timbFactor} = varyEngine(gain, frequency);
@@ -805,21 +817,22 @@ function initOscillators(): void {
 };
 
 function initSequencers(): void {
-    sequencers = {}; // delete old data
     const seqNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+    let count: number = 0;
     for (const seq of seqNodeList) {
+        count += 1;
         
         // Model
 
         // Generate a unique Sequencer ID
-        const ID: string | undefined = crypto.randomUUID().split('-')[0];
-        if (typeof ID === 'string') {
+        const unique: string | undefined = crypto.randomUUID().split('-')[0];
+        if (typeof unique === 'string') {
+
+            // create Oscillator ID with unique string
+            const ID: string = `${count}-${unique}`;
+
             // apply ID to HTML element
             seq.id = ID;
-
-            // setup and clear sequence schedule cache
-            sequencers[ID] = setInterval(() => {}, 1000);
-            clearInterval(sequences[ID]);
 
             // default model features
             sequencers[ID] = {
@@ -907,6 +920,8 @@ function initFX(): void {
     // display
     if (DryWetFX) {
         DryWetFX.value = '0'; // -50 - 50
+    } else {
+        console.log('FX parameter not found during initialization');
     }
 
     // update status
@@ -925,7 +940,7 @@ function initAnalysis(): void {
 function updateMacros(): boolean {
     // collects macro control input data, enforces ranges and adjusts scale on input data, updates marco global variables with sanitized data
     
-    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) { // test element integrity
+    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
 
         // Master Gain
         let masterVal: number = Number(masterGain.value);
@@ -1096,6 +1111,55 @@ function updateMacros(): boolean {
             macros['variance'] = vary * macros['creciendo'];
         }
 
+        // ARS Envelope Transient Section Ratio Controls
+
+        // Staccato
+        let staccato: number = Number(SControl.value);
+        if (staccato > 10) { // above max
+            staccato = 10;
+        } else if (staccato < 1) { // below min
+            staccato = 1;
+        } else if (staccato % 1 !== 0) { // round fractions up
+            staccato = Math.ceil(staccato);
+        }
+
+        // Legato
+        let legato: number = Number(LControl.value);
+        if (legato > 10) { // above max
+            legato = 10;
+        } else if (legato < 1) { // below min
+            legato = 1;
+        } else if (legato % 1 !== 0) { // round fractions up
+            legato = Math.ceil(legato);
+        }
+
+        // Tenuto
+        let tenuto: number = Number(TControl.value);
+        if (tenuto > 10) { // above max
+            tenuto = 10;
+        } else if (tenuto < 1) { // below min
+            tenuto = 1;
+        } else if (tenuto % 1 !== 0) { // round fractions up
+            tenuto = Math.ceil(tenuto);
+        }
+
+        // convert articulation control ranges into transient section ratio values
+
+        // + staccato =>   A,   R, + S
+        // + legato   => + A, - R,   S
+        // + tenuto   => + A,   R, - S
+
+        let A: number, R: number, S: number; // 1 - 10
+        A = (tenuto + legato)/2;
+        R = 11 - legato;
+        S = 5.5 + (staccato - tenuto)/2;
+        macros['Attack'] = A;
+        macros['Release'] = R;
+        macros['Sustain'] = S;
+
+        // console.log(`A: ${A}, R: ${R}, S: ${S}`);
+        // console.log(`MACRO | A: ${macros['Attack']}, R: ${macros['Release']}, S: ${macros['Sustain']}`);
+
         return true;
 
     } else {
@@ -1159,6 +1223,11 @@ function updateOscillator(oscID: string): boolean {
                 } else if (gainCalc < 0) { // below min
                     gainVal = Math.random() * .1;
                 }
+
+                // console.log(oscID);
+                // console.log(gain);
+                // console.log(gainCalc);
+                // console.log(gainVal);
 
                 // frequency
                 let freqVal: number = freqCalc;
@@ -1507,7 +1576,7 @@ function transientAmp(delay: number, duration: number, initGain: number, gain: n
     }
     // console.log(curve);
     try {
-        gainNode.gain.cancelScheduledValues(audioContext.currentTime); // prevent overlap
+        gainNode.gain.cancelScheduledValues(delay - .00005); // prevent overlap
         gainNode.gain.setValueCurveAtTime(curve, delay, duration);
     } catch (err) {
         console.log(err);
@@ -1520,7 +1589,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         // setup sequencer
 
         // 1 sequencer stage is a sequencer beat
-        // 1 sequencer beat is a rate 
+        // 1 sequencer beat is a rate
 
         // get sequencer data
         const seq = sequencers[seqID]; // sequencer object
@@ -1599,7 +1668,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                 // }
                 // r represents a ratio with a root frequency, whose product is a new frequency modified by f ammount
                 const freq: number = Math.ceil(frequency / (levels - 1) * freqMod);
-                const ratio: number = freq > 0 ? 1 + freq / 12 : freq < 0 ? 1 + (freq / 24 * .75) : 1;
+                const ratio: number = freq === 0 ? 1 : 2**(freq/12);
                 freqLvls[i] = ratio > 3 ? 3 : ratio < .25 ? .25 : ratio;
             }
         }
@@ -1641,7 +1710,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const Rmac: number = macros['Release']; // 1 - 10
         const Smac: number = macros['Sustain']; // 1 - 10
         const whole: number = Amac + Rmac + Smac; // use summation as whole to prevent any value from exceeding maximum
-        const interTransient: number = .0003; // time in seconds for transition into and out of transient curve in section (1/2 for either end)
+        const interTransient: number = .0001; // time in seconds for transition into and out of transient curve in section (1/2 for either end)
         const stageSeconds: number = stageDuration/1000; // stage duration in seconds
         const A: number = Amac/whole * (stageSeconds - 3*interTransient); // percentage of stage duration in seconds for attack transient section
         const R: number = Rmac/whole * (stageSeconds - 3*interTransient); // percentage of stage duration in seconds for release transient section
@@ -1652,11 +1721,15 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const Rstart: number = Astart + A + interTransient; // start delay in seconds for R transient section
         const Sstart: number = Rstart + R + interTransient; // start delay in seconds for S transient section
         
-        const condA: boolean = A >= .002; // not less than 2 milliseconds
-        const condR: boolean = R >= .002; // not less than 2 milliseconds
-        const condS: boolean = S >= .002; // not less than 2 milliseconds
-        const condLen: boolean = Sstart + S + interTransient/2 <= stageSeconds;
-        const envelopeEnabled: boolean = condA && condR && condS && condLen; // none less than 2 milliseconds
+        // no section is less than 1 millisecond
+        const sectionCondition: boolean = A >= .001 && R >= .001 && S >= .001;
+        // total duration of section equals duration of stage
+        const durationCondition: boolean = stageSeconds === interTransient*3 + A + R + S;
+        // enable envelope by conditions
+        const envelopeEnabled: boolean = sectionCondition && durationCondition;
+
+        // console.log(`stage: ${stageSeconds}`);
+        // console.log(`sum: ${interTransient*3 + A + R + S}`);
 
         // First Stage of Sequence
 
@@ -1668,43 +1741,37 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                 // first stage of ARS Amp envelope
                 if (envelopeEnabled && expMac > 0) {
 
-                    // positive envelope mode
-                    const initGain: number = 1 - envelope;
-                    const gainChange: number = initGain - amp;
-                    // console.log('Positive Envelope Mode');
-                    // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                    // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
-                    // delay, duration, initial gain, gain change amount, gain node
-                    const current = audioContext.currentTime;
-                    transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
-                    transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
-                    transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
+                        // positive envelope mode
+                        const initGain: number = 1 - envelope;
+                        const gainChange: number = initGain - amp;
+                        // console.log('Positive Envelope Mode');
+                        // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
+                        // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
+                        // delay, duration, initial gain, gain change amount, gain node
+                        const current = audioContext.currentTime;
+                        transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
+                        transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
+                        transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
 
-                } else if (envelopeEnabled && expMac < 0) {
+                    } else if (envelopeEnabled && expMac < 0) {
 
-                    // negative envelope mode (default)
-                    const initGain: number = 1 - envelope;
-                    const gainChange: number = amp - initGain;
-                    // console.log('Negative Envelope Mode');
-                    // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
-                    // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
+                        // negative envelope mode (default)
+                        const initGain: number = 1 - envelope;
+                        const gainChange: number = amp - initGain;
+                        // console.log('Negative Envelope Mode');
+                        // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
+                        // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
 
-                    // delay, duration, initial gain, gain change, gain node
-                    const current = audioContext.currentTime;
-                    transientAmp(current + Astart,   A,   initGain,      gainChange,    gainNode); // Attack
-                    transientAmp(current + Rstart,   R,   amp,         -(gainChange),   gainNode); // Release
-                    transientAmp(current + Sstart,   S,   initGain,      0,             gainNode); // Sustain
+                        // delay, duration, initial gain, gain change, gain node
+                        const current = audioContext.currentTime;
+                        transientAmp(current + Astart,   A,   initGain,      gainChange,    gainNode); // Attack
+                        transientAmp(current + Rstart,   R,   amp,         -(gainChange),   gainNode); // Release
+                        transientAmp(current + Sstart,   S,   initGain,      0,             gainNode); // Sustain
 
-                } else {
-                    // use direct assignment when ARS Amp Envelope is disabled
-                    // console.log('enveloping disabled');
-                    // console.log(`Durations | A: ${A} R: ${R} S: ${S}`);
-                    // console.log(`Delays | A: ${Astart} R: ${Rstart} S: ${Sstart}`);
-                    // console.log(`condA: ${condA} condR: ${condR} condS: ${condS} duration: ${condLen}`);
-                    // console.log(Sstart + S + interTransient/2);
-                    // console.log(stageDuration/1000);
-                    gainNode.gain.value = amp;
-                }
+                    } else {
+                        // use direct assignment when ARS Amp Envelope is disabled
+                        gainNode.gain.value = amp;
+                    }
             }
         }
         
@@ -1944,6 +2011,7 @@ function buildup(update = 'all'): void {
     }
 
     // generate voices from data + setup new build
+
     if (gotit && playback) {
 
         // console.log(macros);
@@ -1963,7 +2031,6 @@ function buildup(update = 'all'): void {
         const seqKeys: Array<string> = Object.keys(sequencers);
         let seqKeyIndex: number = 0;
         let mutedOscillatorCount: number = 0;
-        let gainSum: number = 0;
         for (const key of oscKeys) {
     
             // collect oscillator properties
@@ -1978,8 +2045,6 @@ function buildup(update = 'all'): void {
 
             if (oscVol === 0) {
                 mutedOscillatorCount += 1;
-            } else {
-                gainSum += oscVol;
             }
             
             // generator process route map
@@ -2118,10 +2183,12 @@ function buildup(update = 'all'): void {
 
         // console.log(dryVal);
         // console.log(wetVal);
+        // console.log(`muted: ${mutedOscillatorCount}`);
         
         // adjust initial gain values to prevent excessive signal summing
-        dry.gain.value = dryVal === 0 || gainSum === 0 ? 0 : dryVal / gainSum;
-        wet.gain.value = wetVal === 0 || gainSum === 0 ? 0 : wetVal / gainSum;
+        // prevent division by zero
+        dry.gain.value = oscKeys.length - mutedOscillatorCount === 0 ? 0 : dryVal / (oscKeys.length - mutedOscillatorCount);
+        wet.gain.value = oscKeys.length - mutedOscillatorCount === 0 ? 0 : wetVal / (oscKeys.length - mutedOscillatorCount);
         
         // ensure level is not affected FX endpoint
         endFX.gain.value = 1;
@@ -2234,8 +2301,12 @@ function buildup(update = 'all'): void {
     }
 
     // setup analysis
+
     if (gotit && playback) {
         if (analysisInitialized) {
+
+            // console.log(analysis);
+
             const keys: Array<string> = Object.keys(analysis);
             for (let key of keys) {
                 const nodeList: AnalyserNode[] | undefined = analysis[key];
@@ -2286,19 +2357,19 @@ function buildup(update = 'all'): void {
                             const pre: AnalyserNode | undefined = nodeList[0];
                             if (pre) { // before distortion
                                 // send to section meter
-                                RMSLevel(pre, root, 'pre-peak-container');
+                                peakLevel(pre, root, 'pre-peak-container');
                             }
         
                             const post: AnalyserNode | undefined = nodeList[1];
                             if (post) { // after distortion
                                 // send to gusto meter
-                                RMSLevel(post, root, 'post-peak-container');
+                                peakLevel(post, root, 'post-peak-container');
                             }
                             
                             const seq: AnalyserNode | undefined = nodeList[2];
                             if (seq) { // after sequencer
                                 // send to wire meter
-                                RMSLevel(seq, root, 'seq-peak-container');
+                                peakLevel(seq, root, 'seq-peak-container');
                             }
                         } else {
                             console.log('oscillator meter setup failed due to missing oscillator element');
@@ -2490,11 +2561,9 @@ function oscillatorEvent(event: Event): void {
     const target = event.target as HTMLElement;
     if (event.type === 'input' && target.classList.contains('type')) {
         buildup('osc');
-    }
-    if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+    } else if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
         buildup('osc');
-    }
-    if (event.type === 'input' && target.classList.contains('knob-input')) {
+    } else if (event.type === 'input' && target.classList.contains('knob-input')) {
         buildup('osc');
     }
 };
@@ -2503,10 +2572,10 @@ function oscillatorEvent(event: Event): void {
 let cache: ReturnType<typeof setTimeout> = setTimeout(() => {}, 0);
 async function setup(): Promise<void> {
 
-    // initialize data and setup listeners
+    // test GUI integrity and initialize data and setup control listeners
 
     // test UI integrity
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && DMControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && DMControl && CControl && VControl && EControl && SControl && LControl && TControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
 
         // load processor modules
         await getProcessorModules();
@@ -2525,13 +2594,16 @@ async function setup(): Promise<void> {
         // console.log(FXdata);
         // console.log(analysis);
 
+        // prevent control setup on failure to initialize
+        if (!macrosInitialized || !oscillatorsInitialized || !sequencersInitialized || !FXInitialized || !analysisInitialized) {return};
+        
         // setup listeners for user controls
         const latency: number = 150; // millisecs
         let listening: boolean = true;
 
         // playback controls
 
-        // mute voices and clear osc and voice data, generate osc and voice data and play voices
+        // breakdown old build and buildup new build and play it
         playBtn.addEventListener('click', () => {
             if (listening) {
                 clearTimeout(cache);
@@ -2654,6 +2726,21 @@ async function setup(): Promise<void> {
                 }, latency);
             }
         });
+
+        // controls variability
+        VControl.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+
+        // Dynamic Controls
         
         // controls envelope amplitude
         EControl.addEventListener('input', () => {
@@ -2668,9 +2755,35 @@ async function setup(): Promise<void> {
             }
         });
         
-        // controls variability
-        VControl.addEventListener('input', () => {
-            if (playback) {
+        // Staccato control ARS envelope
+        SControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+        
+        // Tenuto control ARS envelope
+        TControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup(); // don't listen until sound is done
+                    listening = true;
+                }, latency);
+            }
+        });
+        
+        // Legato control ARS envelope
+        LControl.addEventListener('input', () => {
+            if (listening && playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);

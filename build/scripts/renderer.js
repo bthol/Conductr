@@ -1,5 +1,4 @@
 "use strict";
-console.log("linked script");
 ;
 window.electronAPI.res((data) => {
     console.log(data);
@@ -21,8 +20,8 @@ let macros = {
     'variance': 2,
     'expressivity': 0,
     'Attack': 3,
-    'Sustain': 5,
     'Release': 4,
+    'Sustain': 5,
 };
 let FXdata = {
     'DryWet': 1,
@@ -55,10 +54,10 @@ const masterMeasure = document.getElementById('master-beat-per-measure');
 const DryWetFX = document.getElementById('dry-wet-fx');
 const FPControl = document.getElementById('forte-piano');
 const DMControl = document.getElementById('drive-multiplier');
+const EControl = document.getElementById('expressivity');
 const SControl = document.getElementById('staccato');
 const LControl = document.getElementById('legato');
 const TControl = document.getElementById('tenuto');
-const EControl = document.getElementById('expressivity');
 const CControl = document.getElementById('creciendo');
 const VControl = document.getElementById('variability');
 const seq1 = document.getElementById('seq1');
@@ -193,7 +192,7 @@ function varyEngine(gain, freq) {
     const freqV = Math.random() * v * freqFactor;
     const stereoV = Math.random() * v * stereoFactor;
     const timbreV = Math.random() * v * timbFactor;
-    const curve = (gain / 100 - gainV) ** 2;
+    const curve = gain === 0 || gain / 100 < gainV ** 2 ? 0 : (gain / 100) ** 2 - gainV ** 2;
     const gainCalc = macros['FortePiano'] / 4 * curve;
     const freqCalc = freq - (Math.abs(freq - 20) / 15 * freqV);
     const phi = (45 + timbreV * 30) * Math.PI / 180;
@@ -324,18 +323,21 @@ function initMacros() {
     macros['driveMult'] = 1;
     macros['creciendo'] = 0;
     macros['variance'] = 2;
-    macros['expressivity'] = -1;
-    macros['Attack'] = 2;
-    macros['Release'] = 8;
-    macros['Sustain'] = 1;
-    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl) {
+    macros['expressivity'] = 0;
+    macros['Attack'] = 3;
+    macros['Release'] = 10;
+    macros['Sustain'] = 3.5;
+    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
         masterGain.value = '100';
         masterPan.value = '0';
         DMControl.value = '0';
         FPControl.value = '30';
         CControl.value = '0';
-        EControl.value = '-10';
         VControl.value = '2';
+        EControl.value = '0';
+        SControl.value = '1';
+        LControl.value = '5';
+        TControl.value = '5';
     }
     else {
         console.log('macro display initialization failed');
@@ -349,12 +351,13 @@ function initOscillators() {
     let count = 0;
     for (const osc of oscsNodeList) {
         count += 1;
-        const gain = .5;
+        const gain = 0.244089621695242;
         const frequency = 261.6;
         const detune = -3;
         const partials = 256;
-        const ID = crypto.randomUUID().split('-')[0];
-        if (typeof ID === 'string') {
+        const unique = crypto.randomUUID().split('-')[0];
+        if (typeof unique === 'string') {
+            const ID = `${count}-${unique}`;
             osc.id = ID;
             const { gainCalc, freqCalc, phi, phaze, timbFactor } = varyEngine(gain, frequency);
             const real = new Float32Array(partials);
@@ -416,14 +419,14 @@ function initOscillators() {
 }
 ;
 function initSequencers() {
-    sequencers = {};
     const seqNodeList = document.querySelectorAll('.seqs');
+    let count = 0;
     for (const seq of seqNodeList) {
-        const ID = crypto.randomUUID().split('-')[0];
-        if (typeof ID === 'string') {
+        count += 1;
+        const unique = crypto.randomUUID().split('-')[0];
+        if (typeof unique === 'string') {
+            const ID = `${count}-${unique}`;
             seq.id = ID;
-            sequencers[ID] = setInterval(() => { }, 1000);
-            clearInterval(sequences[ID]);
             sequencers[ID] = {
                 'stages': 4,
                 'levels': 25,
@@ -492,6 +495,9 @@ function initFX() {
     if (DryWetFX) {
         DryWetFX.value = '0';
     }
+    else {
+        console.log('FX parameter not found during initialization');
+    }
     FXInitialized = true;
 }
 ;
@@ -502,7 +508,7 @@ function initAnalysis() {
 }
 ;
 function updateMacros() {
-    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl) {
+    if (macrosInitialized && masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
         let masterVal = Number(masterGain.value);
         if (masterVal > 100) {
             masterVal = 100;
@@ -671,6 +677,43 @@ function updateMacros() {
         else {
             macros['variance'] = vary * macros['creciendo'];
         }
+        let staccato = Number(SControl.value);
+        if (staccato > 10) {
+            staccato = 10;
+        }
+        else if (staccato < 1) {
+            staccato = 1;
+        }
+        else if (staccato % 1 !== 0) {
+            staccato = Math.ceil(staccato);
+        }
+        let legato = Number(LControl.value);
+        if (legato > 10) {
+            legato = 10;
+        }
+        else if (legato < 1) {
+            legato = 1;
+        }
+        else if (legato % 1 !== 0) {
+            legato = Math.ceil(legato);
+        }
+        let tenuto = Number(TControl.value);
+        if (tenuto > 10) {
+            tenuto = 10;
+        }
+        else if (tenuto < 1) {
+            tenuto = 1;
+        }
+        else if (tenuto % 1 !== 0) {
+            tenuto = Math.ceil(tenuto);
+        }
+        let A, R, S;
+        A = (tenuto + legato) / 2;
+        R = 11 - legato;
+        S = 5.5 + (staccato - tenuto) / 2;
+        macros['Attack'] = A;
+        macros['Release'] = R;
+        macros['Sustain'] = S;
         return true;
     }
     else {
@@ -1048,7 +1091,7 @@ function transientAmp(delay, duration, initGain, gain, gainNode) {
         ;
     }
     try {
-        gainNode.gain.cancelScheduledValues(audioContext.currentTime);
+        gainNode.gain.cancelScheduledValues(delay - .00005);
         gainNode.gain.setValueCurveAtTime(curve, delay, duration);
     }
     catch (err) {
@@ -1104,10 +1147,11 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
             }
             if (frequency !== undefined) {
                 const freq = Math.ceil(frequency / (levels - 1) * freqMod);
-                const ratio = freq > 0 ? 1 + freq / 12 : freq < 0 ? 1 + (freq / 24 * .75) : 1;
+                const ratio = freq === 0 ? 1 : 2 ** (freq / 12);
                 freqLvls[i] = ratio > 3 ? 3 : ratio < .25 ? .25 : ratio;
             }
         }
+        console.log(freqLvls);
         const root = oscFreq;
         const minFreqDelta = 0.000061;
         const expMac = macros['expressivity'];
@@ -1116,7 +1160,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const Rmac = macros['Release'];
         const Smac = macros['Sustain'];
         const whole = Amac + Rmac + Smac;
-        const interTransient = .0003;
+        const interTransient = .0001;
         const stageSeconds = stageDuration / 1000;
         const A = Amac / whole * (stageSeconds - 3 * interTransient);
         const R = Rmac / whole * (stageSeconds - 3 * interTransient);
@@ -1124,11 +1168,9 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const Astart = interTransient / 2;
         const Rstart = Astart + A + interTransient;
         const Sstart = Rstart + R + interTransient;
-        const condA = A >= .002;
-        const condR = R >= .002;
-        const condS = S >= .002;
-        const condLen = Sstart + S + interTransient / 2 <= stageSeconds;
-        const envelopeEnabled = condA && condR && condS && condLen;
+        const sectionCondition = A >= .001 && R >= .001 && S >= .001;
+        const durationCondition = stageSeconds === interTransient * 3 + A + R + S;
+        const envelopeEnabled = sectionCondition && durationCondition;
         if (ampMod !== 0) {
             const amp = ampLvls[0];
             if (amp !== undefined) {
@@ -1323,7 +1365,6 @@ function buildup(update = 'all') {
         const seqKeys = Object.keys(sequencers);
         let seqKeyIndex = 0;
         let mutedOscillatorCount = 0;
-        let gainSum = 0;
         for (const key of oscKeys) {
             const oscil = oscillators[key];
             const oscVoic = oscil['oscVoices'];
@@ -1335,9 +1376,6 @@ function buildup(update = 'all') {
             const waveform = oscil['waveform'];
             if (oscVol === 0) {
                 mutedOscillatorCount += 1;
-            }
-            else {
-                gainSum += oscVol;
             }
             const gainNode = audioContext.createGain();
             gainNode.gain.value = oscVoic === 0 ? 0 : oscVol / oscVoic;
@@ -1421,8 +1459,8 @@ function buildup(update = 'all') {
         const DWC = FXdata['DryWet'];
         const dryVal = DWC > 1 ? .5 - ((DWC - 1) / 2) : DWC < 1 ? .5 + (.5 - (DWC / 2)) : 0.5;
         const wetVal = DWC > 1 ? .5 + ((DWC - 1) / 2) : DWC < 1 ? .5 - (.5 - (DWC / 2)) : 0.5;
-        dry.gain.value = dryVal === 0 || gainSum === 0 ? 0 : dryVal / gainSum;
-        wet.gain.value = wetVal === 0 || gainSum === 0 ? 0 : wetVal / gainSum;
+        dry.gain.value = oscKeys.length - mutedOscillatorCount === 0 ? 0 : dryVal / (oscKeys.length - mutedOscillatorCount);
+        wet.gain.value = oscKeys.length - mutedOscillatorCount === 0 ? 0 : wetVal / (oscKeys.length - mutedOscillatorCount);
         endFX.gain.value = 1;
         const mix = audioContext.createGain();
         const mixFactor = .5;
@@ -1505,15 +1543,15 @@ function buildup(update = 'all') {
                         if (root) {
                             const pre = nodeList[0];
                             if (pre) {
-                                RMSLevel(pre, root, 'pre-peak-container');
+                                peakLevel(pre, root, 'pre-peak-container');
                             }
                             const post = nodeList[1];
                             if (post) {
-                                RMSLevel(post, root, 'post-peak-container');
+                                peakLevel(post, root, 'post-peak-container');
                             }
                             const seq = nodeList[2];
                             if (seq) {
-                                RMSLevel(seq, root, 'seq-peak-container');
+                                peakLevel(seq, root, 'seq-peak-container');
                             }
                         }
                         else {
@@ -1656,23 +1694,27 @@ function oscillatorEvent(event) {
     if (event.type === 'input' && target.classList.contains('type')) {
         buildup('osc');
     }
-    if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
+    else if (target.classList.contains('amplitude') || target.classList.contains('drive') || target.classList.contains('drive-character') || target.classList.contains('frequency') || target.classList.contains('voices') || target.classList.contains('detune') || target.classList.contains('partials')) {
         buildup('osc');
     }
-    if (event.type === 'input' && target.classList.contains('knob-input')) {
+    else if (event.type === 'input' && target.classList.contains('knob-input')) {
         buildup('osc');
     }
 }
 ;
 let cache = setTimeout(() => { }, 0);
 async function setup() {
-    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && DMControl && CControl && VControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
+    if (playBtn && stopBtn && breakerBtn && masterGain && masterPan && masterTempo && masterMeasure && FPControl && DMControl && CControl && VControl && EControl && SControl && LControl && TControl && seq1 && seq2 && seq3 && osc1 && osc2 && osc3 && DryWetFX && meterMaster && meterFX && meter1 && meter2 && meter3) {
         await getProcessorModules();
         initMacros();
         initOscillators();
         initSequencers();
         initFX();
         initAnalysis();
+        if (!macrosInitialized || !oscillatorsInitialized || !sequencersInitialized || !FXInitialized || !analysisInitialized) {
+            return;
+        }
+        ;
         const latency = 150;
         let listening = true;
         playBtn.addEventListener('click', () => {
@@ -1777,6 +1819,17 @@ async function setup() {
                 }, latency);
             }
         });
+        VControl.addEventListener('input', () => {
+            if (playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup();
+                    listening = true;
+                }, latency);
+            }
+        });
         EControl.addEventListener('input', () => {
             if (listening && playback) {
                 clearTimeout(cache);
@@ -1788,8 +1841,30 @@ async function setup() {
                 }, latency);
             }
         });
-        VControl.addEventListener('input', () => {
-            if (playback) {
+        SControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup();
+                    listening = true;
+                }, latency);
+            }
+        });
+        TControl.addEventListener('input', () => {
+            if (listening && playback) {
+                clearTimeout(cache);
+                cache = setTimeout(() => {
+                    clearTimeout(cache);
+                    listening = false;
+                    buildup();
+                    listening = true;
+                }, latency);
+            }
+        });
+        LControl.addEventListener('input', () => {
+            if (listening && playback) {
                 clearTimeout(cache);
                 cache = setTimeout(() => {
                     clearTimeout(cache);
