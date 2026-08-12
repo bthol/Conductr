@@ -399,61 +399,91 @@ function linear(): Float32Array<ArrayBuffer> {
     return line;
 };
 
-function sigmoid1(amount = 2): Float32Array<ArrayBuffer> {
+function logistic(drive = 1): Float32Array<ArrayBuffer> {
     // generates curve for waveshaper
+
+    // Standard Logistic Function: Soft-clipping Sigmoid curve
+    const k = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1; // slope/drive
+    const L: number = 1; // Capacity/ Supremum
+    const x0: number = 0; // inflection point
+
     const n_samples: number = 44100;
     const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
-    for (let i = 0; i < n_samples; ++i) {
-        // Map array index to an input audio range of [-1, 1]
-        const x = (i * 2) / n_samples - 1;
+    for (let n = 1; n <= n_samples; n++) {
+        // Map array index to an input domain of [-1, 1]
+        const x = ((n * 2) / n_samples) - 1;
         
-        // S-curve functions -- Soft-clipping Sigmoid
-        const output: number = Math.tanh(x * k) / Math.tanh(k); // k = drive
-        curve[i] = output < 1 ? output > -1 ? output : -1 : 1; // clamp values at max and min value
+        // calculate output from input into logistic function
+        const output: number = L / ( Math.E**( -k * ( x - x0 ) ));
+
+        // clamp output values at ouput range [-1, 1]
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
-    curve[n_samples - 1] = 1; // ensure end value is correct
+
+    // ensure start and end values are correct
+    curve[0] = 0; // start
+    curve[n_samples - 1] = 1; // end
+
+    // return curve
     return curve;
 };
 
-function sigmoid2(amount = 2): Float32Array<ArrayBuffer> {
+function serpentine(drive = 1): Float32Array<ArrayBuffer> {
     // generates curve for waveshaper
-    const n_samples: number = 44100;
-    const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
-    const deg = Math.PI / 180;
     
-    for (let i = 0; i < n_samples; ++i) {
-        // Map array index to an input audio range of [-1, 1]
-        const x = (i * 2) / n_samples - 1;
-        
-        // S-curve functions -- Soft-clipping Sigmoid
-        const output: number = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
+    // Standard Logistic Function: Soft-clipping Sigmoid curve
+    const k = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1; // slope/drive
 
-        // clamp values at max and min value
-        curve[i] =  output < 1 ? output > -1 ? output : -1 : 1; // clamp values at max and min value
+    const n_samples: number = 44100;
+    const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
+    for (let n = 1; n <= n_samples; n++) {
+        // Map array index to an input domain of [-1, 1]
+        const x = ((n * 2) / n_samples) - 1;
+        
+        // calculate output from input into serpentine function * k
+        const output: number = (4*x / Math.sqrt(4*x**2 + 1)) * k;
+
+        // clamp output values at ouput range [-1, 1]
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
-    curve[n_samples - 1] = 1; // ensure end value is correct
+
+    // ensure start and end values are correct
+    curve[0] = 0; // start
+    curve[n_samples - 1] = 1; // end
+
+    // return curve
     return curve;
 };
 
-function sigmoid3(amount = 1): Float32Array<ArrayBuffer> {
+function gompertz(drive = 1): Float32Array<ArrayBuffer> {
     // generates curve for waveshaper
+
+    // Standard Logistic Function: Soft-clipping Sigmoid curve
+    const c = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1; // slope/drive
+
     const n_samples: number = 44100;
     const curve: Float32Array<ArrayBuffer> = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 1 ? amount : 1 : 1;
-
-    for (let i = 0; i < n_samples; ++i) {
-        // Normalize array index i to the domain [-1, 1]
-        const x: number = ((i / (n_samples - 1)) * 2 - 1) * k;
+    for (let n = 1; n <= n_samples; n++) {
+        // Map array index to an input domain of [-1, 1]
+        const x = ((n * 2) / n_samples) - 1;
         
-        // hyperbolic tangent function * k
-        const output: number = (x / Math.sqrt(x * x + 1));
+        // calculate output from input into gompertz function adjusted with a linear normalization transform
+        // gompertz time series function: G(t) = e^(-e^(-t))
+        // gompertz with parameters: G(t) = a*e^(-b*e^(-c*t)), a = asymptotic maximum, b = horizontal displacement, c = vertical scalar (growth rate)
+        // linear normalization transform: f(x) = 2 * (H(x) - H(xmin))/(H(xmax) - H(xmin)) - 1
+        const numerator: number = Math.E**( -(Math.E**(-c * x)) ) - Math.E**(-(Math.E**c));
+        const denominator: number = Math.E**(-(Math.E**(-c))) - Math.E**(-(Math.E**c));
+        const output: number = numerator/denominator * 2 - 1;
 
-        // clamp values at max and min value
-        curve[i] = output < 1 ? output > -1 ? output : -1 : 1;
+        // clamp output values at ouput range [-1, 1]
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
-    curve[n_samples - 1] = 1; // ensure end value is correct
+
+    // ensure start and end values are correct
+    curve[0] = 0; // start
+    curve[n_samples - 1] = 1; // end
+
+    // return curve
     return curve;
 };
 
@@ -770,8 +800,8 @@ function initOscillators(): void {
             // structure
             oscillators[ID] = {
                 'gain':gainCalc, // 0 - 1
-                'drive':1, // 1 - 10
-                'driveCharacter':'sigmoid1', // option value string
+                'drive':0, // 0 - 10, 0 = bypass
+                'driveCharacter':'Logistic', // option value string
                 'oscVoices':3, // 1 - 4
                 'freq':freqCalc, // 20 - 20,000
                 'detune':detune, // -24 - 24
@@ -799,8 +829,8 @@ function initOscillators(): void {
         if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
             // set Oscillator parameters to default
             oscGain.value = '50'; // 0 - 99
-            oscDriv.value = '1'; // 1 - 10, 1 == bypass
-            oscDrCh.value = 'sigmoid1';
+            oscDriv.value = '0'; // 0 - 10, 0 == bypass
+            oscDrCh.value = 'Logistic';
             oscVoic.value = '2'; // 0 - 3, data adds 1 (plurals are additional voices to a first voice)
             oscFreq.value = `${frequency}`; // 20 - 20,000
             oscDetu.value = `${detune}`; // -24 - 24
@@ -1200,7 +1230,7 @@ function updateOscillator(oscID: string): boolean {
                 
                 // Oscillator properties
                 const gain: number = Number(oscGain.value); // 0 - 100
-                const drive: number = Number(oscDriv.value); // 1 - 10
+                const drive: number = Number(oscDriv.value); // 0 - 10
                 const driveCharacter: string = oscDrCh.value;
                 const voices: number = Number(oscVoic.value);
                 const freq: number = Number(oscFreq.value);
@@ -1250,8 +1280,8 @@ function updateOscillator(oscID: string): boolean {
                 let driveVal: number = drive;
                 if (driveVal > 10) { // above max
                     driveVal = 10;
-                } else if (driveVal < 1) { // below min
-                    driveVal = 1;
+                } else if (driveVal < 0) { // below min
+                    driveVal = 0;
                 } else if (driveVal % 1 !== 0) { // round fraction up
                     driveVal = Math.ceil(driveVal);
                 }
@@ -2091,21 +2121,21 @@ function buildup(update = 'all'): void {
 
             // sigmoid curve waveshaper distortion
             const makeupGainNode: GainNode = audioContext.createGain();
-            if (oscDrive > 1) {
+            if (oscDrive > 0) {
                 // build
                 const waveshaper: WaveShaperNode = audioContext.createWaveShaper();
                 const oversample: OverSampleType = '4x';
                 const drive: number = oscDrive * macros['driveMult']; // apply drive multiplier macro (X0 - X6), max drive = 60
                 let waveshaperCurve: Float32Array<ArrayBuffer>;
-                if (oscDriCh === 'sigmoid1') {
-                    waveshaperCurve = sigmoid1(drive);
-                } else if (oscDriCh === 'sigmoid2') {
-                    waveshaperCurve = sigmoid2(drive);
-                } else if (oscDriCh === 'sigmoid3') {
-                    waveshaperCurve = sigmoid3(drive);
+                if (oscDriCh === 'Logistic') {
+                    waveshaperCurve = logistic(drive);
+                } else if (oscDriCh === 'Serpentine') {
+                    waveshaperCurve = serpentine(drive);
+                } else if (oscDriCh === 'Gompertz') {
+                    waveshaperCurve = gompertz(drive);
                 } else {
-                    // default to sigmoid 3 if faulty string is provided
-                    waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
+                    // default to logistic if faulty string is provided
+                    waveshaperCurve = logistic(drive);
                 }
                 waveshaper.curve = waveshaperCurve; // Higher number = sharper S-curve / more saturation
                 waveshaper.oversample = oversample; // Reduces aliasing distortion artifacting
@@ -2115,13 +2145,14 @@ function buildup(update = 'all'): void {
                 // factor i multiplies to produce f by the factor: 1 + ((f - i)/i)
                 // reciprocal of factor: 1/(1+(f-i)/i)
 
-                const referenceLine: Float32Array<ArrayBuffer> = linear();
+                // const referenceLine: Float32Array<ArrayBuffer> = linear();
+                // const initialPower: number = meanSquare(referenceLine);
 
                 // statistical method
-                const initialPower: number = meanSquare(referenceLine);
+                const initialPower: number = 1/3;
                 const finalPower: number = meanSquare(waveshaperCurve);
 
-                // use powers to calculate power factor
+                // use powers to calculate power factor for automatic gain makeup
                 const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
                 makeupGainNode.gain.value = powerFactor;
 

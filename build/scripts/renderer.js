@@ -219,42 +219,48 @@ function linear() {
     return line;
 }
 ;
-function sigmoid1(amount = 2) {
+function logistic(drive = 1) {
+    const k = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1;
+    const L = 1;
+    const x0 = 0;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
-    for (let i = 0; i < n_samples; ++i) {
-        const x = (i * 2) / n_samples - 1;
-        const output = Math.tanh(x * k) / Math.tanh(k);
-        curve[i] = output < 1 ? output > -1 ? output : -1 : 1;
+    for (let n = 1; n <= n_samples; n++) {
+        const x = ((n * 2) / n_samples) - 1;
+        const output = L / (Math.E ** (-k * (x - x0)));
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
+    curve[0] = 0;
     curve[n_samples - 1] = 1;
     return curve;
 }
 ;
-function sigmoid2(amount = 2) {
+function serpentine(drive = 1) {
+    const k = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 2 ? amount : 2 : 2;
-    const deg = Math.PI / 180;
-    for (let i = 0; i < n_samples; ++i) {
-        const x = (i * 2) / n_samples - 1;
-        const output = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-        curve[i] = output < 1 ? output > -1 ? output : -1 : 1;
+    for (let n = 1; n <= n_samples; n++) {
+        const x = ((n * 2) / n_samples) - 1;
+        const output = (4 * x / Math.sqrt(4 * x ** 2 + 1)) * k;
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
+    curve[0] = 0;
     curve[n_samples - 1] = 1;
     return curve;
 }
 ;
-function sigmoid3(amount = 1) {
+function gompertz(drive = 1) {
+    const c = typeof drive === 'number' ? drive > 1 ? drive : 1 : 1;
     const n_samples = 44100;
     const curve = new Float32Array(n_samples);
-    const k = typeof amount === 'number' ? amount >= 1 ? amount : 1 : 1;
-    for (let i = 0; i < n_samples; ++i) {
-        const x = ((i / (n_samples - 1)) * 2 - 1) * k;
-        const output = (x / Math.sqrt(x * x + 1));
-        curve[i] = output < 1 ? output > -1 ? output : -1 : 1;
+    for (let n = 1; n <= n_samples; n++) {
+        const x = ((n * 2) / n_samples) - 1;
+        const numerator = Math.E ** (-(Math.E ** (-c * x))) - Math.E ** (-(Math.E ** c));
+        const denominator = Math.E ** (-(Math.E ** (-c))) - Math.E ** (-(Math.E ** c));
+        const output = numerator / denominator * 2 - 1;
+        curve[n] = output < 1 ? output > -1 ? output : -1 : 1;
     }
+    curve[0] = 0;
     curve[n_samples - 1] = 1;
     return curve;
 }
@@ -381,8 +387,8 @@ function initOscillators() {
             waveform = normEngine(partials, real, imag);
             oscillators[ID] = {
                 'gain': gainCalc,
-                'drive': 1,
-                'driveCharacter': 'sigmoid1',
+                'drive': 0,
+                'driveCharacter': 'Logistic',
                 'oscVoices': 3,
                 'freq': freqCalc,
                 'detune': detune,
@@ -403,8 +409,8 @@ function initOscillators() {
         const oscType = osc.querySelector('.type');
         if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
             oscGain.value = '50';
-            oscDriv.value = '1';
-            oscDrCh.value = 'sigmoid1';
+            oscDriv.value = '0';
+            oscDrCh.value = 'Logistic';
             oscVoic.value = '2';
             oscFreq.value = `${frequency}`;
             oscDetu.value = `${detune}`;
@@ -783,8 +789,8 @@ function updateOscillator(oscID) {
                 if (driveVal > 10) {
                     driveVal = 10;
                 }
-                else if (driveVal < 1) {
-                    driveVal = 1;
+                else if (driveVal < 0) {
+                    driveVal = 0;
                 }
                 else if (driveVal % 1 !== 0) {
                     driveVal = Math.ceil(driveVal);
@@ -1151,7 +1157,6 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
                 freqLvls[i] = ratio > 3 ? 3 : ratio < .25 ? .25 : ratio;
             }
         }
-        console.log(freqLvls);
         const root = oscFreq;
         const minFreqDelta = 0.000061;
         const expMac = macros['expressivity'];
@@ -1399,27 +1404,26 @@ function buildup(update = 'all') {
             analysis[key].push(preAnalyzer);
             transient.connect(preAnalyzer);
             const makeupGainNode = audioContext.createGain();
-            if (oscDrive > 1) {
+            if (oscDrive > 0) {
                 const waveshaper = audioContext.createWaveShaper();
                 const oversample = '4x';
                 const drive = oscDrive * macros['driveMult'];
                 let waveshaperCurve;
-                if (oscDriCh === 'sigmoid1') {
-                    waveshaperCurve = sigmoid1(drive);
+                if (oscDriCh === 'Logistic') {
+                    waveshaperCurve = logistic(drive);
                 }
-                else if (oscDriCh === 'sigmoid2') {
-                    waveshaperCurve = sigmoid2(drive);
+                else if (oscDriCh === 'Serpentine') {
+                    waveshaperCurve = serpentine(drive);
                 }
-                else if (oscDriCh === 'sigmoid3') {
-                    waveshaperCurve = sigmoid3(drive);
+                else if (oscDriCh === 'Gompertz') {
+                    waveshaperCurve = gompertz(drive);
                 }
                 else {
-                    waveshaperCurve = sigmoid3(oscDrive * macros['driveMult']);
+                    waveshaperCurve = logistic(drive);
                 }
                 waveshaper.curve = waveshaperCurve;
                 waveshaper.oversample = oversample;
-                const referenceLine = linear();
-                const initialPower = meanSquare(referenceLine);
+                const initialPower = 1 / 3;
                 const finalPower = meanSquare(waveshaperCurve);
                 const powerFactor = 1 / (1 + ((finalPower - initialPower) / initialPower));
                 makeupGainNode.gain.value = powerFactor;

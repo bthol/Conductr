@@ -76,9 +76,9 @@ declare function varyEngine(gain: number, freq: number): {
 };
 declare function meanSquare(data: Float32Array<ArrayBuffer>): number;
 declare function linear(): Float32Array<ArrayBuffer>;
-declare function sigmoid1(amount?: number): Float32Array<ArrayBuffer>;
-declare function sigmoid2(amount?: number): Float32Array<ArrayBuffer>;
-declare function sigmoid3(amount?: number): Float32Array<ArrayBuffer>;
+declare function logistic(drive?: number): Float32Array<ArrayBuffer>;
+declare function serpentine(drive?: number): Float32Array<ArrayBuffer>;
+declare function gompertz(drive?: number): Float32Array<ArrayBuffer>;
 declare function getProcessorModules(): Promise<void>;
 declare function clamp(input: AudioNode): AudioWorkletNode;
 declare function peakLevel(input: AnalyserNode, root: HTMLElement | null, selector: string): void;
