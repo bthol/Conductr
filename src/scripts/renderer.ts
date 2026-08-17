@@ -1586,33 +1586,6 @@ function updateFX(): boolean {
     }
 };
 
-// transition functions
-function transientAmp(delay: number, duration: number, initGain: number, gain: number, gainNode: GainNode): void {
-    // schedule a smooth transition of gain from current time and gain to given time and gain
-    // + gain argument increases, - gain argument decreases
-    if (gain === 0) {return}; // sustain optimization
-    const steps: number = duration*1000 | 0; // 1 step per millisecond of duration
-    const gainDelta: number = gain/steps; // change in gain per step, returns -inf on division by zero
-    // console.log(`steps = ${steps}`);
-    // console.log(`gain delta = ${gainDelta}`);
-    if (!isFinite(gainDelta)) {return};
-    const curve: Float32Array = new Float32Array(steps + 1);
-    let g: number = initGain;
-    for (let i = 0 ; i < steps + 1; i++) {
-        curve[i] = g;
-        g += gainDelta; // linear transition
-        g = Math.max(0, Math.min(1, g)); // clamp at ends
-        if (g < .0001) {g = 0}; // gate values
-    }
-    // console.log(curve);
-    try {
-        gainNode.gain.cancelScheduledValues(delay - .00005); // prevent overlap
-        gainNode.gain.setValueCurveAtTime(curve, delay, duration);
-    } catch (err) {
-        console.log(err);
-    }
-};
-
 // setup functions
 function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:AudioNode): BiquadFilterNode | boolean {
     if (sequencersInitialized) {
@@ -1740,7 +1713,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const Rmac: number = macros['Release']; // 1 - 10
         const Smac: number = macros['Sustain']; // 1 - 10
         const whole: number = Amac + Rmac + Smac; // use summation as whole to prevent any value from exceeding maximum
-        const interTransient: number = .0001; // time in seconds for transition into and out of transient curve in section (1/2 for either end)
+        const interTransient: number = .00005; // time in seconds for transition into and out of transient curve in section (1/2 for either end)
         const stageSeconds: number = stageDuration/1000; // stage duration in seconds
         const A: number = Amac/whole * (stageSeconds - 3*interTransient); // percentage of stage duration in seconds for attack transient section
         const R: number = Rmac/whole * (stageSeconds - 3*interTransient); // percentage of stage duration in seconds for release transient section
@@ -1752,7 +1725,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const Sstart: number = Rstart + R + interTransient; // start delay in seconds for S transient section
         
         // no section is less than 1 millisecond
-        const sectionCondition: boolean = A >= .001 && R >= .001 && S >= .001;
+        const sectionCondition: boolean = A >= .0001 && R >= .0001 && S >= .0001;
         // total duration of section equals duration of stage
         const durationCondition: boolean = stageSeconds === interTransient*3 + A + R + S;
         // enable envelope by conditions
@@ -1767,36 +1740,47 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         if (ampMod !== 0) {
             const amp: number | undefined = ampLvls[0];
             if (amp !== undefined) {
-                // console.log(amp);
                 // first stage of ARS Amp envelope
                 if (envelopeEnabled && expMac > 0) {
 
                         // positive envelope mode
                         const initGain: number = 1 - envelope;
                         const gainChange: number = initGain - amp;
+                        const current = audioContext.currentTime;
+
                         // console.log('Positive Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
                         // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
-                        // delay, duration, initial gain, gain change amount, gain node
-                        const current = audioContext.currentTime;
-                        transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
-                        transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
-                        transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
+
+                        // Attack
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A/4);
+                        
+                        // Release
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R/4);
+                        
+                        // Sustain
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)),              current + Sstart, S/4);
 
                     } else if (envelopeEnabled && expMac < 0) {
 
                         // negative envelope mode (default)
                         const initGain: number = 1 - envelope;
                         const gainChange: number = amp - initGain;
+
                         // console.log('Negative Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
                         // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
-
-                        // delay, duration, initial gain, gain change, gain node
+                        
                         const current = audioContext.currentTime;
-                        transientAmp(current + Astart,   A,   initGain,      gainChange,    gainNode); // Attack
-                        transientAmp(current + Rstart,   R,   amp,         -(gainChange),   gainNode); // Release
-                        transientAmp(current + Sstart,   S,   initGain,      0,             gainNode); // Sustain
+
+                        // Attack
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A/4);
+                        
+                        // Release
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R/4);
+                        
+                        // Sustain
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)),              current + Sstart, S/4);
 
                     } else {
                         // use direct assignment when ARS Amp Envelope is disabled
@@ -1854,29 +1838,41 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
                         // positive envelope mode
                         const initGain: number = 1 - envelope;
                         const gainChange: number = initGain - amp;
+                        const current = audioContext.currentTime;
+
                         // console.log('Positive Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
                         // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
                         // delay, duration, initial gain, gain change amount, gain node
-                        const current = audioContext.currentTime;
-                        transientAmp(current + Astart,  A,  amp,        gainChange,   gainNode); // Attack
-                        transientAmp(current + Rstart,  R,  initGain, -(gainChange),  gainNode); // Release
-                        transientAmp(current + Sstart,  S,  amp,        0,            gainNode); // Sustain
+
+                        // Attack
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A/4);
+                        
+                        // Release
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R/4);
+                        
+                        // Sustain
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)),              current + Sstart, S/4);
 
                     } else if (envelopeEnabled && expMac < 0) {
 
                         // negative envelope mode (default)
                         const initGain: number = 1 - envelope;
                         const gainChange: number = amp - initGain;
+                        const current = audioContext.currentTime;
+
                         // console.log('Negative Envelope Mode');
                         // console.log(`A: ${A*1000 | 0} R: ${R*1000 | 0} S: ${S*1000 | 0}`);
                         // console.log(`amp: ${amp}, envelope: ${envelope}, initial gain: ${initGain}, gain change: ${gainChange}`);
 
-                        // delay, duration, initial gain, gain change, gain node
-                        const current = audioContext.currentTime;
-                        transientAmp(current + Astart,   A,   initGain,      gainChange,    gainNode); // Attack
-                        transientAmp(current + Rstart,   R,   amp,         -(gainChange),   gainNode); // Release
-                        transientAmp(current + Sstart,   S,   initGain,      0,             gainNode); // Sustain
+                        // Attack
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A/4);
+                        
+                        // Release
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R/4);
+                        
+                        // Sustain
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)),              current + Sstart, S/4);
 
                     } else {
                         // use direct assignment when ARS Amp Envelope is disabled
@@ -2151,7 +2147,7 @@ function buildup(update = 'all'): void {
                 // statistical method
                 const initialPower: number = 1/3;
                 const finalPower: number = meanSquare(waveshaperCurve);
-
+                
                 // use powers to calculate power factor for automatic gain makeup
                 const powerFactor: number = 1 / (1 + ((finalPower - initialPower) / initialPower));
                 makeupGainNode.gain.value = powerFactor;

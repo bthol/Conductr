@@ -1074,12 +1074,12 @@ function updateFX() {
     }
 }
 ;
-function transientAmp(delay, duration, initGain, gain, gainNode) {
+function transientAmp(itp, delay, duration, initGain, gain, gainNode) {
     if (gain === 0) {
         return;
     }
     ;
-    const steps = duration * 1000 | 0;
+    const steps = Math.floor(duration * 1000);
     const gainDelta = gain / steps;
     if (!isFinite(gainDelta)) {
         return;
@@ -1097,11 +1097,14 @@ function transientAmp(delay, duration, initGain, gain, gainNode) {
         ;
     }
     try {
-        gainNode.gain.cancelScheduledValues(delay - .00005);
+        gainNode.gain.cancelScheduledValues(delay);
         gainNode.gain.setValueCurveAtTime(curve, delay, duration);
     }
     catch (err) {
         console.log(err);
+        console.log(duration);
+        console.log(steps);
+        console.log(curve);
     }
 }
 ;
@@ -1165,7 +1168,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const Rmac = macros['Release'];
         const Smac = macros['Sustain'];
         const whole = Amac + Rmac + Smac;
-        const interTransient = .0001;
+        const interTransient = .00005;
         const stageSeconds = stageDuration / 1000;
         const A = Amac / whole * (stageSeconds - 3 * interTransient);
         const R = Rmac / whole * (stageSeconds - 3 * interTransient);
@@ -1173,7 +1176,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const Astart = interTransient / 2;
         const Rstart = Astart + A + interTransient;
         const Sstart = Rstart + R + interTransient;
-        const sectionCondition = A >= .001 && R >= .001 && S >= .001;
+        const sectionCondition = A >= .0001 && R >= .0001 && S >= .0001;
         const durationCondition = stageSeconds === interTransient * 3 + A + R + S;
         const envelopeEnabled = sectionCondition && durationCondition;
         if (ampMod !== 0) {
@@ -1183,17 +1186,17 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
                     const initGain = 1 - envelope;
                     const gainChange = initGain - amp;
                     const current = audioContext.currentTime;
-                    transientAmp(current + Astart, A, amp, gainChange, gainNode);
-                    transientAmp(current + Rstart, R, initGain, -(gainChange), gainNode);
-                    transientAmp(current + Sstart, S, amp, 0, gainNode);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A / 4);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R / 4);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)), current + Sstart, S / 4);
                 }
                 else if (envelopeEnabled && expMac < 0) {
                     const initGain = 1 - envelope;
                     const gainChange = amp - initGain;
                     const current = audioContext.currentTime;
-                    transientAmp(current + Astart, A, initGain, gainChange, gainNode);
-                    transientAmp(current + Rstart, R, amp, -(gainChange), gainNode);
-                    transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A / 4);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R / 4);
+                    gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)), current + Sstart, S / 4);
                 }
                 else {
                     gainNode.gain.value = amp;
@@ -1233,17 +1236,17 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
                         const initGain = 1 - envelope;
                         const gainChange = initGain - amp;
                         const current = audioContext.currentTime;
-                        transientAmp(current + Astart, A, amp, gainChange, gainNode);
-                        transientAmp(current + Rstart, R, initGain, -(gainChange), gainNode);
-                        transientAmp(current + Sstart, S, amp, 0, gainNode);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A / 4);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R / 4);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)), current + Sstart, S / 4);
                     }
                     else if (envelopeEnabled && expMac < 0) {
                         const initGain = 1 - envelope;
                         const gainChange = amp - initGain;
                         const current = audioContext.currentTime;
-                        transientAmp(current + Astart, A, initGain, gainChange, gainNode);
-                        transientAmp(current + Rstart, R, amp, -(gainChange), gainNode);
-                        transientAmp(current + Sstart, S, initGain, 0, gainNode);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain + gainChange)), current + Astart, A / 4);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain - gainChange)), current + Rstart, R / 4);
+                        gainNode.gain.setTargetAtTime(Math.max(0, Math.min(1, initGain)), current + Sstart, S / 4);
                     }
                     else {
                         gainNode.gain.value = amp;

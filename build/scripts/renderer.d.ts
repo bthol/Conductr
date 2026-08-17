@@ -93,7 +93,7 @@ declare function updateMacros(): boolean;
 declare function updateOscillator(oscID: string): boolean;
 declare function updateSequence(seqID: string): boolean;
 declare function updateFX(): boolean;
-declare function transientAmp(delay: number, duration: number, initGain: number, gain: number, gainNode: GainNode): void;
+declare function transientAmp(itp: number, delay: number, duration: number, initGain: number, gain: number, gainNode: GainNode): void;
 declare function setupSequencer(seqID: string, oscFreq: number, oscVoic: number, inputNode: AudioNode): BiquadFilterNode | boolean;
 declare function breakdown(): void;
 declare function buildup(update?: string): void;
