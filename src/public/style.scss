@@ -249,8 +249,9 @@ $noise-base-freq: 10.65;
     justify-content: center;
     gap: 15px;
     background: color.adjust(index.$detailing-gradient-solid-cover, $lightness: -0%, $saturation: 0%);
-    padding: 25px 12.5px;
+    padding: 0px 12.5px;
     text-wrap: nowrap;
+    height: 200px;
 }
 
 // dial outer styling

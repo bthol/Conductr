@@ -93,7 +93,6 @@ declare function updateMacros(): boolean;
 declare function updateOscillator(oscID: string): boolean;
 declare function updateSequence(seqID: string): boolean;
 declare function updateFX(): boolean;
-declare function transientAmp(itp: number, delay: number, duration: number, initGain: number, gain: number, gainNode: GainNode): void;
 declare function setupSequencer(seqID: string, oscFreq: number, oscVoic: number, inputNode: AudioNode): BiquadFilterNode | boolean;
 declare function breakdown(): void;
 declare function buildup(update?: string): void;
@@ -104,7 +103,7 @@ declare function setup(): Promise<void>;
 declare const knobs: NodeListOf<HTMLElement>;
 declare const minDeg: number;
 declare const maxDeg: number;
-declare const rangeDeg: number;
-declare const knobSensitivity = 1.2;
-declare function renderKnob(value: number, ID: string): void;
+declare const degRange: number;
+declare const knobSensitivity = 1;
+declare function renderKnob(degree: number, ID: string): void;
 //# sourceMappingURL=renderer.d.ts.map

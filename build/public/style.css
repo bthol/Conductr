@@ -229,8 +229,9 @@ body {
   justify-content: center;
   gap: 15px;
   background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
-  padding: 25px 12.5px;
+  padding: 0px 12.5px;
   text-wrap: nowrap;
+  height: 200px;
 }
 
 .knob-dial {

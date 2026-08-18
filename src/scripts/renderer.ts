@@ -13,6 +13,8 @@ interface Window {
 // main process response handler
 window.electronAPI.res((data) => {
     console.log(data);
+    // load preset data here
+    
 });
 
 // TESTING ELECTRONAPI
@@ -1725,7 +1727,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
         const Sstart: number = Rstart + R + interTransient; // start delay in seconds for S transient section
         
         // no section is less than 1 millisecond
-        const sectionCondition: boolean = A >= .0001 && R >= .0001 && S >= .0001;
+        const sectionCondition: boolean = A >= .0005 && R >= .0005 && S >= .0005;
         // total duration of section equals duration of stage
         const durationCondition: boolean = stageSeconds === interTransient*3 + A + R + S;
         // enable envelope by conditions
@@ -2889,37 +2891,57 @@ setup();
 // knob element list
 const knobs: NodeListOf<HTMLElement> = document.querySelectorAll('.knob-container');
 
-// parameters
+// general knob parameters
 const minDeg: number = -135; // Left rotation bound
 const maxDeg: number = 135;  // Right rotation bound
-const rangeDeg: number = maxDeg - minDeg; // range of degree
-const knobSensitivity = 1.2; // Change value scale speed here
+const degRange: number = Math.abs(maxDeg - minDeg); // range of degree
+const knobSensitivity = 1; // Change value scale speed here
 
 // Updates visual CSS variable rotation
-function renderKnob(value: number, ID: string): void {
-    
+function renderKnob(degree: number, ID: string): void {
     // Set rotation variable dynamically 
     const input: HTMLInputElement | null = document.getElementById(ID) as HTMLInputElement;
     if (input === null) return;
     // get knob from input
     const knob: HTMLElement | null | undefined = input.parentElement?.querySelector('.knob-dial');
     if (knob === null || knob === undefined) return;
-    // Map the value linear range to the degree range
-    const min: number = parseInt(input.min);
-    const max: number = parseInt(input.max);
-    const valRange: number = max - min;
-    if (valRange === 0) return; // prevent division by zero
-    const percent = (value - min) / valRange;
-    const currentDeg = minDeg + percent * rangeDeg;
-    knob.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+    knob.style.setProperty('--knob-rotation', `${degree}deg`);
 };
 
 // Initialize knob state on load
 knobs.forEach((container) => {
 
-    // initialize knob values
+    // Change:  control change       => value change     => Position change  => degree change
+    // Range:   element Y dimension  => minVal - maxVal  => 0 - 100          => minDeg - maxDeg
+    // Unit:    pixels per second    => value unit       => percentage       => degree
+
+    // knob-specific properties
     const input = container.querySelector('input') as HTMLInputElement;
-    renderKnob(parseInt(input.value), input.id);
+    const ID: string = input.id;
+    const maxVal: number = parseInt(input.max);
+    const minVal: number = parseInt(input.min);
+    const unitVal: number = 1; // value unit
+    const positions: number = Math.abs(maxVal - minVal) * unitVal; // number of knob positions
+    
+    // get initial position
+    let initVal: number = parseInt(input.value);
+    let percPos: number = 0;
+    for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+        if (initVal === i) {
+            percPos = Math.abs(i/positions);
+            break;
+        }
+    }
+
+    // render initial degree for knob
+    let initDeg: number;
+    if (minVal >= 0) {
+        initDeg = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+    } else {
+        initDeg = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+    }
+    renderKnob(initDeg, input.id);
+
 
     // setup listeners for each knob
     const knob: HTMLElement | null = container.querySelector('.knob-dial');
@@ -2932,21 +2954,18 @@ knobs.forEach((container) => {
         let Ts: DOMHighResTimeStamp; // time of drag start
         let Ti: DOMHighResTimeStamp; // time from last drag event
 
-        // knob properties
-        const ID: string = input.id;
-        const max: number = parseInt(input.max);
-        const min: number = parseInt(input.min);
-        const paramRange: number = Math.abs(max - min); // number of knob positions
-
         // set one/zero on double click
         knob.addEventListener('dblclick', (event: Event) => {
             const target = event.target as HTMLElement;
             if (target.classList.contains('on-dbl')) {
                 input.value = '1';
-                renderKnob(parseInt(input.value), input.id);
             } else {
                 input.value = '0';
-                renderKnob(parseInt(input.value), input.id);
+            }
+            if (minVal >= 0) {
+                renderKnob(minDeg, input.id); // render at minimum degrees
+            } else {
+                renderKnob(0, input.id); // render at minimum degrees
             }
         });
         
@@ -2965,24 +2984,50 @@ knobs.forEach((container) => {
             if (!isDragging) return; // prevent
             // console.log('mouse dragging');
 
-            // calculate vertical velocity
-            const Tf: DOMHighResTimeStamp = performance.now();
-            // duration in seconds between mouse drag events
-            const duration: number = (Tf - Ti) / 1000;
-            // update initial time with final
+            // space (pixels)
+            const endY: number = e.clientY;
+            const dY = startY - endY; // +/- Y displacement in pixels
+            
+            // time (seconds)
+            const Tf: DOMHighResTimeStamp = performance.now(); // final time
+            const T: number = Math.max(.5, Math.min(2, (Tf - Ti) / 1000)); // duration in seconds between mouse drag events + max duration of 1 second
+            
+            // update for future calculation
             Ti = Tf;
-            const T: number = Math.max(duration, 1); // min duration of 1 second
-            const deltaY = startY - e.clientY; // Y displacement
+
+            // velocity (pixels/second)
+            // const v: number = dY / T;
+
+            // position (unit value)
+            // const H: number = container.offsetHeight; // total height of listened element (pixels)
+            const ppp: number = 20; // number of pixels per position
             
-            // calcualte value with velocity
-            let newVal = startVal + Math.round(deltaY/T * knobSensitivity);
+            const dPos: number = Math.floor(dY / ppp / T * knobSensitivity); // pixels/second * position/pixel = positions/second
+
+            initVal = parseInt(input.value); // update initial value
+            const numPos: number = Math.max(minVal, Math.min(maxVal, initVal + dPos)); // position number: minVal to maxVal
+
+            // percentage position
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i/positions;
+                    break;
+                }
+            }
+
+            // use percentage position to calculate amount of knob position rotation for render
+            let Degree: number;
+            if (minVal >= 0) {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+            } else {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+            }
             
-            // enforce range
-            newVal = Math.max(min, Math.min(max, newVal));
+            // render with new degree
+            input.value = numPos.toString();
+            renderKnob(Degree, ID);
             
-            // update with new value
-            input.value = newVal.toString();
-            renderKnob(newVal, ID);
         });
 
         // mouse drag end event
@@ -2996,19 +3041,38 @@ knobs.forEach((container) => {
                 isDragging = false;
                 document.body.style.userSelect = 'auto';
             });
-        })
+        });
 
-        // sync visual dial if user decides to manually type a number into the input field
+        // sync visual dial if user decides to manually type a number into the input field or use arrows
         input.addEventListener('input', (e: Event) => {
             // console.log('input on knob');
             const event: HTMLInputElement = e.target as HTMLInputElement; // typecast EventTarget type into HTMLInputElement
-            let val = parseInt(event.value) || 0;
-            if (val < min) val = min;
-            if (val > max) val = max;
-            renderKnob(val, ID);
+            const numPos = Math.max(minVal, Math.min(maxVal, parseInt(event.value)));
+
+            // percentage position
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i/positions;
+                    break;
+                }
+            }
+
+            // use percentage position to calculate amount of knob position rotation for render
+            let Degree: number;
+            if (minVal >= 0) {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+            } else {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+            }
+            
+            // render with new degree
+            input.value = numPos.toString();
+            renderKnob(Degree, ID);
+
         });
 
     } else {
-        console.log('knob listener disconnected');
+        console.log('knob listeners disconnected');
     }
 });

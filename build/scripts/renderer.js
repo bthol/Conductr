@@ -1074,40 +1074,6 @@ function updateFX() {
     }
 }
 ;
-function transientAmp(itp, delay, duration, initGain, gain, gainNode) {
-    if (gain === 0) {
-        return;
-    }
-    ;
-    const steps = Math.floor(duration * 1000);
-    const gainDelta = gain / steps;
-    if (!isFinite(gainDelta)) {
-        return;
-    }
-    ;
-    const curve = new Float32Array(steps + 1);
-    let g = initGain;
-    for (let i = 0; i < steps + 1; i++) {
-        curve[i] = g;
-        g += gainDelta;
-        g = Math.max(0, Math.min(1, g));
-        if (g < .0001) {
-            g = 0;
-        }
-        ;
-    }
-    try {
-        gainNode.gain.cancelScheduledValues(delay);
-        gainNode.gain.setValueCurveAtTime(curve, delay, duration);
-    }
-    catch (err) {
-        console.log(err);
-        console.log(duration);
-        console.log(steps);
-        console.log(curve);
-    }
-}
-;
 function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     if (sequencersInitialized) {
         const seq = sequencers[seqID];
@@ -1176,7 +1142,7 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
         const Astart = interTransient / 2;
         const Rstart = Astart + A + interTransient;
         const Sstart = Rstart + R + interTransient;
-        const sectionCondition = A >= .0001 && R >= .0001 && S >= .0001;
+        const sectionCondition = A >= .0005 && R >= .0005 && S >= .0005;
         const durationCondition = stageSeconds === interTransient * 3 + A + R + S;
         const envelopeEnabled = sectionCondition && durationCondition;
         if (ampMod !== 0) {
@@ -1940,28 +1906,41 @@ setup();
 const knobs = document.querySelectorAll('.knob-container');
 const minDeg = -135;
 const maxDeg = 135;
-const rangeDeg = maxDeg - minDeg;
-const knobSensitivity = 1.2;
-function renderKnob(value, ID) {
+const degRange = Math.abs(maxDeg - minDeg);
+const knobSensitivity = 1;
+function renderKnob(degree, ID) {
     const input = document.getElementById(ID);
     if (input === null)
         return;
     const knob = input.parentElement?.querySelector('.knob-dial');
     if (knob === null || knob === undefined)
         return;
-    const min = parseInt(input.min);
-    const max = parseInt(input.max);
-    const valRange = max - min;
-    if (valRange === 0)
-        return;
-    const percent = (value - min) / valRange;
-    const currentDeg = minDeg + percent * rangeDeg;
-    knob.style.setProperty('--knob-rotation', `${currentDeg}deg`);
+    knob.style.setProperty('--knob-rotation', `${degree}deg`);
 }
 ;
 knobs.forEach((container) => {
     const input = container.querySelector('input');
-    renderKnob(parseInt(input.value), input.id);
+    const ID = input.id;
+    const maxVal = parseInt(input.max);
+    const minVal = parseInt(input.min);
+    const unitVal = 1;
+    const positions = Math.abs(maxVal - minVal) * unitVal;
+    let initVal = parseInt(input.value);
+    let percPos = 0;
+    for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+        if (initVal === i) {
+            percPos = Math.abs(i / positions);
+            break;
+        }
+    }
+    let initDeg;
+    if (minVal >= 0) {
+        initDeg = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+    }
+    else {
+        initDeg = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+    }
+    renderKnob(initDeg, input.id);
     const knob = container.querySelector('.knob-dial');
     if (knob) {
         let isDragging = false;
@@ -1969,19 +1948,19 @@ knobs.forEach((container) => {
         let startVal = 0;
         let Ts;
         let Ti;
-        const ID = input.id;
-        const max = parseInt(input.max);
-        const min = parseInt(input.min);
-        const paramRange = Math.abs(max - min);
         knob.addEventListener('dblclick', (event) => {
             const target = event.target;
             if (target.classList.contains('on-dbl')) {
                 input.value = '1';
-                renderKnob(parseInt(input.value), input.id);
             }
             else {
                 input.value = '0';
-                renderKnob(parseInt(input.value), input.id);
+            }
+            if (minVal >= 0) {
+                renderKnob(minDeg, input.id);
+            }
+            else {
+                renderKnob(0, input.id);
             }
         });
         knob.addEventListener('mousedown', (e) => {
@@ -1994,15 +1973,31 @@ knobs.forEach((container) => {
         container.addEventListener('mousemove', (e) => {
             if (!isDragging)
                 return;
+            const endY = e.clientY;
+            const dY = startY - endY;
             const Tf = performance.now();
-            const duration = (Tf - Ti) / 1000;
+            const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
-            const T = Math.max(duration, 1);
-            const deltaY = startY - e.clientY;
-            let newVal = startVal + Math.round(deltaY / T * knobSensitivity);
-            newVal = Math.max(min, Math.min(max, newVal));
-            input.value = newVal.toString();
-            renderKnob(newVal, ID);
+            const ppp = 10;
+            const dPos = Math.floor(dY / ppp / T * knobSensitivity);
+            initVal = parseInt(input.value);
+            const numPos = Math.max(minVal, Math.min(maxVal, initVal + dPos));
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i / positions;
+                    break;
+                }
+            }
+            let Degree;
+            if (minVal >= 0) {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+            }
+            else {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+            }
+            input.value = numPos.toString();
+            renderKnob(Degree, ID);
         });
         ['mouseup', 'mouseleave'].forEach((eventType) => {
             container.addEventListener(eventType, () => {
@@ -2016,16 +2011,27 @@ knobs.forEach((container) => {
         });
         input.addEventListener('input', (e) => {
             const event = e.target;
-            let val = parseInt(event.value) || 0;
-            if (val < min)
-                val = min;
-            if (val > max)
-                val = max;
-            renderKnob(val, ID);
+            const numPos = Math.max(minVal, Math.min(maxVal, parseInt(event.value)));
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i / positions;
+                    break;
+                }
+            }
+            let Degree;
+            if (minVal >= 0) {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
+            }
+            else {
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
+            }
+            input.value = numPos.toString();
+            renderKnob(Degree, ID);
         });
     }
     else {
-        console.log('knob listener disconnected');
+        console.log('knob listeners disconnected');
     }
 });
 //# sourceMappingURL=renderer.js.map
