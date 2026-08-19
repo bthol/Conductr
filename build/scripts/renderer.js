@@ -52,6 +52,12 @@ const masterPan = document.getElementById('master-pan');
 const masterTempo = document.getElementById('master-tempo');
 const masterMeasure = document.getElementById('master-beat-per-measure');
 const DryWetFX = document.getElementById('dry-wet-fx');
+const EQBandControl1 = document.getElementById('eq-band-1');
+const EQBandControl2 = document.getElementById('eq-band-2');
+const EQBandControl3 = document.getElementById('eq-band-3');
+const EQCutoffControl1 = document.getElementById('eq-cutoff-1');
+const EQCutoffControl2 = document.getElementById('eq-cutoff-2');
+const EQQControl = document.getElementById('eq-Q-control');
 const FPControl = document.getElementById('forte-piano');
 const DMControl = document.getElementById('drive-multiplier');
 const EControl = document.getElementById('expressivity');
@@ -498,8 +504,22 @@ function initSequencers() {
 ;
 function initFX() {
     FXdata['DryWet'] = 0;
-    if (DryWetFX) {
+    FXdata['EQ'] = {
+        'b1': 1,
+        'b2': .5,
+        'b3': .63,
+        'c1': 500,
+        'c2': 3000,
+        'Q': .1,
+    };
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
         DryWetFX.value = '0';
+        EQBandControl1.value = '100';
+        EQBandControl2.value = '50';
+        EQBandControl3.value = '63';
+        EQCutoffControl1.value = '500';
+        EQCutoffControl2.value = '3000';
+        EQQControl.value = '1';
     }
     else {
         console.log('FX parameter not found during initialization');
@@ -1045,7 +1065,7 @@ function updateSequence(seqID) {
 }
 ;
 function updateFX() {
-    if (FXInitialized && DryWetFX) {
+    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
         let dryWetVal = Number(DryWetFX.value);
         const DWrange = 50;
         if (dryWetVal > DWrange) {
@@ -1067,6 +1087,72 @@ function updateFX() {
             dryWetVal = 1 + dryWetVal / DWrange;
         }
         FXdata['DryWet'] = dryWetVal;
+        let bandVal1 = Number(EQBandControl1.value);
+        if (bandVal1 > 100) {
+            bandVal1 = 100;
+        }
+        else if (bandVal1 < 0) {
+            bandVal1 = 0;
+        }
+        else if (bandVal1 % 1 !== 0) {
+            bandVal1 = Math.ceil(bandVal1);
+        }
+        FXdata['EQ']['b1'] = bandVal1 / 100;
+        let bandVal2 = Number(EQBandControl2.value);
+        if (bandVal2 > 100) {
+            bandVal2 = 100;
+        }
+        else if (bandVal2 < 0) {
+            bandVal2 = 0;
+        }
+        else if (bandVal2 % 1 !== 0) {
+            bandVal2 = Math.ceil(bandVal2);
+        }
+        FXdata['EQ']['b2'] = bandVal2 / 100;
+        let bandVal3 = Number(EQBandControl3.value);
+        if (bandVal3 > 100) {
+            bandVal3 = 100;
+        }
+        else if (bandVal3 < 0) {
+            bandVal3 = 0;
+        }
+        else if (bandVal3 % 1 !== 0) {
+            bandVal3 = Math.ceil(bandVal3);
+        }
+        FXdata['EQ']['b3'] = bandVal3 / 100;
+        let cutoffVal1 = Number(EQCutoffControl1.value);
+        if (cutoffVal1 > 20000) {
+            cutoffVal1 = 20000;
+        }
+        else if (cutoffVal1 < 100) {
+            cutoffVal1 = 100;
+        }
+        else if (cutoffVal1 % 1 !== 0) {
+            cutoffVal1 = Math.ceil(cutoffVal1);
+        }
+        FXdata['EQ']['c1'] = cutoffVal1;
+        let cutoffVal2 = Number(EQCutoffControl2.value);
+        if (cutoffVal2 > 20000) {
+            cutoffVal2 = 20000;
+        }
+        else if (cutoffVal2 < 100) {
+            cutoffVal2 = 100;
+        }
+        else if (cutoffVal2 % 1 !== 0) {
+            cutoffVal2 = Math.ceil(cutoffVal2);
+        }
+        FXdata['EQ']['c2'] = cutoffVal2;
+        let QControlVal = Number(EQQControl.value);
+        if (QControlVal > 100) {
+            QControlVal = 100;
+        }
+        else if (QControlVal < 1) {
+            QControlVal = 1;
+        }
+        else if (QControlVal % 1 !== 0) {
+            QControlVal = Math.ceil(QControlVal);
+        }
+        FXdata['EQ']['Q'] = QControlVal / 100;
         return true;
     }
     else {
@@ -1256,6 +1342,58 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     }
 }
 ;
+function setupDDL(input) {
+    return input;
+}
+;
+function setupEQ(input, b1, b2, b3, cutoff1, cutoff2, Q) {
+    if (cutoff1 >= cutoff2 || Math.abs(cutoff1 - cutoff2) < 100) {
+        return input;
+    }
+    ;
+    const splitter = audioContext.createGain();
+    splitter.gain.value = 1 / 3;
+    input.connect(splitter);
+    const biquad1 = new BiquadFilterNode(audioContext, {
+        type: "lowpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q / 2)),
+    });
+    const band1 = audioContext.createGain();
+    band1.gain.value = Math.max(0, Math.min(1, b1));
+    splitter.connect(biquad1);
+    biquad1.connect(band1);
+    const biquadA = new BiquadFilterNode(audioContext, {
+        type: "highpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q / 2)),
+    });
+    const biquadB = new BiquadFilterNode(audioContext, {
+        type: "lowpass",
+        frequency: Math.max(100, Math.min(20000, cutoff2)),
+        Q: Math.max(.1, Math.min(5, Q / 2)),
+    });
+    const band2 = audioContext.createGain();
+    band2.gain.value = Math.max(0, Math.min(1, b2));
+    splitter.connect(biquadA);
+    biquadA.connect(biquadB);
+    biquadB.connect(band2);
+    const biquad2 = new BiquadFilterNode(audioContext, {
+        type: "highpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q / 2)),
+    });
+    const band3 = audioContext.createGain();
+    band3.gain.value = Math.max(0, Math.min(1, b3));
+    splitter.connect(biquad2);
+    biquad2.connect(band3);
+    const summer = audioContext.createGain();
+    band1.connect(summer);
+    band2.connect(summer);
+    band3.connect(summer);
+    return summer;
+}
+;
 function breakdown() {
     voices.forEach((osc) => { osc.stop(audioContext.currentTime); });
     sequencesGain.forEach((gainNode) => { gainNode.gain.cancelScheduledValues(audioContext.currentTime); });
@@ -1332,6 +1470,7 @@ function buildup(update = 'all') {
         }
     }
     if (gotit && playback) {
+        console.log(FXdata);
         const dry = audioContext.createGain();
         const wet = audioContext.createGain();
         const endFX = audioContext.createGain();
@@ -1450,7 +1589,15 @@ function buildup(update = 'all') {
         endFX.connect(postAnalysis);
         dry.connect(mix);
         dry.connect(dryAnalysis);
-        wet.connect(endFX);
+        const DDL = setupDDL(wet);
+        const b1 = FXdata['EQ']['b1'];
+        const b2 = FXdata['EQ']['b2'];
+        const b3 = FXdata['EQ']['b3'];
+        const c1 = FXdata['EQ']['c1'];
+        const c2 = FXdata['EQ']['c2'];
+        const Q = FXdata['EQ']['Q'];
+        const EQ = setupEQ(DDL, b1, b2, b3, c1, c2, Q);
+        EQ.connect(endFX);
         const compressor = audioContext.createDynamicsCompressor();
         compressor.threshold.value = -12;
         compressor.knee.value = 9;
@@ -1950,7 +2097,10 @@ knobs.forEach((container) => {
         let Ti;
         knob.addEventListener('dblclick', (event) => {
             const target = event.target;
-            if (target.classList.contains('on-dbl')) {
+            if (target.classList.contains('on-dbl-100')) {
+                input.value = '100';
+            }
+            else if (target.classList.contains('on-dbl')) {
                 input.value = '1';
             }
             else {
@@ -1978,7 +2128,7 @@ knobs.forEach((container) => {
             const Tf = performance.now();
             const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
-            const ppp = 10;
+            const ppp = 20;
             const dPos = Math.floor(dY / ppp / T * knobSensitivity);
             initVal = parseInt(input.value);
             const numPos = Math.max(minVal, Math.min(maxVal, initVal + dPos));

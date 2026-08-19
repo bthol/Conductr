@@ -220,7 +220,7 @@ $noise-base-freq: 10.65;
 // button style
 .button {
     padding: 8px;
-    margin: 5px;
+    margin: 8px 5px;
     min-width: 60px;
     background: index.$button-background;
     border-top: 3px solid color.adjust(index.$button-background, $lightness: 5%);

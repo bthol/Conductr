@@ -14,7 +14,7 @@ interface Window {
 window.electronAPI.res((data) => {
     console.log(data);
     // load preset data here
-    
+
 });
 
 // TESTING ELECTRONAPI
@@ -133,7 +133,17 @@ const masterTempo = document.getElementById('master-tempo') as HTMLInputElement;
 const masterMeasure = document.getElementById('master-beat-per-measure') as HTMLInputElement; // Time Signature = Beats per Measure
 
 // FX
+
+// Main controls
 const DryWetFX = document.getElementById('dry-wet-fx') as HTMLInputElement;
+
+// EQ
+const EQBandControl1 = document.getElementById('eq-band-1') as HTMLInputElement;
+const EQBandControl2 = document.getElementById('eq-band-2') as HTMLInputElement;
+const EQBandControl3 = document.getElementById('eq-band-3') as HTMLInputElement;
+const EQCutoffControl1 = document.getElementById('eq-cutoff-1') as HTMLInputElement;
+const EQCutoffControl2 = document.getElementById('eq-cutoff-2') as HTMLInputElement;
+const EQQControl = document.getElementById('eq-Q-control') as HTMLInputElement;
 
 // Conductor
 
@@ -948,10 +958,24 @@ function initSequencers(): void {
 function initFX(): void {
     // model
     FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
-    
+    FXdata['EQ'] = {
+        'b1': 1, // 0 - 1
+        'b2': .5, // 0 - 1
+        'b3': .63, // 0 - 1
+        'c1': 500, // hertz, 100 - 20000
+        'c2': 3000, // hertz, 100 - 20000
+        'Q': .1, // .1 - 10
+    };
+
     // display
-    if (DryWetFX) {
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
         DryWetFX.value = '0'; // -50 - 50
+        EQBandControl1.value = '100'; // 1 - 100
+        EQBandControl2.value = '50'; // 1 - 100
+        EQBandControl3.value = '63'; // 1 - 100
+        EQCutoffControl1.value = '500'; // 100 - 20000
+        EQCutoffControl2.value = '3000'; // 100 - 20000
+        EQQControl.value = '1'; // 1 - 100
     } else {
         console.log('FX parameter not found during initialization');
     }
@@ -1559,7 +1583,7 @@ function updateSequence(seqID: string): boolean {
 };
 
 function updateFX(): boolean {
-    if (FXInitialized && DryWetFX) {
+    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
 
         // DryWet
         let dryWetVal: number = Number(DryWetFX.value); // -50 - 50
@@ -1581,6 +1605,87 @@ function updateFX(): boolean {
             dryWetVal = 1 + dryWetVal/DWrange;
         }
         FXdata['DryWet'] = dryWetVal;
+
+
+        // EQUALIZER
+
+        // band level 1
+        let bandVal1: number = Number(EQBandControl1.value);
+        // enfore range
+        if (bandVal1 > 100) { // above maximum
+            bandVal1 = 100;
+        } else if (bandVal1 < 0) { // below minimum
+            bandVal1 = 0;
+        } else if (bandVal1 % 1 !== 0) { // round up fractions
+            bandVal1 = Math.ceil(bandVal1);
+        }
+        // convert scale
+        FXdata['EQ']['b1'] = bandVal1/100;
+        
+        // band level 2
+        let bandVal2: number = Number(EQBandControl2.value);
+        // enfore range
+        if (bandVal2 > 100) { // above maximum
+            bandVal2 = 100;
+        } else if (bandVal2 < 0) { // below minimum
+            bandVal2 = 0;
+        } else if (bandVal2 % 1 !== 0) { // round up fractions
+            bandVal2 = Math.ceil(bandVal2);
+        }
+        // convert scale
+        FXdata['EQ']['b2'] = bandVal2/100;
+        
+        // band level 3
+        let bandVal3: number = Number(EQBandControl3.value);
+        // enfore range
+        if (bandVal3 > 100) { // above maximum
+            bandVal3 = 100;
+        } else if (bandVal3 < 0) { // below minimum
+            bandVal3 = 0;
+        } else if (bandVal3 % 1 !== 0) { // round up fractions
+            bandVal3 = Math.ceil(bandVal3);
+        }
+        // convert scale
+        FXdata['EQ']['b3'] = bandVal3/100;
+        
+        // Cutoff 1
+        let cutoffVal1: number = Number(EQCutoffControl1.value);
+        // enfore range
+        if (cutoffVal1 > 20000) { // above maximum
+            cutoffVal1 = 20000;
+        } else if (cutoffVal1 < 100) { // below minimum
+            cutoffVal1 = 100;
+        } else if (cutoffVal1 % 1 !== 0) { // round up fractions
+            cutoffVal1 = Math.ceil(cutoffVal1);
+        }
+        // convert scale
+        FXdata['EQ']['c1'] = cutoffVal1;
+        
+        // Cutoff 2
+        let cutoffVal2: number = Number(EQCutoffControl2.value);
+        // enfore range
+        if (cutoffVal2 > 20000) { // above maximum
+            cutoffVal2 = 20000;
+        } else if (cutoffVal2 < 100) { // below minimum
+            cutoffVal2 = 100;
+        } else if (cutoffVal2 % 1 !== 0) { // round up fractions
+            cutoffVal2 = Math.ceil(cutoffVal2);
+        }
+        // convert scale
+        FXdata['EQ']['c2'] = cutoffVal2;
+
+        // Resonance control
+        let QControlVal: number = Number(EQQControl.value);
+        // enfore range
+        if (QControlVal > 100) { // above maximum
+            QControlVal = 100;
+        } else if (QControlVal < 1) { // below minimum
+            QControlVal = 1;
+        } else if (QControlVal % 1 !== 0) { // round up fractions
+            QControlVal = Math.ceil(QControlVal);
+        }
+        // convert scale
+        FXdata['EQ']['Q'] = QControlVal/100;
         
         return true;
     } else {
@@ -1931,6 +2036,77 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
     }
 };
 
+function setupDDL(input: AudioNode): AudioNode {
+    // delay effect
+    return input;
+};
+
+function setupEQ(input: AudioNode, b1: number, b2: number, b3: number, cutoff1: number, cutoff2: number, Q: number): AudioNode {
+    // 3 pass parameteric equalizer
+
+    // Route Map
+    // input > splitter > low pass
+    //                  > band pass
+    //                  > high pass
+
+    // low pass  : biquad1 > band1 > summer
+    // band pass : biquadA > biquadB > band2 > summer
+    // high pass : biquad2 > band3 > summer
+
+    // validation
+    if (cutoff1 >= cutoff2 || Math.abs(cutoff1 - cutoff2) < 100) {return input}; // bypass EQ
+
+    const splitter: GainNode = audioContext.createGain();
+    splitter.gain.value = 1/3; // reduce level by number of splits
+    input.connect(splitter);
+
+    // low pass
+    const biquad1: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+        type: "lowpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q/2)),
+    });
+    const band1: GainNode = audioContext.createGain();
+    band1.gain.value = Math.max(0, Math.min(1, b1)); // band 1 level
+    splitter.connect(biquad1);
+    biquad1.connect(band1);
+    
+    // band pass
+    const biquadA: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+        type: "highpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q/2)),
+    });
+    const biquadB: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+        type: "lowpass",
+        frequency: Math.max(100, Math.min(20000, cutoff2)),
+        Q: Math.max(.1, Math.min(5, Q/2)),
+    });
+    const band2: GainNode = audioContext.createGain();
+    band2.gain.value = Math.max(0, Math.min(1, b2)); // band 2 level
+    splitter.connect(biquadA);
+    biquadA.connect(biquadB);
+    biquadB.connect(band2);
+    
+    // high pass
+    const biquad2: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+        type: "highpass",
+        frequency: Math.max(100, Math.min(20000, cutoff1)),
+        Q: Math.max(.1, Math.min(5, Q/2)),
+    });
+    const band3: GainNode = audioContext.createGain();
+    band3.gain.value = Math.max(0, Math.min(1, b3)); // band 3 level
+    splitter.connect(biquad2);
+    biquad2.connect(band3);
+
+    const summer: GainNode = audioContext.createGain();
+    band1.connect(summer);
+    band2.connect(summer);
+    band3.connect(summer);
+
+    return summer;
+};
+
 // playback functions
 function breakdown(): void {
     // mute all voices
@@ -2045,7 +2221,7 @@ function buildup(update = 'all'): void {
         // console.log(macros);
         // console.log(oscillators);
         // console.log(sequencers);
-        // console.log(FXdata);
+        console.log(FXdata);
 
         // create nodes to control dry wet signal leveling of FX
         const dry: GainNode = audioContext.createGain(); // no FX processing
@@ -2246,24 +2422,44 @@ function buildup(update = 'all'): void {
         dry.connect(mix); // add to mix
         dry.connect(dryAnalysis); // dry analysis
 
-        // FX Chain Route Map
-        // wet > something > something > endFX
+        // FX Processors R & D
 
-        // Modulations
+        // Modulation
         //  - Ring Modulation (RM)
         //  - Pulse Width Modulation (PWM)
         //  - Frequency Modulation (FM)
 
-        // Stereoizations
+        // Stereoization
         //  - Stereo Multiplier (doubler)
         //  - Haas Effect (stereo delay)
         //  - Stereo Panner
 
-        // Spatializations
+        // Spatialization
         //  - Dymanic Delay Line (DDL)
         //  - Rverberation Module
 
-        wet.connect(endFX); // bypass FX chain
+
+        // FX Chain Route Map
+        // wet > DDL > 3 Pass Parametric EQ > endFX
+
+        // Dynamic Delay Line
+        const DDL: AudioNode = setupDDL(wet);
+
+        // 3 Pass Parametric Equalizer
+        // input: AudioNode, b1: number, b2: number, b3: number, cutoff1: number, cutoff2: number, Q1: number, Q2: number
+        // collect EQ properties
+        const b1: number = FXdata['EQ']['b1']; // gain level
+        const b2: number = FXdata['EQ']['b2']; // gain level
+        const b3: number = FXdata['EQ']['b3']; // gain level
+        const c1: number = FXdata['EQ']['c1']; // hertz
+        const c2: number = FXdata['EQ']['c2']; // hertz
+        const Q: number = FXdata['EQ']['Q']; // resonance at cutoff
+        const EQ: AudioNode = setupEQ(DDL, b1, b2, b3, c1, c2, Q);
+
+        // FX Chain Endpoint
+        EQ.connect(endFX);
+
+        // wet.connect(endFX); // bypass FX chain
 
         // Master Process Route Map
         // Mix > 3Comp > Master Gain > clamp > out
@@ -2957,7 +3153,9 @@ knobs.forEach((container) => {
         // set one/zero on double click
         knob.addEventListener('dblclick', (event: Event) => {
             const target = event.target as HTMLElement;
-            if (target.classList.contains('on-dbl')) {
+            if (target.classList.contains('on-dbl-100')) {
+                input.value = '100';
+            } else if (target.classList.contains('on-dbl')) {
                 input.value = '1';
             } else {
                 input.value = '0';

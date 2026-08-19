@@ -201,7 +201,7 @@ body {
 
 .button {
   padding: 8px;
-  margin: 5px;
+  margin: 8px 5px;
   min-width: 60px;
   background: #333333;
   border-top: 3px solid rgb(63.75, 63.75, 63.75);

@@ -1235,13 +1235,6 @@
                     <div>
                         <div class="subtitle">Player</div>
 
-                        <!-- player buttons -->
-                        <div class="button-panel">
-                            <button id="play-btn" class="button" type="button">run</button>
-                            <button id="stop-btn" class="button" type="button">reset</button>
-                            <button id="breaker" class="button" type="button">breaker</button>
-                        </div>
-
                         <!-- master macros knobs -->
                         <div class="panel">
                             <div>
@@ -1279,6 +1272,13 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- player buttons -->
+                        <div class="button-panel">
+                            <button id="play-btn" class="button" type="button">run</button>
+                            <button id="stop-btn" class="button" type="button">reset</button>
+                            <button id="breaker" class="button" type="button">breaker</button>
+                        </div>
                     </div>
                 </div>
 
@@ -1286,13 +1286,69 @@
                 <div class="bordering">
                     <div>
                         <div class="subtitle">FX</div>
-                        <div class="panel">
+                        <div class="wire-layout">
                             <div>
-                                <!-- maximum out gain value scalar -->
-                                <div class="knob-container">
-                                    <div>Dry/Wet</div>
-                                    <div><div class="knob-dial"></div></div>
-                                    <input id="dry-wet-fx" class="knob-input second-border" type="number" placeholder="dry/wet" min="-50" max="50" value="0">
+                                <div>Main</div>
+                                <div class="panel second-border">
+                                    <div>
+                                        <!-- control for amount of processed signal -->
+                                        <div class="knob-container">
+                                            <div>Dry/Wet</div>
+                                            <div><div class="knob-dial"></div></div>
+                                            <input id="dry-wet-fx" class="knob-input second-border" type="number" placeholder="dry/wet" min="-50" max="50" value="0">
+                                        </div>
+
+                                        <!-- placeholder other one replace me me me -->
+                                        <div class="knob-container">
+                                            <div>other main</div>
+                                            <div><div class="knob-dial"></div></div>
+                                            <input id="dsdkl,jfghndklj-fx" class="knob-input second-border" type="number" placeholder="replace me me me eme eme" min="-50" max="50" value="0">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div>Equalizer</div>
+                                <div class="panel second-border">
+                                    <div>
+                                        <!-- 3 Pass Parametric Equalizer -->
+                                        <div class="knob-container">
+                                            <div>Band 1</div>
+                                            <div><div class="knob-dial"></div></div>
+                                            <input id="eq-band-1" class="knob-input second-border" type="number" placeholder="low shelf" min="0" max="100" value="100">
+                                        </div>
+                                        <div class="knob-container">
+                                            <div>Cutoff 1</div>
+                                            <div><div class="knob-dial on-dbl-100"></div></div>
+                                            <input id="eq-cutoff-1" class="knob-input second-border" type="number" placeholder="frequency" min="100" max="20000" value="500" step="100">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="knob-container">
+                                            <div>Band 2</div>
+                                            <div><div class="knob-dial"></div></div>
+                                            <input id="eq-band-2" class="knob-input second-border" type="number" placeholder="band pass" min="0" max="100" value="50">
+                                        </div>
+                                        <div class="knob-container">
+                                            <div>Cutoff 2</div>
+                                            <div><div class="knob-dial on-dbl-100"></div></div>
+                                            <input id="eq-cutoff-2" class="knob-input second-border" type="number" placeholder="frequency" min="100" max="20000" value="3000" step="100">
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <div class="knob-container">
+                                            <div>Band 3</div>
+                                            <div><div class="knob-dial"></div></div>
+                                            <input id="eq-band-3" class="knob-input second-border" type="number" placeholder="high shelf" min="0" max="100" value="63">
+                                        </div>
+                                        <div class="knob-container">
+                                            <div>Q</div>
+                                            <div><div class="knob-dial on-dbl"></div></div>
+                                            <input id="eq-Q-control" class="knob-input second-border" type="number" placeholder="resonance" min="1" max="100" value="1">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
