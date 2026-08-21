@@ -2068,11 +2068,11 @@ function renderKnob(degree, ID) {
 knobs.forEach((container) => {
     const input = container.querySelector('input');
     const ID = input.id;
-    const maxVal = parseInt(input.max);
-    const minVal = parseInt(input.min);
-    const unitVal = 1;
-    const positions = Math.abs(maxVal - minVal) * unitVal;
-    let initVal = parseInt(input.value);
+    const maxVal = Number(input.max);
+    const minVal = Number(input.min);
+    const unitVal = input.hasAttribute('step') ? Number(input.step) : 1;
+    const positions = Math.abs(maxVal - minVal);
+    let initVal = Number(input.value);
     let percPos = 0;
     for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
         if (initVal === i) {
@@ -2116,7 +2116,7 @@ knobs.forEach((container) => {
         knob.addEventListener('mousedown', (e) => {
             isDragging = true;
             startY = e.clientY;
-            startVal = parseInt(input.value);
+            startVal = Number(input.value);
             Ts = Ti = performance.now();
             document.body.style.userSelect = 'none';
         });
@@ -2129,8 +2129,8 @@ knobs.forEach((container) => {
             const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
             const ppp = 20;
-            const dPos = Math.floor(dY / ppp / T * knobSensitivity);
-            initVal = parseInt(input.value);
+            const dPos = Math.floor(dY / ppp / T * knobSensitivity) * unitVal;
+            initVal = Number(input.value);
             const numPos = Math.max(minVal, Math.min(maxVal, initVal + dPos));
             percPos = 0;
             for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
@@ -2161,7 +2161,7 @@ knobs.forEach((container) => {
         });
         input.addEventListener('input', (e) => {
             const event = e.target;
-            const numPos = Math.max(minVal, Math.min(maxVal, parseInt(event.value)));
+            const numPos = Math.max(minVal, Math.min(maxVal, Number(event.value)));
             percPos = 0;
             for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
                 if (numPos === i) {

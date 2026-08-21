@@ -3114,13 +3114,13 @@ knobs.forEach((container) => {
     // knob-specific properties
     const input = container.querySelector('input') as HTMLInputElement;
     const ID: string = input.id;
-    const maxVal: number = parseInt(input.max);
-    const minVal: number = parseInt(input.min);
-    const unitVal: number = 1; // value unit
-    const positions: number = Math.abs(maxVal - minVal) * unitVal; // number of knob positions
+    const maxVal: number = Number(input.max);
+    const minVal: number = Number(input.min);
+    const unitVal: number = input.hasAttribute('step') ? Number(input.step) : 1; // value unit
+    const positions: number = Math.abs(maxVal - minVal); // number of knob positions
     
     // get initial position
-    let initVal: number = parseInt(input.value);
+    let initVal: number = Number(input.value);
     let percPos: number = 0;
     for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
         if (initVal === i) {
@@ -3137,7 +3137,6 @@ knobs.forEach((container) => {
         initDeg = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
     }
     renderKnob(initDeg, input.id);
-
 
     // setup listeners for each knob
     const knob: HTMLElement | null = container.querySelector('.knob-dial');
@@ -3172,7 +3171,7 @@ knobs.forEach((container) => {
             // console.log('mouse drag start');
             isDragging = true;
             startY = e.clientY;
-            startVal = parseInt(input.value);
+            startVal = Number(input.value);
             Ts = Ti = performance.now(); // drag start and last drag event are the same on first event
             document.body.style.userSelect = 'none'; // Prevent highlighting page text
         });
@@ -3199,10 +3198,10 @@ knobs.forEach((container) => {
             // position (unit value)
             // const H: number = container.offsetHeight; // total height of listened element (pixels)
             const ppp: number = 20; // number of pixels per position
-            
-            const dPos: number = Math.floor(dY / ppp / T * knobSensitivity); // pixels/second * position/pixel = positions/second
+            const diff: number = Math.floor(dY / ppp / T * knobSensitivity);
+            const dPos: number = diff * unitVal; // pixels/second * position/pixel = positions/second
 
-            initVal = parseInt(input.value); // update initial value
+            initVal = Number(input.value); // update initial value
             const numPos: number = Math.max(minVal, Math.min(maxVal, initVal + dPos)); // position number: minVal to maxVal
 
             // percentage position
@@ -3245,7 +3244,7 @@ knobs.forEach((container) => {
         input.addEventListener('input', (e: Event) => {
             // console.log('input on knob');
             const event: HTMLInputElement = e.target as HTMLInputElement; // typecast EventTarget type into HTMLInputElement
-            const numPos = Math.max(minVal, Math.min(maxVal, parseInt(event.value)));
+            const numPos = Math.max(minVal, Math.min(maxVal, Number(event.value)));
 
             // percentage position
             percPos = 0;
