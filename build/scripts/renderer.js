@@ -1347,46 +1347,59 @@ function setupDDL(input) {
 }
 ;
 function setupEQ(input, b1, b2, b3, cutoff1, cutoff2, Q) {
-    if (cutoff1 >= cutoff2 || Math.abs(cutoff1 - cutoff2) < 100) {
-        return input;
+    let c1 = cutoff1;
+    let c2 = cutoff2;
+    if (cutoff1 > cutoff2) {
+        c1 = cutoff2;
+        c2 = cutoff1;
     }
-    ;
+    const bypass = [c1 === 100, c1 === c2, c2 === 20000];
     const splitter = audioContext.createGain();
-    splitter.gain.value = 1 / 3;
+    let bands = 3;
+    bypass.forEach((b) => { if (b) {
+        bands -= 1;
+    } });
+    splitter.gain.value = 1 / Math.min(1, bands);
     input.connect(splitter);
-    const biquad1 = new BiquadFilterNode(audioContext, {
-        type: "lowpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q / 2)),
-    });
     const band1 = audioContext.createGain();
-    band1.gain.value = Math.max(0, Math.min(1, b1));
-    splitter.connect(biquad1);
-    biquad1.connect(band1);
-    const biquadA = new BiquadFilterNode(audioContext, {
-        type: "highpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q / 2)),
-    });
-    const biquadB = new BiquadFilterNode(audioContext, {
-        type: "lowpass",
-        frequency: Math.max(100, Math.min(20000, cutoff2)),
-        Q: Math.max(.1, Math.min(5, Q / 2)),
-    });
+    if (!bypass[0]) {
+        const biquad1 = new BiquadFilterNode(audioContext, {
+            type: "lowpass",
+            frequency: Math.max(100, Math.min(20000, c1)),
+            Q: Math.max(.1, Math.min(5, Q / 2)),
+        });
+        band1.gain.value = Math.max(0, Math.min(1, b1));
+        splitter.connect(biquad1);
+        biquad1.connect(band1);
+    }
     const band2 = audioContext.createGain();
-    band2.gain.value = Math.max(0, Math.min(1, b2));
-    splitter.connect(biquadA);
-    biquadA.connect(biquadB);
-    biquadB.connect(band2);
-    const biquad2 = new BiquadFilterNode(audioContext, {
-        type: "highpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q / 2)),
-    });
+    if (!bypass[1]) {
+        const biquadA = new BiquadFilterNode(audioContext, {
+            type: "highpass",
+            frequency: Math.max(100, Math.min(20000, c1)),
+            Q: Math.max(.1, Math.min(5, Q / 2)),
+        });
+        const biquadB = new BiquadFilterNode(audioContext, {
+            type: "lowpass",
+            frequency: Math.max(100, Math.min(20000, c2)),
+            Q: Math.max(.1, Math.min(5, Q / 2)),
+        });
+        band2.gain.value = Math.max(0, Math.min(1, b2));
+        splitter.connect(biquadA);
+        biquadA.connect(biquadB);
+        biquadB.connect(band2);
+    }
     const band3 = audioContext.createGain();
-    band3.gain.value = Math.max(0, Math.min(1, b3));
-    splitter.connect(biquad2);
-    biquad2.connect(band3);
+    if (!bypass[2]) {
+        const biquad2 = new BiquadFilterNode(audioContext, {
+            type: "highpass",
+            frequency: Math.max(100, Math.min(20000, c2)),
+            Q: Math.max(.1, Math.min(5, Q / 2)),
+        });
+        band3.gain.value = Math.max(0, Math.min(1, b3));
+        splitter.connect(biquad2);
+        biquad2.connect(band3);
+    }
     const summer = audioContext.createGain();
     band1.connect(summer);
     band2.connect(summer);
@@ -2129,7 +2142,8 @@ knobs.forEach((container) => {
             const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
             const ppp = 20;
-            const dPos = Math.floor(dY / ppp / T * knobSensitivity) * unitVal;
+            const diff = Math.floor(dY / ppp / T * knobSensitivity);
+            const dPos = diff * unitVal;
             initVal = Number(input.value);
             const numPos = Math.max(minVal, Math.min(maxVal, initVal + dPos));
             percPos = 0;

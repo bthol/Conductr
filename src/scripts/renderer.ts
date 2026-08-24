@@ -2053,51 +2053,67 @@ function setupEQ(input: AudioNode, b1: number, b2: number, b3: number, cutoff1: 
     // band pass : biquadA > biquadB > band2 > summer
     // high pass : biquad2 > band3 > summer
 
-    // validation
-    if (cutoff1 >= cutoff2 || Math.abs(cutoff1 - cutoff2) < 100) {return input}; // bypass EQ
+    let c1: number = cutoff1;
+    let c2: number = cutoff2;
+    if (cutoff1 > cutoff2) { // switch cutoffs
+        c1 = cutoff2;
+        c2 = cutoff1;
+    }
 
+    // store bypassing conditions
+    const bypass: Array<boolean> = [c1 === 100, c1 === c2, c2 === 20000];
+
+    // reduce level by number of splits
     const splitter: GainNode = audioContext.createGain();
-    splitter.gain.value = 1/3; // reduce level by number of splits
+    let bands = 3;
+    bypass.forEach((b) => { if (b) {bands -= 1} }); // count bypasses
+    splitter.gain.value = 1/Math.min(1, bands);
     input.connect(splitter);
 
     // low pass
-    const biquad1: BiquadFilterNode = new BiquadFilterNode(audioContext, {
-        type: "lowpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q/2)),
-    });
     const band1: GainNode = audioContext.createGain();
-    band1.gain.value = Math.max(0, Math.min(1, b1)); // band 1 level
-    splitter.connect(biquad1);
-    biquad1.connect(band1);
+    if (!bypass[0]) { // band 1 not bypassed
+        const biquad1: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+            type: "lowpass",
+            frequency: Math.max(100, Math.min(20000, c1)),
+            Q: Math.max(.1, Math.min(5, Q/2)),
+        });
+        band1.gain.value = Math.max(0, Math.min(1, b1)); // band 1 level
+        splitter.connect(biquad1);
+        biquad1.connect(band1);
+    }
     
     // band pass
-    const biquadA: BiquadFilterNode = new BiquadFilterNode(audioContext, {
-        type: "highpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q/2)),
-    });
-    const biquadB: BiquadFilterNode = new BiquadFilterNode(audioContext, {
-        type: "lowpass",
-        frequency: Math.max(100, Math.min(20000, cutoff2)),
-        Q: Math.max(.1, Math.min(5, Q/2)),
-    });
     const band2: GainNode = audioContext.createGain();
-    band2.gain.value = Math.max(0, Math.min(1, b2)); // band 2 level
-    splitter.connect(biquadA);
-    biquadA.connect(biquadB);
-    biquadB.connect(band2);
+    if (!bypass[1]) { // band 2 not bypassed
+        const biquadA: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+            type: "highpass",
+            frequency: Math.max(100, Math.min(20000, c1)),
+            Q: Math.max(.1, Math.min(5, Q/2)),
+        });
+        const biquadB: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+            type: "lowpass",
+            frequency: Math.max(100, Math.min(20000, c2)),
+            Q: Math.max(.1, Math.min(5, Q/2)),
+        });
+        band2.gain.value = Math.max(0, Math.min(1, b2)); // band 2 level
+        splitter.connect(biquadA);
+        biquadA.connect(biquadB);
+        biquadB.connect(band2);
+    }
     
     // high pass
-    const biquad2: BiquadFilterNode = new BiquadFilterNode(audioContext, {
-        type: "highpass",
-        frequency: Math.max(100, Math.min(20000, cutoff1)),
-        Q: Math.max(.1, Math.min(5, Q/2)),
-    });
     const band3: GainNode = audioContext.createGain();
-    band3.gain.value = Math.max(0, Math.min(1, b3)); // band 3 level
-    splitter.connect(biquad2);
-    biquad2.connect(band3);
+    if (!bypass[2]) { // band 3 not bypassed
+        const biquad2: BiquadFilterNode = new BiquadFilterNode(audioContext, {
+            type: "highpass",
+            frequency: Math.max(100, Math.min(20000, c2)),
+            Q: Math.max(.1, Math.min(5, Q/2)),
+        });
+        band3.gain.value = Math.max(0, Math.min(1, b3)); // band 3 level
+        splitter.connect(biquad2);
+        biquad2.connect(band3);
+    }
 
     const summer: GainNode = audioContext.createGain();
     band1.connect(summer);
