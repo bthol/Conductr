@@ -50,27 +50,6 @@ const audioContext: AudioContext = new AudioContext(options);
 // declare contant features
 const meterLevels: Array<number> = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, -18, -21, -24, -30];
 const targetPeak = 1.0; // peak normalize to this gain level
-
-// On natural log meter scale 
-// 0.25 is -12 dB
-// √2/8 is -15 dB
-// 0.03125 is -30 dB
-// 0.00390625 is -48 dB
-// 0.0009765625 is -60 dB
-// 0.00048828 is -66 dB
-// 0.0000969 is -80 dB
-
-// On log 10 meter scale
-// 0.5012 is -3 dB
-// 0.3162 is -5 dB
-// 0.2512 is -6 dB
-// 0.1 is -10 dB
-// 0.0630957 is -12 dB
-// 0.0158 is -18 dB
-// 0.01 is -20 dB
-// 0.004 is -24 dB
-// 0.001 is -30 dB
-
 const upperEnergyThreshhold: number = 0.15; // maximum waveform energy, one and a half of a tenth
 const lowerEnergyThreshhold: number = 0.025; // minimum waveform energy, quarter of a tenth
 
@@ -144,6 +123,12 @@ const EQBandControl3 = document.getElementById('eq-band-3') as HTMLInputElement;
 const EQCutoffControl1 = document.getElementById('eq-cutoff-1') as HTMLInputElement;
 const EQCutoffControl2 = document.getElementById('eq-cutoff-2') as HTMLInputElement;
 const EQQControl = document.getElementById('eq-Q-control') as HTMLInputElement;
+
+// DDL
+const DDLDryControl = document.getElementById('delay-dry') as HTMLInputElement;
+const DDLWetControl = document.getElementById('delay-wet') as HTMLInputElement;
+const DDLFeedControl = document.getElementById('delay-feed') as HTMLInputElement;
+const DDLTimeControl = document.getElementById('delay-time') as HTMLInputElement;
 
 // Conductor
 
@@ -959,23 +944,36 @@ function initFX(): void {
     // model
     FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
     FXdata['EQ'] = {
-        'b1': 1, // 0 - 1
-        'b2': .5, // 0 - 1
-        'b3': .63, // 0 - 1
-        'c1': 500, // hertz, 100 - 20000
+        'b1': 1,    // 0 - 1
+        'b2': .5,   // 0 - 1
+        'b3': .63,  // 0 - 1
+        'c1': 500,  // hertz, 100 - 20000
         'c2': 3000, // hertz, 100 - 20000
-        'Q': .1, // .1 - 10
+        'Q': .1,    // .1 - 10
+    };
+    FXdata['DDL'] = {
+        'dry': 1,   // 0 - 1
+        'wet': .6, // 0 - 1
+        'feed': .63, // .01 - .99 (loss per feedback)
+        'time': .5, // .001 - 5 (seconds)
     };
 
     // display
-    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+        // main controls
         DryWetFX.value = '0'; // -50 - 50
+        // EQ
         EQBandControl1.value = '100'; // 1 - 100
         EQBandControl2.value = '50'; // 1 - 100
         EQBandControl3.value = '63'; // 1 - 100
         EQCutoffControl1.value = '500'; // 100 - 20000
         EQCutoffControl2.value = '3000'; // 100 - 20000
         EQQControl.value = '1'; // 1 - 100
+        // DDL
+        DDLDryControl.value = '100'; // 0 - 100
+        DDLWetControl.value = '50'; // 0 - 100
+        DDLFeedControl.value = '63'; // 1 - 99 
+        DDLTimeControl.value = '500'; // 1 - 5000 milliseconds
     } else {
         console.log('FX parameter not found during initialization');
     }
@@ -1583,7 +1581,7 @@ function updateSequence(seqID: string): boolean {
 };
 
 function updateFX(): boolean {
-    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
+    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
 
         // DryWet
         let dryWetVal: number = Number(DryWetFX.value); // -50 - 50
@@ -1686,6 +1684,62 @@ function updateFX(): boolean {
         }
         // convert scale
         FXdata['EQ']['Q'] = QControlVal/100;
+
+
+        // Dynamic Delay Line
+        
+
+        // DDL Dry control
+        let DDLDryVal: number = Number(DDLDryControl.value);
+        // enfore range
+        if (DDLDryVal > 100) { // above maximum
+            DDLDryVal = 100;
+        } else if (DDLDryVal < 0) { // below minimum
+            DDLDryVal = 0;
+        } else if (DDLDryVal % 1 !== 0) { // round up fractions
+            DDLDryVal = Math.ceil(DDLDryVal);
+        }
+        // convert scale
+        FXdata['DDL']['dry'] = DDLDryVal/100;
+        
+        // DDL Dry control
+        let DDLWetVal: number = Number(DDLWetControl.value);
+        // enfore range
+        if (DDLWetVal > 100) { // above maximum
+            DDLWetVal = 100;
+        } else if (DDLWetVal < 0) { // below minimum
+            DDLWetVal = 0;
+        } else if (DDLWetVal % 1 !== 0) { // round up fractions
+            DDLWetVal = Math.ceil(DDLWetVal);
+        }
+        // convert scale
+        FXdata['DDL']['wet'] = DDLWetVal/100;
+        
+        // DDL Dry control
+        let DDLFeedVal: number = Number(DDLFeedControl.value);
+        // enfore range
+        if (DDLFeedVal > 99) { // above maximum
+            DDLFeedVal = 99;
+        } else if (DDLFeedVal < 1) { // below minimum
+            DDLFeedVal = 1;
+        } else if (DDLFeedVal % 1 !== 0) { // round up fractions
+            DDLFeedVal = Math.ceil(DDLFeedVal);
+        }
+        // convert scale
+        FXdata['DDL']['feed'] = DDLFeedVal/100;
+        
+        // DDL Dry control
+        let DDLTimeVal: number = Number(DDLTimeControl.value);
+        // enfore range
+        if (DDLTimeVal > 5000) { // above maximum
+            DDLTimeVal = 5000;
+        } else if (DDLTimeVal < 1) { // below minimum
+            DDLTimeVal = 1;
+        } else if (DDLTimeVal % 1 !== 0) { // round up fractions
+            DDLTimeVal = Math.ceil(DDLTimeVal);
+        }
+        // convert scale
+        FXdata['DDL']['time'] = DDLTimeVal/1000; // millseconds to seconds
         
         return true;
     } else {
@@ -2036,9 +2090,33 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
     }
 };
 
-function setupDDL(input: AudioNode): AudioNode {
+function setupDDL(input: AudioNode, dryLevel: number, wetLevel: number, feedLevel: number, timeLevel: number): AudioNode {
     // dynamic delay line effect
-    return input;
+    
+    const dry: GainNode = audioContext.createGain();
+    dry.gain.value = dryLevel; // dry amount
+
+    const wet: GainNode = audioContext.createGain();
+    wet.gain.value = wetLevel; // wet amount
+
+    const feedback: GainNode = audioContext.createGain();
+    feedback.gain.value = feedLevel; // feedback amount
+
+    const delay: DelayNode = audioContext.createDelay();
+    delay.delayTime.value = timeLevel; // in seconds
+
+    const output: GainNode = audioContext.createGain();
+
+    input.connect(dry);
+    dry.connect(output);
+
+    input.connect(wet);
+    wet.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(output);
+
+    return output;
 };
 
 function setupEQ(input: AudioNode, b1: number, b2: number, b3: number, cutoff1: number, cutoff2: number, Q: number): AudioNode {
@@ -2237,7 +2315,7 @@ function buildup(update = 'all'): void {
         // console.log(macros);
         // console.log(oscillators);
         // console.log(sequencers);
-        console.log(FXdata);
+        // console.log(FXdata);
 
         // create nodes to control dry wet signal leveling of FX
         const dry: GainNode = audioContext.createGain(); // no FX processing
@@ -2459,7 +2537,12 @@ function buildup(update = 'all'): void {
         // wet > DDL > 3 Pass Parametric EQ > endFX
 
         // Dynamic Delay Line
-        const DDL: AudioNode = setupDDL(wet);
+        // collect DDL properties
+        const DDLDryLevel: number = FXdata['DDL']['dry']; // dry control
+        const DDLWetLevel: number = FXdata['DDL']['wet']; // wet control
+        const DDLFeedLevel: number = FXdata['DDL']['feed']; // feedback ammount (must be under 1 to decay)
+        const DDLTimeLevel: number = FXdata['DDL']['time']; // seconds
+        const DDL: AudioNode = setupDDL(wet, DDLDryLevel, DDLWetLevel, DDLFeedLevel, DDLTimeLevel);
 
         // 3 Pass Parametric Equalizer
         // input: AudioNode, b1: number, b2: number, b3: number, cutoff1: number, cutoff2: number, Q1: number, Q2: number

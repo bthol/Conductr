@@ -58,6 +58,10 @@ const EQBandControl3 = document.getElementById('eq-band-3');
 const EQCutoffControl1 = document.getElementById('eq-cutoff-1');
 const EQCutoffControl2 = document.getElementById('eq-cutoff-2');
 const EQQControl = document.getElementById('eq-Q-control');
+const DDLDryControl = document.getElementById('delay-dry');
+const DDLWetControl = document.getElementById('delay-wet');
+const DDLFeedControl = document.getElementById('delay-feed');
+const DDLTimeControl = document.getElementById('delay-time');
 const FPControl = document.getElementById('forte-piano');
 const DMControl = document.getElementById('drive-multiplier');
 const EControl = document.getElementById('expressivity');
@@ -512,7 +516,13 @@ function initFX() {
         'c2': 3000,
         'Q': .1,
     };
-    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
+    FXdata['DDL'] = {
+        'dry': 1,
+        'wet': .6,
+        'feed': .63,
+        'time': .5,
+    };
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
         DryWetFX.value = '0';
         EQBandControl1.value = '100';
         EQBandControl2.value = '50';
@@ -520,6 +530,10 @@ function initFX() {
         EQCutoffControl1.value = '500';
         EQCutoffControl2.value = '3000';
         EQQControl.value = '1';
+        DDLDryControl.value = '100';
+        DDLWetControl.value = '50';
+        DDLFeedControl.value = '63';
+        DDLTimeControl.value = '500';
     }
     else {
         console.log('FX parameter not found during initialization');
@@ -1065,7 +1079,7 @@ function updateSequence(seqID) {
 }
 ;
 function updateFX() {
-    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl) {
+    if (FXInitialized && DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
         let dryWetVal = Number(DryWetFX.value);
         const DWrange = 50;
         if (dryWetVal > DWrange) {
@@ -1153,6 +1167,50 @@ function updateFX() {
             QControlVal = Math.ceil(QControlVal);
         }
         FXdata['EQ']['Q'] = QControlVal / 100;
+        let DDLDryVal = Number(DDLDryControl.value);
+        if (DDLDryVal > 100) {
+            DDLDryVal = 100;
+        }
+        else if (DDLDryVal < 0) {
+            DDLDryVal = 0;
+        }
+        else if (DDLDryVal % 1 !== 0) {
+            DDLDryVal = Math.ceil(DDLDryVal);
+        }
+        FXdata['DDL']['dry'] = DDLDryVal / 100;
+        let DDLWetVal = Number(DDLWetControl.value);
+        if (DDLWetVal > 100) {
+            DDLWetVal = 100;
+        }
+        else if (DDLWetVal < 0) {
+            DDLWetVal = 0;
+        }
+        else if (DDLWetVal % 1 !== 0) {
+            DDLWetVal = Math.ceil(DDLWetVal);
+        }
+        FXdata['DDL']['wet'] = DDLWetVal / 100;
+        let DDLFeedVal = Number(DDLFeedControl.value);
+        if (DDLFeedVal > 99) {
+            DDLFeedVal = 99;
+        }
+        else if (DDLFeedVal < 1) {
+            DDLFeedVal = 1;
+        }
+        else if (DDLFeedVal % 1 !== 0) {
+            DDLFeedVal = Math.ceil(DDLFeedVal);
+        }
+        FXdata['DDL']['feed'] = DDLFeedVal / 100;
+        let DDLTimeVal = Number(DDLTimeControl.value);
+        if (DDLTimeVal > 5000) {
+            DDLTimeVal = 5000;
+        }
+        else if (DDLTimeVal < 1) {
+            DDLTimeVal = 1;
+        }
+        else if (DDLTimeVal % 1 !== 0) {
+            DDLTimeVal = Math.ceil(DDLTimeVal);
+        }
+        FXdata['DDL']['time'] = DDLTimeVal / 1000;
         return true;
     }
     else {
@@ -1342,8 +1400,24 @@ function setupSequencer(seqID, oscFreq, oscVoic, inputNode) {
     }
 }
 ;
-function setupDDL(input) {
-    return input;
+function setupDDL(input, dryLevel, wetLevel, feedLevel, timeLevel) {
+    const dry = audioContext.createGain();
+    dry.gain.value = dryLevel;
+    const wet = audioContext.createGain();
+    wet.gain.value = wetLevel;
+    const feedback = audioContext.createGain();
+    feedback.gain.value = feedLevel;
+    const delay = audioContext.createDelay();
+    delay.delayTime.value = timeLevel;
+    const output = audioContext.createGain();
+    input.connect(dry);
+    dry.connect(output);
+    input.connect(wet);
+    wet.connect(delay);
+    delay.connect(feedback);
+    feedback.connect(delay);
+    delay.connect(output);
+    return output;
 }
 ;
 function setupEQ(input, b1, b2, b3, cutoff1, cutoff2, Q) {
@@ -1483,7 +1557,6 @@ function buildup(update = 'all') {
         }
     }
     if (gotit && playback) {
-        console.log(FXdata);
         const dry = audioContext.createGain();
         const wet = audioContext.createGain();
         const endFX = audioContext.createGain();
@@ -1602,7 +1675,11 @@ function buildup(update = 'all') {
         endFX.connect(postAnalysis);
         dry.connect(mix);
         dry.connect(dryAnalysis);
-        const DDL = setupDDL(wet);
+        const DDLDryLevel = FXdata['DDL']['dry'];
+        const DDLWetLevel = FXdata['DDL']['wet'];
+        const DDLFeedLevel = FXdata['DDL']['feed'];
+        const DDLTimeLevel = FXdata['DDL']['time'];
+        const DDL = setupDDL(wet, DDLDryLevel, DDLWetLevel, DDLFeedLevel, DDLTimeLevel);
         const b1 = FXdata['EQ']['b1'];
         const b2 = FXdata['EQ']['b2'];
         const b3 = FXdata['EQ']['b3'];
