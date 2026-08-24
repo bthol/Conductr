@@ -2037,7 +2037,7 @@ function setupSequencer(seqID:string, oscFreq:number, oscVoic:number, inputNode:
 };
 
 function setupDDL(input: AudioNode): AudioNode {
-    // delay effect
+    // dynamic delay line effect
     return input;
 };
 
@@ -3168,18 +3168,37 @@ knobs.forEach((container) => {
         // set one/zero on double click
         knob.addEventListener('dblclick', (event: Event) => {
             const target = event.target as HTMLElement;
+            let numPos: number;
             if (target.classList.contains('on-dbl-100')) {
                 input.value = '100';
+                numPos = 100;
             } else if (target.classList.contains('on-dbl')) {
                 input.value = '1';
+                numPos = 1;
             } else {
                 input.value = '0';
+                numPos = 0;
             }
+
+            // percentage position
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i/positions;
+                    break;
+                }
+            }
+
+            // use percentage position to calculate amount of knob position rotation for render
+            let Degree: number;
             if (minVal >= 0) {
-                renderKnob(minDeg, input.id); // render at minimum degrees
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
             } else {
-                renderKnob(0, input.id); // render at minimum degrees
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
+
+            // render knob to default degree
+            renderKnob(Degree, ID);
         });
         
         // mouse drag detection

@@ -24,7 +24,6 @@ body {
   background: linear-gradient(180deg, hsl(235, 31%, 33%) 0%, hsl(265, 31%, 33%) 50%, hsl(325, 31%, 33%) 100%);
   border: 1px solid hsl(244, 50%, 9%);
   box-shadow: inset 0px 0px 3px 0px hsl(244, 50%, 9%);
-  border-radius: 3px;
 }
 
 .bordering {
@@ -47,7 +46,6 @@ body {
   padding: 8px;
   margin: 10px 0px;
   border: 1.5px solid hsl(58, 94%, 48%);
-  border-radius: 3px;
 }
 
 .border-alternate {
@@ -99,6 +97,7 @@ body {
 
 #conductor {
   grid-column: 1;
+  border-right: none;
 }
 #conductor .section-layout {
   justify-content: center;

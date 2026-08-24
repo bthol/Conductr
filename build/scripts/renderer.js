@@ -2110,21 +2110,34 @@ knobs.forEach((container) => {
         let Ti;
         knob.addEventListener('dblclick', (event) => {
             const target = event.target;
+            let numPos;
             if (target.classList.contains('on-dbl-100')) {
                 input.value = '100';
+                numPos = 100;
             }
             else if (target.classList.contains('on-dbl')) {
                 input.value = '1';
+                numPos = 1;
             }
             else {
                 input.value = '0';
+                numPos = 0;
             }
+            percPos = 0;
+            for (let i = minVal; i < maxVal + 1; i = i + unitVal) {
+                if (numPos === i) {
+                    percPos = i / positions;
+                    break;
+                }
+            }
+            let Degree;
             if (minVal >= 0) {
-                renderKnob(minDeg, input.id);
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange + minDeg));
             }
             else {
-                renderKnob(0, input.id);
+                Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
+            renderKnob(Degree, ID);
         });
         knob.addEventListener('mousedown', (e) => {
             isDragging = true;
