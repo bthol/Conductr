@@ -9,23 +9,8 @@ const meterLevels = [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -15, 
 const targetPeak = 1.0;
 const upperEnergyThreshhold = 0.15;
 const lowerEnergyThreshhold = 0.025;
-let macros = {
-    'master': .75,
-    'pan': 0,
-    'tempo': 128,
-    'beatsPerMeasure': 4,
-    'FortePiano': 1,
-    'driveMult': 1,
-    'creciendo': 0,
-    'variance': 2,
-    'expressivity': 0,
-    'Attack': 3,
-    'Release': 4,
-    'Sustain': 5,
-};
-let FXdata = {
-    'DryWet': 1,
-};
+let macros = {};
+let FXdata = {};
 let oscillators = {};
 let sequencers = {};
 let voices = [];
@@ -510,7 +495,7 @@ function initFX() {
     FXdata['DryWet'] = 0;
     FXdata['EQ'] = {
         'b1': 1,
-        'b2': .5,
+        'b2': .75,
         'b3': .63,
         'c1': 500,
         'c2': 3000,
@@ -518,22 +503,22 @@ function initFX() {
     };
     FXdata['DDL'] = {
         'dry': 1,
-        'wet': .6,
+        'wet': 0,
         'feed': .63,
-        'time': .5,
+        'time': .3,
     };
     if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
         DryWetFX.value = '0';
         EQBandControl1.value = '100';
-        EQBandControl2.value = '50';
+        EQBandControl2.value = '75';
         EQBandControl3.value = '63';
         EQCutoffControl1.value = '500';
         EQCutoffControl2.value = '3000';
         EQQControl.value = '1';
         DDLDryControl.value = '100';
-        DDLWetControl.value = '50';
+        DDLWetControl.value = '0';
         DDLFeedControl.value = '63';
-        DDLTimeControl.value = '500';
+        DDLTimeControl.value = '300';
     }
     else {
         console.log('FX parameter not found during initialization');
@@ -1201,8 +1186,8 @@ function updateFX() {
         }
         FXdata['DDL']['feed'] = DDLFeedVal / 100;
         let DDLTimeVal = Number(DDLTimeControl.value);
-        if (DDLTimeVal > 5000) {
-            DDLTimeVal = 5000;
+        if (DDLTimeVal > 3000) {
+            DDLTimeVal = 3000;
         }
         else if (DDLTimeVal < 1) {
             DDLTimeVal = 1;
@@ -2214,6 +2199,7 @@ knobs.forEach((container) => {
             else {
                 Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
+            input.value = numPos.toString();
             renderKnob(Degree, ID);
         });
         knob.addEventListener('mousedown', (e) => {

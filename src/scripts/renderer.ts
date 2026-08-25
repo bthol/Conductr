@@ -54,26 +54,8 @@ const upperEnergyThreshhold: number = 0.15; // maximum waveform energy, one and 
 const lowerEnergyThreshhold: number = 0.025; // minimum waveform energy, quarter of a tenth
 
 // Preset structures
-let macros: { [key: string]: any} = {
-    // player control macros
-    'master': .75, // 0 - 1
-    'pan': 0, // -50 - 50
-    'tempo': 128, // 1 - 200
-    'beatsPerMeasure': 4, // 1 - 100
-    // Conductor Macros
-    'FortePiano': 1, // 0 - 2
-    'driveMult': 1, // 1 - 10
-    'creciendo': 0, // 0 - 2
-    'variance': 2, // 1 - 10
-    // ARS Envelope dynamic modifiers
-    'expressivity': 0, // -1 - 1
-    'Attack': 3, // 1 - 10
-    'Release': 4, // 1 - 10
-    'Sustain': 5, // 1 - 10
-}; // stores the parameters for each macro from user parameters; data for preset
-let FXdata: { [key: string]: any} = {
-    'DryWet': 1, // 0 - 2
-}; // stores the parameters for FX controls; data for preset
+let macros: { [key: string]: any} = {}; // stores the parameters for each macro from user parameters; data for preset
+let FXdata: { [key: string]: any} = {}; // stores the parameters for FX controls; data for preset
 let oscillators: { [key: string]: any } = {}; // stores parameters for each oscillator from user parameters; data for preset
 let sequencers: { [key: string]: any } = {}; // stores parameters for each sequencer from user parameters; data for preset
 
@@ -696,11 +678,13 @@ function LUFSLevel(input: AnalyserNode, root: HTMLElement | null, selector: stri
 // data initialization
 function initMacros(): void {
     // model
+
     // player control macros
     macros['master'] = 1; // 0 - 1
     macros['pan'] = 0; // -50 - 50
     macros['tempo'] = 128; // 1 - 200
     macros['beatsPerMeasure'] = 4; // 1 - 100
+
     // Conductor Macros
     macros['FortePiano'] = 4; // 0 - 4, 1 is null
     macros['driveMult'] = 1; // .1 - 3, 1 is null
@@ -945,17 +929,17 @@ function initFX(): void {
     FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
     FXdata['EQ'] = {
         'b1': 1,    // 0 - 1
-        'b2': .5,   // 0 - 1
+        'b2': .75,  // 0 - 1
         'b3': .63,  // 0 - 1
         'c1': 500,  // hertz, 100 - 20000
         'c2': 3000, // hertz, 100 - 20000
         'Q': .1,    // .1 - 10
     };
     FXdata['DDL'] = {
-        'dry': 1,   // 0 - 1
-        'wet': .6, // 0 - 1
-        'feed': .63, // .01 - .99 (loss per feedback)
-        'time': .5, // .001 - 5 (seconds)
+        'dry': 1,     // 0 - 1
+        'wet': 0,     // 0 - 1
+        'feed': .63,  // .01 - .99 (loss per feedback)
+        'time': .3,   // .001 - 3 (seconds)
     };
 
     // display
@@ -964,16 +948,16 @@ function initFX(): void {
         DryWetFX.value = '0'; // -50 - 50
         // EQ
         EQBandControl1.value = '100'; // 1 - 100
-        EQBandControl2.value = '50'; // 1 - 100
+        EQBandControl2.value = '75'; // 1 - 100
         EQBandControl3.value = '63'; // 1 - 100
         EQCutoffControl1.value = '500'; // 100 - 20000
         EQCutoffControl2.value = '3000'; // 100 - 20000
         EQQControl.value = '1'; // 1 - 100
         // DDL
         DDLDryControl.value = '100'; // 0 - 100
-        DDLWetControl.value = '50'; // 0 - 100
+        DDLWetControl.value = '0'; // 0 - 100
         DDLFeedControl.value = '63'; // 1 - 99 
-        DDLTimeControl.value = '500'; // 1 - 5000 milliseconds
+        DDLTimeControl.value = '300'; // 0 - 3000 milliseconds
     } else {
         console.log('FX parameter not found during initialization');
     }
@@ -1731,8 +1715,8 @@ function updateFX(): boolean {
         // DDL Dry control
         let DDLTimeVal: number = Number(DDLTimeControl.value);
         // enfore range
-        if (DDLTimeVal > 5000) { // above maximum
-            DDLTimeVal = 5000;
+        if (DDLTimeVal > 3000) { // above maximum
+            DDLTimeVal = 3000;
         } else if (DDLTimeVal < 1) { // below minimum
             DDLTimeVal = 1;
         } else if (DDLTimeVal % 1 !== 0) { // round up fractions
@@ -3253,13 +3237,10 @@ knobs.forEach((container) => {
             const target = event.target as HTMLElement;
             let numPos: number;
             if (target.classList.contains('on-dbl-100')) {
-                input.value = '100';
                 numPos = 100;
             } else if (target.classList.contains('on-dbl')) {
-                input.value = '1';
                 numPos = 1;
             } else {
-                input.value = '0';
                 numPos = 0;
             }
 
@@ -3281,6 +3262,7 @@ knobs.forEach((container) => {
             }
 
             // render knob to default degree
+            input.value = numPos.toString();
             renderKnob(Degree, ID);
         });
         
