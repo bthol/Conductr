@@ -383,7 +383,7 @@ function initOscillators() {
             oscillators[ID] = {
                 'gain': gainCalc,
                 'drive': 0,
-                'driveCharacter': 'Logistic',
+                'driveCharacter': 'Serpentine',
                 'oscVoices': 3,
                 'freq': freqCalc,
                 'detune': detune,
@@ -405,7 +405,7 @@ function initOscillators() {
         if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
             oscGain.value = '50';
             oscDriv.value = '0';
-            oscDrCh.value = 'Logistic';
+            oscDrCh.value = 'Serpentine';
             oscVoic.value = '2';
             oscFreq.value = `${frequency}`;
             oscDetu.value = `${detune}`;
@@ -805,8 +805,8 @@ function updateOscillator(oscID) {
                     voiceVal = Math.ceil(voiceVal);
                 }
                 let driveVal = drive;
-                if (driveVal > 10) {
-                    driveVal = 10;
+                if (driveVal > 100) {
+                    driveVal = 100;
                 }
                 else if (driveVal < 0) {
                     driveVal = 0;
@@ -814,6 +814,7 @@ function updateOscillator(oscID) {
                 else if (driveVal % 1 !== 0) {
                     driveVal = Math.ceil(driveVal);
                 }
+                driveVal /= 10;
                 let detuneVal = detune;
                 if (detuneVal > 24) {
                     detuneVal = 24;
@@ -886,42 +887,6 @@ function updateOscillator(oscID) {
                         imag[i] = out;
                         b *= .5;
                     }
-                }
-                else if (type === 'inf-conv-geo-series-0.25') {
-                    let a = 0;
-                    let b = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
-                        const out = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .25;
-                    }
-                }
-                else if (type === 'inf-conv-geo-series-0.125') {
-                    let a = 0;
-                    let b = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
-                        const out = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .125;
-                    }
-                }
-                else if (type === 'inf-conv-geo-series-0.0625') {
-                    let a = 0;
-                    let b = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc = Math.random() * (macros['variance'] / 10) * timbFactor;
-                        const out = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .0625;
-                    }
-                }
-                else {
-                    imag[1] = 1;
                 }
                 real[0] = 0;
                 imag[0] = 0;
@@ -2174,15 +2139,12 @@ knobs.forEach((container) => {
             const target = event.target;
             let numPos;
             if (target.classList.contains('on-dbl-100')) {
-                input.value = '100';
                 numPos = 100;
             }
             else if (target.classList.contains('on-dbl')) {
-                input.value = '1';
                 numPos = 1;
             }
             else {
-                input.value = '0';
                 numPos = 0;
             }
             percPos = 0;
@@ -2236,6 +2198,9 @@ knobs.forEach((container) => {
             else {
                 Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
+            console.log(ID);
+            console.log(numPos);
+            console.log(percPos);
             input.value = numPos.toString();
             renderKnob(Degree, ID);
         });

@@ -782,7 +782,7 @@ function initOscillators(): void {
             oscillators[ID] = {
                 'gain':gainCalc, // 0 - 1
                 'drive':0, // 0 - 10, 0 = bypass
-                'driveCharacter':'Logistic', // option value string
+                'driveCharacter':'Serpentine', // option value string
                 'oscVoices':3, // 1 - 4
                 'freq':freqCalc, // 20 - 20,000
                 'detune':detune, // -24 - 24
@@ -810,8 +810,8 @@ function initOscillators(): void {
         if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
             // set Oscillator parameters to default
             oscGain.value = '50'; // 0 - 99
-            oscDriv.value = '0'; // 0 - 10, 0 == bypass
-            oscDrCh.value = 'Logistic';
+            oscDriv.value = '0'; // 0 - 100, 0 == bypass
+            oscDrCh.value = 'Serpentine'; // gusto flavor
             oscVoic.value = '2'; // 0 - 3, data adds 1 (plurals are additional voices to a first voice)
             oscFreq.value = `${frequency}`; // 20 - 20,000
             oscDetu.value = `${detune}`; // -24 - 24
@@ -1286,13 +1286,14 @@ function updateOscillator(oscID: string): boolean {
                     voiceVal = Math.ceil(voiceVal);
                 }
                 let driveVal: number = drive;
-                if (driveVal > 10) { // above max
-                    driveVal = 10;
+                if (driveVal > 100) { // above max
+                    driveVal = 100;
                 } else if (driveVal < 0) { // below min
                     driveVal = 0;
                 } else if (driveVal % 1 !== 0) { // round fraction up
                     driveVal = Math.ceil(driveVal);
                 }
+                driveVal /= 10;
                 let detuneVal: number = detune;
                 if (detuneVal > 24) { // above max
                     detuneVal = 24;
@@ -1373,48 +1374,6 @@ function updateOscillator(oscID: string): boolean {
                         b *= .5;
                     }
                 
-                } else if (type === 'inf-conv-geo-series-0.25') {
-                    // generate partials
-                    let a: number = 0;
-                    let b: number = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
-                        const out: number = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .25;
-                    }
-                
-                } else if (type === 'inf-conv-geo-series-0.125') {
-                    // generate partials
-                    let a: number = 0;
-                    let b: number = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
-                        const out: number = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .125;
-                    }
-                
-                } else if (type === 'inf-conv-geo-series-0.0625') {
-                    // generate partials
-                    let a: number = 0;
-                    let b: number = 1;
-                    for (let i = 1; i < partialsVal; i++) {
-                        const timbCalc: number = Math.random() * (macros['variance'] / 10) * timbFactor; // timbral variation
-                        const out: number = b - timbCalc;
-                        real[i] = a;
-                        imag[i] = out;
-                        b *= .0625;
-                    }
-                
-                } else {
-                    // if no type detected, default to sine waveform
-
-                    // set partial
-                    // real[1] = 1;
-                    imag[1] = 1;
                 }
 
                 // DC offset (horizontal phaze)
@@ -3320,11 +3279,15 @@ knobs.forEach((container) => {
             } else {
                 Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
+
+            console.log(ID);
+            console.log(numPos);
+            console.log(percPos);
             
             // render with new degree
             input.value = numPos.toString();
             renderKnob(Degree, ID);
-            
+
         });
 
         // mouse drag end event
