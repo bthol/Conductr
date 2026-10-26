@@ -5,19 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
     <title>ConductR</title>
+    <!-- website favicon stuff -->
+    <!-- <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/favicon-16x16.png">
+    <link rel="manifest" href="./assets/icons/site.webmanifest"> -->
     <script defer src="./build/scripts/renderer.js"></script>
     <link rel="stylesheet" href="./build/public/style.css">
-    <!-- whitelist source domain for GUI noise generation (Base64 Inline Image)  -->
-    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:image/svg+xml; style-src 'self' 'unsafe-inline';"> -->
 </head>
 <body id="root">
 
     <!--CMAJ: 261.63, 329.63, 392.00 -->
     <!--CMAJ: 65.4075, 82.4075, 98.0 -->
-
-    <h1 class="supertitle">ConductR &trade;</h1>
-
-    <p class="subtitle">Ride the coattails of engineers with wires orchestrated by conductors</p>
+    <div class="panel">
+        <img id="conductr-image" src="./assets/icons/android-chrome-512x512.png" alt="ConductR Logo"/>
+        <div>
+            <h1 class="supertitle">ConductR &trade;</h1>
+            <p class="subtitle">Ride the coattails of engineers with wires orchestrated by conductors</p>
+        </div>
+    </div>
 
     <br>
     
@@ -1486,7 +1492,7 @@
                                 <div>Variability</div>
                                 <div><div class="knob-dial on-dbl"></div></div>
                                 <!-- argument scalar for the variability engine -->
-                                <input id="variability" class="knob-input second-border" type="number" placeholder="variability" min="1" max="10" value="2">
+                                <input id="variability" class="knob-input second-border" type="number" placeholder="variability" min="1" max="100" value="2">
                             </div>
                         </div>
         

@@ -687,8 +687,8 @@ function updateMacros() {
             console.log('macro range error: Forte Piano');
         }
         let vary = Number(VControl.value);
-        if (vary > 10) {
-            vary = 10;
+        if (vary > 100) {
+            vary = 100;
         }
         else if (vary < 1) {
             vary = 1;
@@ -700,7 +700,7 @@ function updateMacros() {
             macros['variance'] = 0;
         }
         else {
-            macros['variance'] = vary * macros['creciendo'];
+            macros['variance'] = vary / 10 * macros['creciendo'];
         }
         let staccato = Number(SControl.value);
         if (staccato > 10) {
@@ -2180,7 +2180,7 @@ knobs.forEach((container) => {
             const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
             const ppp = 20;
-            const diff = Math.floor(dY / ppp / T * knobSensitivity);
+            const diff = Math.floor(dY / ppp * knobSensitivity);
             const dPos = diff * unitVal;
             initVal = Number(input.value);
             const numPos = Math.max(minVal, Math.min(maxVal, initVal + dPos));

@@ -1135,8 +1135,8 @@ function updateMacros(): boolean {
         // variability
         let vary: number = Number(VControl.value);
         // enforce range
-        if (vary > 10) { // above max
-            vary = 10;
+        if (vary > 100) { // above max
+            vary = 100;
         } else if (vary < 1) { // below min
             vary = 1;
         } else if (inVal % 1 !== 0) { // round + fractions up
@@ -1146,7 +1146,7 @@ function updateMacros(): boolean {
         if (vary === 1) {
             macros['variance'] = 0;
         } else {
-            macros['variance'] = vary * macros['creciendo'];
+            macros['variance'] = vary/10 * macros['creciendo'];
         }
 
         // ARS Envelope Transient Section Ratio Controls
@@ -3257,7 +3257,8 @@ knobs.forEach((container) => {
             // position (unit value)
             // const H: number = container.offsetHeight; // total height of listened element (pixels)
             const ppp: number = 20; // number of pixels per position
-            const diff: number = Math.floor(dY / ppp / T * knobSensitivity);
+            // const diff: number = Math.floor(dY / ppp / T * knobSensitivity); // without acceleration
+            const diff: number = Math.floor(dY / ppp * knobSensitivity); // without acceleration
             const dPos: number = diff * unitVal; // pixels/second * position/pixel = positions/second
 
             initVal = Number(input.value); // update initial value

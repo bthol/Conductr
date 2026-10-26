@@ -5,6 +5,13 @@ body {
   font-size: medium;
 }
 
+#conductr-image {
+  margin: 10px;
+  margin-left: 0px;
+  width: 100px;
+  border-radius: 100px;
+}
+
 .panel {
   display: flex;
   align-items: center;
