@@ -2865,12 +2865,12 @@ async function setup(): Promise<void> {
         if (!macrosInitialized || !oscillatorsInitialized || !sequencersInitialized || !FXInitialized || !analysisInitialized) {return};
         
         // setup listeners for user controls
-        const latency: number = 150; // millisecs
+        const latency: number = 100; // millisecs
         let listening: boolean = true;
 
         // playback controls
 
-        // breakdown old build and buildup new build and play it
+        // play
         playBtn.addEventListener('click', () => {
             if (listening) {
                 clearTimeout(cache);
@@ -2883,8 +2883,8 @@ async function setup(): Promise<void> {
                 }, latency)
             }
         });
-    
-        // mute all and clear voices
+
+        // mute
         stopBtn.addEventListener('click', () => {
             if (listening) {
                 clearTimeout(cache);
@@ -2897,186 +2897,11 @@ async function setup(): Promise<void> {
                 }, latency)
             }
         });
-    
-        // breaker button reloads program
+
+        // reset
         breakerBtn.addEventListener('click', () => {window.location.reload()});
-
-        // macros
         
-        // controls master audio level
-        masterGain.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-        
-        // controls master pan position
-        masterPan.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-
-        // Beats/Minute (BPM or Tempo)
-        masterTempo.addEventListener('input', () => {
-            if (listening && playback && masterTempo) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-
-        // Beats/Measure (Time Signature)
-        masterMeasure.addEventListener('input', () => {
-            if (listening && playback && masterMeasure) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-    
-        // controls input gain for all oscillators
-        FPControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-        
-        // controls gusto drive for all oscillators
-        DMControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-    
-        // controls intensity
-        CControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-
-        // controls variability
-        VControl.addEventListener('input', () => {
-            if (playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-
-        // Dynamic Controls
-        
-        // controls envelope amplitude
-        EControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-        
-        // Staccato control ARS envelope
-        SControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-        
-        // Tenuto control ARS envelope
-        TControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-        
-        // Legato control ARS envelope
-        LControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup(); // don't listen until sound is done
-                    listening = true;
-                }, latency);
-            }
-        });
-
-        // FX Chain
-
-        // Dry/Wet Control
-        DryWetFX.addEventListener('input', () => {
-            if (playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup('FX'); // don't listen until sound is done
-                    listening = true;
-                }, latency)
-            }
-        });
-        
-        // listener delegation for oscillator events
+        // Oscillator events
         const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
         if (oscsNodeList.length > 0) {
             for (const oscEl of oscsNodeList) {
@@ -3098,7 +2923,7 @@ async function setup(): Promise<void> {
             console.log('oscillator elements not found during listener setup');
         }
 
-        // listener delegation for sequence events
+        // Sequencer events
         const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
         if (seqsNodeList.length > 0) {
             for (const seqEl of seqsNodeList) {
@@ -3116,6 +2941,37 @@ async function setup(): Promise<void> {
         } else {
             console.log('sequencer elements not found during listener setup');
         }
+
+        // FX Chain
+        [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+            element.addEventListener('input', () => {
+                if (playback) {
+                    clearTimeout(cache);
+                    cache = setTimeout(() => {
+                        clearTimeout(cache);
+                        listening = false;
+                        buildup('FX'); // don't listen until sound is done
+                        listening = true;
+                    }, latency)
+                }
+            })
+        });
+
+        // loose knobs
+        [masterPan, masterGain, masterTempo, masterMeasure, FPControl, DMControl, CControl, VControl, EControl, SControl, TControl, LControl].forEach((element) => {
+            // controls master pan position
+            element.addEventListener('input', () => {
+                if (listening && playback) {
+                    clearTimeout(cache);
+                    cache = setTimeout(() => {
+                        clearTimeout(cache);
+                        listening = false;
+                        buildup(); // don't listen until sound is done
+                        listening = true;
+                    }, latency);
+                }
+            })
+        });
         
 
     } else {
@@ -3137,7 +2993,7 @@ const knobSensitivity = 1; // Change value scale speed here
 
 // Updates visual CSS variable rotation
 function renderKnob(degree: number, ID: string): void {
-    // Set rotation variable dynamically 
+    // Dynamically set rotation variable 
     const input: HTMLInputElement | null = document.getElementById(ID) as HTMLInputElement;
     if (input === null) return;
     // get knob from input
@@ -3159,7 +3015,7 @@ knobs.forEach((container) => {
     const maxVal: number = Number(input.max);
     const minVal: number = Number(input.min);
     const unitVal: number = input.hasAttribute('step') ? Number(input.step) : 1; // value unit
-    const positions: number = Math.abs(maxVal - minVal); // number of knob positions
+    const positions: number = Math.abs(maxVal - minVal); // number of knob positions / unitval
     
     // get initial position
     let initVal: number = Number(input.value);
@@ -3228,10 +3084,10 @@ knobs.forEach((container) => {
         // mouse drag detection
         knob.addEventListener('mousedown', (e) => {
             // console.log('mouse drag start');
-            isDragging = true;
+            Ts = Ti = performance.now(); // drag start and last drag event are the same on first event
             startY = e.clientY;
             startVal = Number(input.value);
-            Ts = Ti = performance.now(); // drag start and last drag event are the same on first event
+            isDragging = true;
             document.body.style.userSelect = 'none'; // Prevent highlighting page text
         });
 
@@ -3246,7 +3102,7 @@ knobs.forEach((container) => {
             
             // time (seconds)
             const Tf: DOMHighResTimeStamp = performance.now(); // final time
-            const T: number = Math.max(.5, Math.min(2, (Tf - Ti) / 1000)); // duration in seconds between mouse drag events + max duration of 1 second
+            const T: number = Math.max(.5, Math.min(2, (Tf - Ti) / 1000)); // min-maxed duration in seconds between mouse drag events
             
             // update for future calculation
             Ti = Tf;
@@ -3256,7 +3112,7 @@ knobs.forEach((container) => {
 
             // position (unit value)
             // const H: number = container.offsetHeight; // total height of listened element (pixels)
-            const ppp: number = 20; // number of pixels per position
+            const ppp: number = 10; // number of pixels per position
             // const diff: number = Math.floor(dY / ppp / T * knobSensitivity); // without acceleration
             const diff: number = Math.floor(dY / ppp * knobSensitivity); // without acceleration
             const dPos: number = diff * unitVal; // pixels/second * position/pixel = positions/second
@@ -3280,10 +3136,6 @@ knobs.forEach((container) => {
             } else {
                 Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
-
-            console.log(ID);
-            console.log(numPos);
-            console.log(percPos);
             
             // render with new degree
             input.value = numPos.toString();

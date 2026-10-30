@@ -162,4 +162,3 @@ class BiquadFilter44100 {
 }
 ;
 registerProcessor("LUFS-processor", LUFSProcessor);
-//# sourceMappingURL=LUFS-processor.js.map

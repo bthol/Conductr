@@ -60,4 +60,3 @@ class RMSProcessor extends AudioWorkletProcessor {
     }
 }
 registerProcessor("RMS-processor", RMSProcessor);
-//# sourceMappingURL=RMS-processor.js.map

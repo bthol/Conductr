@@ -2,6 +2,9 @@
 const { app, Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain } = require('electron');
 const path = require('path');
 
+// squirrel framework startup event handling
+if (require('electron-squirrel-startup')) app.quit();
+
 // menu config
 const template = [
   {
@@ -112,10 +115,11 @@ app.whenReady().then(() => {
     console.log("dom ready");
   })
 
-  win.webContents.on('did-finish-load', () => {
-    console.log('did finish load');
-    win.webContents.openDevTools({ mode: 'detach' });
-  })
+  // console display
+  // win.webContents.on('did-finish-load', () => {
+  //   console.log('did finish load');
+  //   win.webContents.openDevTools({ mode: 'detach' });
+  // })
 })
 
 // main ipc

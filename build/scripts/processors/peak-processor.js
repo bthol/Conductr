@@ -70,4 +70,3 @@ class PeakProcessor extends AudioWorkletProcessor {
     }
 }
 registerProcessor("peak-processor", PeakProcessor);
-//# sourceMappingURL=peak-processor.js.map

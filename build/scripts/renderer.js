@@ -1875,7 +1875,7 @@ async function setup() {
             return;
         }
         ;
-        const latency = 150;
+        const latency = 100;
         let listening = true;
         playBtn.addEventListener('click', () => {
             if (listening) {
@@ -1902,149 +1902,6 @@ async function setup() {
             }
         });
         breakerBtn.addEventListener('click', () => { window.location.reload(); });
-        masterGain.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        masterPan.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        masterTempo.addEventListener('input', () => {
-            if (listening && playback && masterTempo) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        masterMeasure.addEventListener('input', () => {
-            if (listening && playback && masterMeasure) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        FPControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        DMControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        CControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        VControl.addEventListener('input', () => {
-            if (playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        EControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        SControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        TControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        LControl.addEventListener('input', () => {
-            if (listening && playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup();
-                    listening = true;
-                }, latency);
-            }
-        });
-        DryWetFX.addEventListener('input', () => {
-            if (playback) {
-                clearTimeout(cache);
-                cache = setTimeout(() => {
-                    clearTimeout(cache);
-                    listening = false;
-                    buildup('FX');
-                    listening = true;
-                }, latency);
-            }
-        });
         const oscsNodeList = document.querySelectorAll('.oscs');
         if (oscsNodeList.length > 0) {
             for (const oscEl of oscsNodeList) {
@@ -2083,6 +1940,32 @@ async function setup() {
         else {
             console.log('sequencer elements not found during listener setup');
         }
+        [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+            element.addEventListener('input', () => {
+                if (playback) {
+                    clearTimeout(cache);
+                    cache = setTimeout(() => {
+                        clearTimeout(cache);
+                        listening = false;
+                        buildup('FX');
+                        listening = true;
+                    }, latency);
+                }
+            });
+        });
+        [masterPan, masterGain, masterTempo, masterMeasure, FPControl, DMControl, CControl, VControl, EControl, SControl, TControl, LControl].forEach((element) => {
+            element.addEventListener('input', () => {
+                if (listening && playback) {
+                    clearTimeout(cache);
+                    cache = setTimeout(() => {
+                        clearTimeout(cache);
+                        listening = false;
+                        buildup();
+                        listening = true;
+                    }, latency);
+                }
+            });
+        });
     }
     else {
         console.log('Element Integrity Degraded during listener setup');
@@ -2165,10 +2048,10 @@ knobs.forEach((container) => {
             renderKnob(Degree, ID);
         });
         knob.addEventListener('mousedown', (e) => {
-            isDragging = true;
+            Ts = Ti = performance.now();
             startY = e.clientY;
             startVal = Number(input.value);
-            Ts = Ti = performance.now();
+            isDragging = true;
             document.body.style.userSelect = 'none';
         });
         container.addEventListener('mousemove', (e) => {
@@ -2179,7 +2062,7 @@ knobs.forEach((container) => {
             const Tf = performance.now();
             const T = Math.max(.5, Math.min(2, (Tf - Ti) / 1000));
             Ti = Tf;
-            const ppp = 20;
+            const ppp = 10;
             const diff = Math.floor(dY / ppp * knobSensitivity);
             const dPos = diff * unitVal;
             initVal = Number(input.value);
@@ -2198,9 +2081,6 @@ knobs.forEach((container) => {
             else {
                 Degree = Math.max(minDeg, Math.min(maxDeg, percPos * degRange));
             }
-            console.log(ID);
-            console.log(numPos);
-            console.log(percPos);
             input.value = numPos.toString();
             renderKnob(Degree, ID);
         });
@@ -2239,4 +2119,3 @@ knobs.forEach((container) => {
         console.log('knob listeners disconnected');
     }
 });
-//# sourceMappingURL=renderer.js.map

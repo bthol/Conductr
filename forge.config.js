@@ -1,9 +1,21 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+const { MakerSquirrel } = require('@electron-forge/maker-squirrel');
 
 module.exports = {
   packagerConfig: {
-    asar: true,
+    asar: true, // enabled to reduce build time
+    ignore: [
+      /^\/node_modules($|\/)/, // ignore node modules folder
+      /^\/src/, // ignore source code
+      /^\/out/, // ignore old build
+      /^\/\.git($|\/)/, // ignore any git folder
+      /^\/\.git.*/, // ignore git file
+      /^\/tsconfig\.json/, // ignore transpiler config
+      /^\/\.vscode$/, // ignore IDE config
+      /\.md$/, // ignore all markdown files
+      /\.txt$/, // ignore all text files
+    ],
   },
   rebuildConfig: {},
   makers: [
@@ -12,24 +24,31 @@ module.exports = {
       config: {
         // Name used inside the Windows registry
         name: 'ConductR',
+        // Name used in distributed software product
+        productName: 'ConductR',
         // Visual configurations for installation
         setupIcon: './assets/icons/win/icon.ico',
         // loadingGif: './assets/icons/win/install-spinner.gif',
         setupExe: 'ConductRSetup.exe',
+        // Code Signing certification configuration
+        // certificateFile: './cert.pfx',
+        // certificatePassword: process.env.CERTIFICATE_PASSWORD,
       },
     },
     {
       name: '@electron-forge/maker-zip',
       platforms: ['win32'],
     },
-    {
-      name: '@electron-forge/maker-deb',
-      config: {},
-    },
-    {
-      name: '@electron-forge/maker-rpm',
-      config: {},
-    },
+
+    // makes for Linux
+    // {
+    //   name: '@electron-forge/maker-deb',
+    //   config: {},
+    // },
+    // {
+    //   name: '@electron-forge/maker-rpm',
+    //   config: {},
+    // },
   ],
   plugins: [
     {

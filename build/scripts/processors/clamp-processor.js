@@ -47,4 +47,3 @@ class ClampProcessor extends AudioWorkletProcessor {
     }
 }
 registerProcessor("clamp-processor", ClampProcessor);
-//# sourceMappingURL=clamp-processor.js.map

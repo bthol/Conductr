@@ -45,7 +45,7 @@ body {
 }
 
 .bordering > div {
-  background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
+  background: rgba(18.088125%, 29.9783575581%, 50.043125%, 0.9);
   border: 8px solid transparent;
 }
 
@@ -127,7 +127,7 @@ body {
 }
 
 .leveler-background {
-  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  background: rgba(19.065625%, 19.065625%, 19.065625%, 0.9);
 }
 
 .leveler-stage-style {
@@ -210,21 +210,21 @@ body {
   margin: 8px 5px;
   min-width: 60px;
   background: #333333;
-  border-top: 3px solid rgb(63.75, 63.75, 63.75);
-  border-right: 4px solid rgb(45.9, 45.9, 45.9);
-  border-bottom: 6px solid rgb(30.6, 30.6, 30.6);
-  border-left: 4px solid rgb(45.9, 45.9, 45.9);
+  border-top: 3px solid rgb(25%, 25%, 25%);
+  border-right: 4px solid rgb(18%, 18%, 18%);
+  border-bottom: 6px solid rgb(12%, 12%, 12%);
+  border-left: 4px solid rgb(18%, 18%, 18%);
   box-shadow: 0px 5px 7px -3px hsla(244, 50%, 9%, 0.7);
   color: hsl(66, 100%, 50%);
   border-radius: 5px;
 }
 
 .button:active {
-  background: rgb(38.25, 38.25, 38.25);
+  background: rgb(15%, 15%, 15%);
   border-top: 3px solid #333333;
-  border-right: 4px solid rgb(33.15, 33.15, 33.15);
-  border-bottom: 6px solid rgb(17.85, 17.85, 17.85);
-  border-left: 4px solid rgb(33.15, 33.15, 33.15);
+  border-right: 4px solid rgb(13%, 13%, 13%);
+  border-bottom: 6px solid rgb(7%, 7%, 7%);
+  border-left: 4px solid rgb(13%, 13%, 13%);
   box-shadow: none;
 }
 
@@ -234,7 +234,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 15px;
-  background: rgba(46.12471875, 76.4448117733, 127.60996875, 0.9);
+  background: rgba(18.088125%, 29.9783575581%, 50.043125%, 0.9);
   padding: 0px 12.5px;
   text-wrap: nowrap;
   height: 200px;
@@ -246,7 +246,7 @@ body {
   height: 40px;
   border-radius: 50%;
   background: radial-gradient(circle, #444 0%, #222 100%);
-  border: 5px solid rgba(61.36734375, 61.36734375, 61.36734375, 0.9);
+  border: 5px solid rgba(24.065625%, 24.065625%, 24.065625%, 0.9);
   transform: rotate(var(--knob-rotation));
   will-change: transform;
   transition: transform 0.1s linear;
@@ -275,7 +275,7 @@ body {
   width: 65px;
   text-align: center;
   color: hsl(66, 100%, 50%);
-  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  background: rgba(19.065625%, 19.065625%, 19.065625%, 0.9);
   cursor: pointer;
   border-radius: 3px;
 }
@@ -283,7 +283,7 @@ body {
 .numeral-input {
   width: 65px;
   color: hsl(66, 100%, 50%);
-  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  background: rgba(19.065625%, 19.065625%, 19.065625%, 0.9);
   cursor: pointer;
   border-radius: 3px;
 }
@@ -297,7 +297,7 @@ div:has(.numeral-input) {
   padding: 3px 15px 3px 8px;
   margin: 14.6px 0px;
   color: hsl(66, 100%, 50%);
-  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  background: rgba(19.065625%, 19.065625%, 19.065625%, 0.9);
   cursor: pointer;
   border-radius: 3px;
 }
@@ -308,7 +308,7 @@ div:has(.numeral-input) {
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(48.61734375, 48.61734375, 48.61734375, 0.9);
+  background: rgba(19.065625%, 19.065625%, 19.065625%, 0.9);
   border-radius: 3px;
 }
 
