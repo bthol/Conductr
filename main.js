@@ -1,9 +1,68 @@
-// main process
-const { app, Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain } = require('electron');
-const path = require('path');
+// // handle squirrel events (install, uninstall, obsolete, updated) before main process
+// if (require('electron-squirrel-startup')) {
+//   const { app } = require('electron');
+//   if (app) {
+//     app.quit(); // closes application
+//     // process.exit(0); // stops processes from continuing in background
+//   }
+// }
 
-// squirrel framework startup event handling
-if (require('electron-squirrel-startup')) app.quit();
+const { app } = require('electron');
+const path = require('path');
+const { spawn } = require('child_process');
+
+function handleSquirrelEvent() {
+  if (process.argv.length === 1) {
+    return false;
+  }
+
+  const appFolder = path.resolve(process.execPath, '..');
+  const rootAtomFolder = path.resolve(appFolder, '..');
+  const exeName = path.basename(process.execPath);
+
+  const spawnUpdate = function(args) {
+    let spawnedProcess;
+    try {
+      spawnedProcess = spawn(path.join(rootAtomFolder, 'Update.exe'), args, { detached: true });
+    } catch (error) {
+      // Update.exe not found or failed to spawn
+    }
+    return spawnedProcess;
+  };
+
+  const squirrelEvent = process.argv[1];
+  switch (squirrelEvent) {
+    case '--squirrel-install':
+    case '--squirrel-updated':
+      spawnUpdate(['--createShortcut', exeName]);
+      setTimeout(app.quit, 1000);
+      return true;
+
+    case '--squirrel-uninstall':
+      spawnUpdate(['--removeShortcut', exeName]);
+      setTimeout(app.quit, 1000);
+      return true;
+
+    case '--squirrel-obsolete':
+      app.quit();
+      return true;
+  }
+  return false;
+}
+
+// Check the events before doing anything else
+if (handleSquirrelEvent()) {
+  return; 
+}
+
+
+
+
+
+
+
+// main process
+const { Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain } = require('electron');
 
 // menu config
 const template = [

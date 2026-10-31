@@ -11,7 +11,7 @@
     // Environment Settings
     // See also https://aka.ms/tsconfig/module
     
-    "module": "commonjs",
+    "module": "commonjs", // check package.json for module cofig
     "target": "esnext",
     "esModuleInterop": true,
     "types": ["node", "@types/audioworklet"],

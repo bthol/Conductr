@@ -30,20 +30,24 @@
     "@electron-forge/plugin-fuses": "^7.11.2",
     "@electron-forge/publisher-github": "^7.11.2",
     "@electron/fuses": "^1.8.0",
+    "@electron/rebuild": "^4.2.1",
     "@types/audioworklet": "^0.0.100",
     "@types/node": "^25.9.9",
     "electron": "^42.11.18",
+    "node-gyp": "^13.1.0",
     "sass": "^1.107.0",
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@parcel/watcher": "^2.6.0",
     "electron-squirrel-startup": "^1.0.1",
     "electron-winstaller": "^5.4.4"
   },
   "allowScripts": {
     "@electron-forge/maker-squirrel@7.11.2": true,
-    "@parcel/watcher@2.6.0": true,
-    "electron-winstaller@5.4.4": true
+    "electron-winstaller@5.4.4": true,
+    "@parcel/watcher@2.4.1": true
+  },
+  "overrides": {
+    "@parcel/watcher": "2.4.1"
   }
 }

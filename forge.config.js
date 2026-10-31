@@ -1,9 +1,10 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
+// const { MakerSquirrel } = require('@electron-forge/maker-squirrel');
 
 module.exports = {
   packagerConfig: {
-    asar: true, // enabled to reduce build time
+    asar: true, // enabled to reduce build time + optimize performance
     ignore: [
       /^\/node_modules($|\/)/, // ignore node modules folder
       /^\/src/, // ignore source code
@@ -51,7 +52,7 @@ module.exports = {
   ],
   plugins: [
     {
-      name: '@electron-forge/plugin-auto-unpack-natives',
+      name: '@electron-forge/plugin-auto-unpack-natives', // requires asar: true
       config: {},
     },
     // Fuses are used to enable/disable various Electron functionality
