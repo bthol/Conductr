@@ -10,7 +10,7 @@
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
-    "make": "electron-forge make",
+    "make": "electron-forge make --targets=@electron-forge/maker-squirrel",
     "publish": "electron-forge publish",
     "devstart": "electron .",
     "runpile": "npx sass src/public:build/public && npx tsc && electron-forge start",
@@ -37,6 +37,13 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.1"
+    "@parcel/watcher": "^2.6.0",
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-winstaller": "^5.4.4"
+  },
+  "allowScripts": {
+    "@electron-forge/maker-squirrel@7.11.2": true,
+    "@parcel/watcher@2.6.0": true,
+    "electron-winstaller@5.4.4": true
   }
 }

@@ -1,6 +1,5 @@
 const { FusesPlugin } = require('@electron-forge/plugin-fuses');
 const { FuseV1Options, FuseVersion } = require('@electron/fuses');
-const { MakerSquirrel } = require('@electron-forge/maker-squirrel');
 
 module.exports = {
   packagerConfig: {
