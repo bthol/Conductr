@@ -1,4 +1,4 @@
-// renderer file/ main process
+// renderer file/ main process (front-end)
 
 // handles element navigation events
 // console.log("linked script");

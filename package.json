@@ -1,8 +1,8 @@
 {
-  "name": "Conductr",
+  "name": "conductr",
   "productName": "ConductR",
   "author": "Blake Thollaug",
-  "description": "ConductR is a standalone software synthesizer windows desktop application designed around the role of a conductor in an orchestra and the properties of electrically conductive material.",
+  "description": "ConductR is a standalone software synthesizer",
   "version": "1.0.0",
   "license": "ISC",
   "type": "commonjs",

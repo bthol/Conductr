@@ -33,7 +33,9 @@ function handleSquirrelEvent() {
   const squirrelEvent = process.argv[1];
   switch (squirrelEvent) {
     case '--squirrel-install':
+      spawnUpdate(['--createShortcut', exeName]);
     case '--squirrel-updated':
+      spawnUpdate(['--removeShortcut', exeName]);
       spawnUpdate(['--createShortcut', exeName]);
       setTimeout(app.quit, 1000);
       return true;
@@ -42,8 +44,9 @@ function handleSquirrelEvent() {
       spawnUpdate(['--removeShortcut', exeName]);
       setTimeout(app.quit, 1000);
       return true;
-
-    case '--squirrel-obsolete':
+      
+      case '--squirrel-obsolete':
+      spawnUpdate(['--removeShortcut', exeName]);
       app.quit();
       return true;
   }
@@ -61,7 +64,7 @@ if (handleSquirrelEvent()) {
 
 
 
-// main process
+// main process (back-end)
 const { Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain } = require('electron');
 
 // menu config

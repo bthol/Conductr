@@ -5,6 +5,7 @@ const { FuseV1Options, FuseVersion } = require('@electron/fuses');
 module.exports = {
   packagerConfig: {
     asar: true, // enabled to reduce build time + optimize performance
+    icon: './assets/icons/win/icon', // icon for windows display
     ignore: [
       /^\/node_modules($|\/)/, // ignore node modules folder
       /^\/src/, // ignore source code
@@ -23,11 +24,13 @@ module.exports = {
       name: '@electron-forge/maker-squirrel',
       config: {
         // Name used inside the Windows registry
-        name: 'ConductR',
+        name: 'conductr',
         // Name used in distributed software product
         productName: 'ConductR',
-        // Visual configurations for installation
+        // icon for setup.exe
         setupIcon: './assets/icons/win/icon.ico',
+        // icon for add or remove program menu
+        // iconUrl: 'valid https url', 
         // loadingGif: './assets/icons/win/install-spinner.gif',
         setupExe: 'ConductRSetup.exe',
         // Code Signing certification configuration
