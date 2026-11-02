@@ -65,70 +65,19 @@ if (handleSquirrelEvent()) {
 
 
 // main process (back-end)
-const { Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain } = require('electron');
-
-// menu config
-const template = [
-  {
-    label: 'File',
-    submenu: [
-      {
-        label: 'Open',
-        click: () => { console.log('Open'); }
-      },
-      {
-        label: 'Save Preset',
-        click: () => { console.log('Save New Preset'); }
-      },
-      {
-        label: 'Save Conductor',
-        click: () => { console.log('Save New Conductor'); }
-      },
-      {
-        label: 'Save Orchestra',
-        click: () => { console.log('Save New Orchestra'); }
-      },
-      {
-        label: 'Save Circuit',
-        click: () => { console.log('Save New Circuit'); }
-      },
-      {
-        label: 'Save FX',
-        click: () => { console.log('Save New Circuit'); }
-      },
-    ]
-  },
-  {
-    label: 'Edit',
-    submenu: [
-      {
-        label: 'settings',
-        click: () => { console.log('settings'); }
-      },
-      {
-        label: 'logs',
-        click: () => { console.log('logs'); }
-      },
-    ]
-  },
-  {
-    label: 'About',
-    click: () => { console.log('About'); }
-  }
-];
-const menu = Menu.buildFromTemplate(template);
-Menu.setApplicationMenu(menu);
+const { Menu, BrowserWindow, screen, webContents, mainWindow, ipcMain, dialog } = require('electron');
+const fs = require('fs/promises'); // Using promises for clean async/await
+const fssync = require('fs'); // Synchronous methods
 
 // open
 let win; // globally store window
 app.whenReady().then(() => {
   // Get the primary display's dimensions
   const primaryDisplay = screen.getPrimaryDisplay();
-
-  // WINDOWS OS
-  
   // full screen dimensions
   const { width, height } = primaryDisplay.size;
+
+  // WINDOWS OS
 
   // open window
   win = new BrowserWindow({
@@ -173,24 +122,101 @@ app.whenReady().then(() => {
   // })
 
   // event checks
-  win.webContents.on('dom-ready', () => {
-    console.log("dom ready");
-  })
+  // win.webContents.on('dom-ready', () => {
+  //   console.log("dom ready");
+  // })
 
   // console display
   // win.webContents.on('did-finish-load', () => {
   //   console.log('did finish load');
   //   win.webContents.openDevTools({ mode: 'detach' });
   // })
-})
+
+  // menu config
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Open',
+          accelerator: 'CmdOrCtrl+O',
+          click: () => { console.log('Open'); }
+        },
+        {
+          label: 'Save Preset',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => {
+            // send request to renderer for save data, and file name
+            win.webContents.send('save-channel', 'save-all');
+          }
+        },
+        // {
+        //   label: 'Save Conductor',
+        //   click: () => { console.log('Save New Conductor'); }
+        // },
+        // {
+        //   label: 'Save Orchestra',
+        //   click: () => { console.log('Save New Orchestra'); }
+        // },
+        // {
+        //   label: 'Save Circuit',
+        //   click: () => { console.log('Save New Circuit'); }
+        // },
+        // {
+        //   label: 'Save FX',
+        //   click: () => { console.log('Save New Circuit'); }
+        // },
+      ]
+    },
+    // {
+    //   label: 'Edit',
+    //   submenu: [
+    //     {
+    //       label: 'settings',
+    //       click: () => { console.log('settings'); }
+    //     },
+    //     {
+    //       label: 'logs',
+    //       click: () => { console.log('logs'); }
+    //     },
+    //   ]
+    // },
+    // {
+    //   label: 'About',
+    //   click: () => { console.log('About'); }
+    // }
+  ];
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
+});
 
 // main ipc
-ipcMain.on('btn1-channel', (event, message) => {
-  console.log(message);
-  if (message === 'ipc renderer to main') {
-    const response = 'ipc main to renderer';
-    console.log(response);
-    win.webContents.send('main-channel', response);
+// ipcMain.on('btn1-channel', (event, message) => {
+//   console.log(message);
+//   if (message === 'ipc renderer to main') {
+//     const response = 'ipc main to renderer';
+//     console.log(response);
+//     win.webContents.send('main-channel', response);
+//   }
+// })
+
+// save all
+ipcMain.on('save-all', async (event, json) => {
+  // message contains json string data to be saved to save directory
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: 'Save Preset',
+    defaultPath: path.join(app.getPath('userData'), 'preset.json'),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { success: false };
+
+  try {
+    // write to filepath chosen by user
+    fssync.writeFileSync(filePath, json, 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
+    console.error('Failed to save JSON:', error);
+    return { success: false, error: error.message };
   }
 })
 

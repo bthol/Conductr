@@ -2,6 +2,11 @@
 ;
 window.electronAPI.res((data) => {
     console.log(data);
+    if (data === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
+        const data = [macros, FXdata, oscillators, sequencers];
+        const json = JSON.stringify(data, null, 2);
+        window.electronAPI.msg('save-all', json);
+    }
 });
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
 const audioContext = new AudioContext(options);

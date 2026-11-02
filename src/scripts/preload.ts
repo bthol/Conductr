@@ -6,7 +6,10 @@ const {ipcRenderer} = require('electron/renderer');
 const {contextBridge} = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  // .send() renderer to main, .on() main to renderer
   msg: (channel: string, message: string) => ipcRenderer.send(channel, message),
-  res: (callback: (data: any) => void) => 
-    ipcRenderer.on('main-channel', (_event: any, value: any) => callback(value))
+  res: (callback: (data: any) => void) => {
+    ipcRenderer.on('main-channel', (_event: any, value: any) => callback(value));
+    ipcRenderer.on('save-channel', (_event: any, value: any) => callback(value));
+  },
 });

@@ -10,17 +10,24 @@ interface Window {
         res: (callback: (data: any) => void) => void;
     }
 };
+
 // main process response handler
 window.electronAPI.res((data) => {
     console.log(data);
-    // load preset data here
-
+    // test response 
+    if (data === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
+        // collect all preset data
+        const data: Array<Object> = [macros, FXdata, oscillators, sequencers];
+        // convert to JSON string
+        const json: string = JSON.stringify(data, null, 2);
+        // send JSON back to main
+        window.electronAPI.msg('save-all', json);
+    }
 });
 
 // TESTING ELECTRONAPI
 // DOM selections
 // const btn1: HTMLElement | null = document.getElementById('btn1');
-// const btn2: HTMLElement | null = document.getElementById('btn2');
 // // DOM manipulation
 // if (btn1) {
 //     btn1.addEventListener('click', () => {
@@ -32,14 +39,7 @@ window.electronAPI.res((data) => {
 //         btn1.style.color = '#ff0000';
 //     });
 // }
-// if (btn2) {
-//     btn2.addEventListener('click', () => {
-//         console.log('clicked btn2');
-//         window.location.reload();
-//     })
-// }
 
-// use Web Audio API
 // look into tone.js: https://tonejs.github.io/
 // channelCountMode, ConstantSourceNode, AudioBufferSourceNode
 
@@ -73,6 +73,9 @@ let oscillatorsInitialized: boolean = false; // boolean for testing initializati
 let sequencersInitialized: boolean = false; // boolean for testing initialization status
 let FXInitialized: boolean = false; // boolean for testing initialization status
 let analysisInitialized: boolean = false; // boolean for testing initialization status
+
+// file management request interception from main
+
 
 // DOM elements
 
