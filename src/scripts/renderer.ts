@@ -12,10 +12,41 @@ interface Window {
 };
 
 // main process response handler
-window.electronAPI.res((data) => {
-    console.log(data);
-    // test response 
-    if (data === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
+window.electronAPI.res((cmd) => {
+    // test command 
+    if (cmd === 'save-macros' && macrosInitialized) {
+        // collect all preset data
+        const data: Array<Object> = [macros];
+        // convert to JSON string
+        const json: string = JSON.stringify(data, null, 2);
+        // send JSON back to main
+        window.electronAPI.msg('save-macros', json);
+
+    } else if (cmd === 'save-orchestra' && oscillatorsInitialized) {
+        // collect all preset data
+        const data: Array<Object> = [oscillators];
+        // convert to JSON string
+        const json: string = JSON.stringify(data, null, 2);
+        // send JSON back to main
+        window.electronAPI.msg('save-orchestra', json);
+    
+    } else if (cmd === 'save-circuit' && oscillatorsInitialized) {
+        // collect all preset data
+        const data: Array<Object> = [oscillators];
+        // convert to JSON string
+        const json: string = JSON.stringify(data, null, 2);
+        // send JSON back to main
+        window.electronAPI.msg('save-circuit', json);
+    
+    } else if (cmd === 'save-fx' && FXInitialized) {
+        // collect all preset data
+        const data: Array<Object> = [FXdata];
+        // convert to JSON string
+        const json: string = JSON.stringify(data, null, 2);
+        // send JSON back to main
+        window.electronAPI.msg('save-fx', json);
+
+    } else if (cmd === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
         // collect all preset data
         const data: Array<Object> = [macros, FXdata, oscillators, sequencers];
         // convert to JSON string

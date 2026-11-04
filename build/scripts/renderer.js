@@ -1,8 +1,27 @@
 "use strict";
 ;
-window.electronAPI.res((data) => {
-    console.log(data);
-    if (data === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
+window.electronAPI.res((cmd) => {
+    if (cmd === 'save-macros' && macrosInitialized) {
+        const data = [macros];
+        const json = JSON.stringify(data, null, 2);
+        window.electronAPI.msg('save-macros', json);
+    }
+    else if (cmd === 'save-orchestra' && oscillatorsInitialized) {
+        const data = [oscillators];
+        const json = JSON.stringify(data, null, 2);
+        window.electronAPI.msg('save-orchestra', json);
+    }
+    else if (cmd === 'save-circuit' && oscillatorsInitialized) {
+        const data = [oscillators];
+        const json = JSON.stringify(data, null, 2);
+        window.electronAPI.msg('save-circuit', json);
+    }
+    else if (cmd === 'save-fx' && FXInitialized) {
+        const data = [FXdata];
+        const json = JSON.stringify(data, null, 2);
+        window.electronAPI.msg('save-fx', json);
+    }
+    else if (cmd === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
         const data = [macros, FXdata, oscillators, sequencers];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-all', json);

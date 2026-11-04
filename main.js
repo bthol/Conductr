@@ -127,10 +127,11 @@ app.whenReady().then(() => {
   // })
 
   // console display
-  // win.webContents.on('did-finish-load', () => {
-  //   console.log('did finish load');
-  //   win.webContents.openDevTools({ mode: 'detach' });
-  // })
+  win.webContents.on('did-finish-load', () => {
+    console.log('did finish load');
+    // win.webContents.openDevTools({ mode: 'detach' });
+    win.webContents.openDevTools();
+  })
 
   // menu config
   const template = [
@@ -150,22 +151,38 @@ app.whenReady().then(() => {
             win.webContents.send('save-channel', 'save-all');
           }
         },
-        // {
-        //   label: 'Save Conductor',
-        //   click: () => { console.log('Save New Conductor'); }
-        // },
-        // {
-        //   label: 'Save Orchestra',
-        //   click: () => { console.log('Save New Orchestra'); }
-        // },
-        // {
-        //   label: 'Save Circuit',
-        //   click: () => { console.log('Save New Circuit'); }
-        // },
-        // {
-        //   label: 'Save FX',
-        //   click: () => { console.log('Save New Circuit'); }
-        // },
+        {
+          label: 'Save Macros',
+          // accelerator: 'CmdOrCtrl+Shift+M',
+          click: () => {
+            // send request to renderer for save data, and file name
+            win.webContents.send('save-channel', 'save-macros');
+          }
+        },
+        {
+          label: 'Save Orchestra',
+          // accelerator: 'CmdOrCtrl+Shift+O',
+          click: () => {
+            // send request to renderer for save data, and file name
+            win.webContents.send('save-channel', 'save-orchestra');
+          }
+        },
+        {
+          label: 'Save Circuit',
+          // accelerator: 'CmdOrCtrl+Shift+C',
+          click: () => {
+            // send request to renderer for save data, and file name
+            win.webContents.send('save-channel', 'save-circuit');
+          }
+        },
+        {
+          label: 'Save FX',
+          // accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => {
+            // send request to renderer for save data, and file name
+            win.webContents.send('save-channel', 'save-fx');
+          }
+        },
       ]
     },
     // {
@@ -200,22 +217,133 @@ app.whenReady().then(() => {
 //   }
 // })
 
-// save all
-ipcMain.on('save-all', async (event, json) => {
-  // message contains json string data to be saved to save directory
+// save macros
+ipcMain.on('save-macros', async (event, json) => {
+  // create directory if it doesn't already exist
+  const directory = path.join(app.getPath('userData'), 'presets', 'macros');
+  if (!fssync.existsSync(directory)) {
+    fssync.mkdirSync(directory, { recursive: true });
+  }
+
+  // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
-    title: 'Save Preset',
-    defaultPath: path.join(app.getPath('userData'), 'preset.json'),
+    title: 'Macros Preset',
+    buttonLabel: 'save macros',
+    defaultPath: path.join(app.getPath('userData'), 'presets', 'macros', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
   if (canceled || !filePath) return { success: false };
 
+  // write to filepath chosen by user
   try {
-    // write to filepath chosen by user
     fssync.writeFileSync(filePath, json, 'utf-8');
     return { success: true, filePath };
   } catch (error) {
-    console.error('Failed to save JSON:', error);
+    return { success: false, error: error.message };
+  }
+})
+
+// save orchestra
+ipcMain.on('save-orchestra', async (event, json) => {
+  // create directory if it doesn't already exist
+  const directory = path.join(app.getPath('userData'), 'presets', 'orchestra');
+  if (!fssync.existsSync(directory)) {
+    fssync.mkdirSync(directory, { recursive: true });
+  }
+
+  // prompt user with save dialog
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: 'Orchestra Preset',
+    buttonLabel: 'save orchestra',
+    defaultPath: path.join(app.getPath('userData'), 'presets', 'orchestra', 'preset.json'),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { success: false };
+
+  // write to filepath chosen by user
+  try {
+    fssync.writeFileSync(filePath, json, 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// save circuit
+ipcMain.on('save-circuit', async (event, json) => {
+  // create directory if it doesn't already exist
+  const directory = path.join(app.getPath('userData'), 'presets', 'circuit');
+  if (!fssync.existsSync(directory)) {
+    fssync.mkdirSync(directory, { recursive: true });
+  }
+
+  // prompt user with save dialog
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: 'Circuit Preset',
+    buttonLabel: 'save circuit',
+    defaultPath: path.join(app.getPath('userData'), 'presets', 'circuit', 'preset.json'),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { success: false };
+
+  // write to filepath chosen by user
+  try {
+    fssync.writeFileSync(filePath, json, 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// save fx
+ipcMain.on('save-fx', async (event, json) => {
+  // create directory if it doesn't already exist
+  const directory = path.join(app.getPath('userData'), 'presets', 'fx');
+  if (!fssync.existsSync(directory)) {
+    fssync.mkdirSync(directory, { recursive: true });
+  }
+
+  // prompt user with save dialog
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: 'FX preset',
+    buttonLabel: 'save FX',
+    defaultPath: path.join(app.getPath('userData'), 'presets', 'fx', 'preset.json'),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { success: false };
+
+  // write to filepath chosen by user
+  try {
+    fssync.writeFileSync(filePath, json, 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+})
+
+// save all
+ipcMain.on('save-all', async (event, json) => {
+  
+  // create directory if it doesn't already exist
+  const directory = path.join(app.getPath('userData'), 'presets', 'all');
+  if (!fssync.existsSync(directory)) {
+    fssync.mkdirSync(directory, { recursive: true });
+  }
+
+  // prompt user with save dialog
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: 'All Preset',
+    buttonLabel: 'save all',
+    defaultPath: path.join(app.getPath('userData'), 'presets', 'all', 'preset.json'),
+    filters: [{ name: 'JSON Files', extensions: ['json'] }]
+  });
+  if (canceled || !filePath) return { success: false };
+
+  // write to filepath chosen by user
+  try {
+    fssync.writeFileSync(filePath, json, 'utf-8');
+    return { success: true, filePath };
+  } catch (error) {
     return { success: false, error: error.message };
   }
 })
