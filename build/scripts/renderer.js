@@ -2,29 +2,681 @@
 ;
 window.electronAPI.res((cmd) => {
     if (cmd === 'save-macros' && macrosInitialized) {
-        const data = [macros];
+        const m = {
+            'master': masterGain.value,
+            'pan': masterPan.value,
+            'tempo': masterTempo.value,
+            'beatsPerMeasure': masterMeasure.value,
+            'driveMult': DMControl.value,
+            'FortePiano': FPControl.value,
+            'creciendo': CControl.value,
+            'variance': VControl.value,
+            'expressivity': EControl.value,
+            'Sustain': SControl.value,
+            'Attack': LControl.value,
+            'Release': TControl.value
+        };
+        const data = [m];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-macros', json);
     }
     else if (cmd === 'save-orchestra' && oscillatorsInitialized) {
-        const data = [oscillators];
+        const oscsNodeList = document.querySelectorAll('.oscs');
+        let o = {};
+        for (const osc of oscsNodeList) {
+            const oscGain = osc.querySelector('.amplitude');
+            const oscDriv = osc.querySelector('.drive');
+            const oscDrCh = osc.querySelector('.drive-character');
+            const oscVoic = osc.querySelector('.voices');
+            const oscFreq = osc.querySelector('.frequency');
+            const oscDetu = osc.querySelector('.detune');
+            const oscPart = osc.querySelector('.partials');
+            const oscType = osc.querySelector('.type');
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                o[osc.id] = {
+                    'gain': oscGain.value,
+                    'drive': oscDriv.value,
+                    'driveCharacter': oscDrCh.value,
+                    'oscVoices': oscVoic.value,
+                    'freq': oscFreq.value,
+                    'detune': oscDetu.value,
+                    'wavePartials': oscPart.value,
+                    'waveType': oscType.value,
+                };
+            }
+        }
+        const data = [o];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-orchestra', json);
     }
     else if (cmd === 'save-circuit' && oscillatorsInitialized) {
-        const data = [oscillators];
+        const seqsNodeList = document.querySelectorAll('.seqs');
+        let s = {};
+        for (const seq of seqsNodeList) {
+            const stagesEl = seq.querySelector('.stages');
+            const levelsEl = seq.querySelector('.stage-levels');
+            const seqRateEl = seq.querySelector('.sequence-rate');
+            const filterTypeEL = seq.querySelector('.filter-type');
+            const filterCutoffEL = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl = seq.querySelector('.filter-resonance');
+            const ampModEl = seq.querySelector('.amp-mod');
+            const filtModEl = seq.querySelector('.filt-mod');
+            const freqModEl = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                const ampLvlsStageList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                let ampLvls = [];
+                let filtLvls = [];
+                let freqLvls = [];
+                const stages = Number(stagesEl.value);
+                const levels = Number(levelsEl.value);
+                for (let stage = 0; stage < stages; stage++) {
+                    const ampStageLevelList = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    if (ampStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                                ampLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        ampLvls.push(NaN);
+                    }
+                    if (filtStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                                filtLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        filtLvls.push(NaN);
+                    }
+                    if (freqStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                                freqLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        freqLvls.push(NaN);
+                    }
+                }
+                s[seq.id] = {
+                    'stages': stagesEl.value,
+                    'levels': levelsEl.value,
+                    'seqRate': seqRateEl.value,
+                    'type': filterTypeEL.value,
+                    'cutoff': filterCutoffEL.value,
+                    'resonance': filterResonanceEl.value,
+                    'ampMod': ampModEl.value,
+                    'filtMod': filtModEl.value,
+                    'freqMod': freqModEl.value,
+                    'ampLvls': ampLvls,
+                    'filtLvls': filtLvls,
+                    'freqLvls': freqLvls
+                };
+            }
+        }
+        const data = [s];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-circuit', json);
     }
     else if (cmd === 'save-fx' && FXInitialized) {
-        const data = [FXdata];
+        const f = {
+            'DryWet': DryWetFX.value,
+            'EQ': {
+                'b1': EQBandControl1.value,
+                'b2': EQBandControl2.value,
+                'b3': EQBandControl3.value,
+                'c1': EQCutoffControl1.value,
+                'c2': EQCutoffControl2.value,
+                'Q': EQQControl.value
+            },
+            'DDL': {
+                'dry': DDLDryControl.value,
+                'wet': DDLWetControl.value,
+                'feed': DDLFeedControl.value,
+                'time': DDLTimeControl.value
+            }
+        };
+        const data = [f];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-fx', json);
     }
     else if (cmd === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
-        const data = [macros, FXdata, oscillators, sequencers];
+        const m = {
+            'master': masterGain.value,
+            'pan': masterPan.value,
+            'tempo': masterTempo.value,
+            'beatsPerMeasure': masterMeasure.value,
+            'driveMult': DMControl.value,
+            'FortePiano': FPControl.value,
+            'creciendo': CControl.value,
+            'variance': VControl.value,
+            'expressivity': EControl.value,
+            'Sustain': SControl.value,
+            'Attack': LControl.value,
+            'Release': TControl.value
+        };
+        const f = {
+            'DryWet': DryWetFX.value,
+            'EQ': {
+                'b1': EQBandControl1.value,
+                'b2': EQBandControl2.value,
+                'b3': EQBandControl3.value,
+                'c1': EQCutoffControl1.value,
+                'c2': EQCutoffControl2.value,
+                'Q': EQQControl.value
+            },
+            'DDL': {
+                'dry': DDLDryControl.value,
+                'wet': DDLWetControl.value,
+                'feed': DDLFeedControl.value,
+                'time': DDLTimeControl.value
+            }
+        };
+        const oscsNodeList = document.querySelectorAll('.oscs');
+        let o = {};
+        for (const osc of oscsNodeList) {
+            const oscGain = osc.querySelector('.amplitude');
+            const oscDriv = osc.querySelector('.drive');
+            const oscDrCh = osc.querySelector('.drive-character');
+            const oscVoic = osc.querySelector('.voices');
+            const oscFreq = osc.querySelector('.frequency');
+            const oscDetu = osc.querySelector('.detune');
+            const oscPart = osc.querySelector('.partials');
+            const oscType = osc.querySelector('.type');
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                o[osc.id] = {
+                    'gain': oscGain.value,
+                    'drive': oscDriv.value,
+                    'driveCharacter': oscDrCh.value,
+                    'oscVoices': oscVoic.value,
+                    'freq': oscFreq.value,
+                    'detune': oscDetu.value,
+                    'wavePartials': oscPart.value,
+                    'waveType': oscType.value,
+                };
+            }
+        }
+        const seqsNodeList = document.querySelectorAll('.seqs');
+        let s = {};
+        for (const seq of seqsNodeList) {
+            const stagesEl = seq.querySelector('.stages');
+            const levelsEl = seq.querySelector('.stage-levels');
+            const seqRateEl = seq.querySelector('.sequence-rate');
+            const filterTypeEL = seq.querySelector('.filter-type');
+            const filterCutoffEL = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl = seq.querySelector('.filter-resonance');
+            const ampModEl = seq.querySelector('.amp-mod');
+            const filtModEl = seq.querySelector('.filt-mod');
+            const freqModEl = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                const ampLvlsStageList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                let ampLvls = [];
+                let filtLvls = [];
+                let freqLvls = [];
+                const stages = Number(stagesEl.value);
+                const levels = Number(levelsEl.value);
+                for (let stage = 0; stage < stages; stage++) {
+                    const ampStageLevelList = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    if (ampStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                                ampLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        ampLvls.push(NaN);
+                    }
+                    if (filtStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                                filtLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        filtLvls.push(NaN);
+                    }
+                    if (freqStageLevelList) {
+                        for (let level = 0; level < levels; level++) {
+                            if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                                freqLvls.push(level);
+                                break;
+                            }
+                        }
+                    }
+                    else {
+                        freqLvls.push(NaN);
+                    }
+                }
+                s[seq.id] = {
+                    'stages': stagesEl.value,
+                    'levels': levelsEl.value,
+                    'seqRate': seqRateEl.value,
+                    'type': filterTypeEL.value,
+                    'cutoff': filterCutoffEL.value,
+                    'resonance': filterResonanceEl.value,
+                    'ampMod': ampModEl.value,
+                    'filtMod': filtModEl.value,
+                    'freqMod': freqModEl.value,
+                    'ampLvls': ampLvls,
+                    'filtLvls': filtLvls,
+                    'freqLvls': freqLvls
+                };
+            }
+        }
+        const data = [m, f, o, s];
         const json = JSON.stringify(data, null, 2);
         window.electronAPI.msg('save-all', json);
+    }
+});
+window.electronAPI.open((data, dir) => {
+    try {
+        const directory = dir;
+        console.log(directory);
+        const object = JSON.parse(data);
+        if (directory === 'macros') {
+            const a = object[0];
+            if (a !== undefined) {
+                if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
+                    masterGain.value = a['master'];
+                    masterPan.value = a['pan'];
+                    masterTempo.value = a['tempo'];
+                    masterMeasure.value = a['beatsPerMeasure'];
+                    DMControl.value = a['driveMult'];
+                    FPControl.value = a['FortePiano'];
+                    CControl.value = a['creciendo'];
+                    VControl.value = a['variance'];
+                    EControl.value = a['expressivity'];
+                    SControl.value = a['Sustain'];
+                    LControl.value = a['Attack'];
+                    TControl.value = a['Release'];
+                    [masterGain, masterPan, masterTempo, masterMeasure, DMControl, FPControl, EControl, CControl, VControl, SControl, LControl, TControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+                }
+                else {
+                    console.error('macro display failed during preset load');
+                }
+            }
+            else {
+                console.error('data not found in open macros');
+            }
+        }
+        else if (directory === 'orchestra') {
+            const c = object[0];
+            if (c !== undefined) {
+                const oscsNodeList = document.querySelectorAll('.oscs');
+                const oscsKeys = Object.keys(c);
+                let index = 0;
+                for (const osc of oscsNodeList) {
+                    const oscGain = osc.querySelector('.amplitude');
+                    const oscDriv = osc.querySelector('.drive');
+                    const oscDrCh = osc.querySelector('.drive-character');
+                    const oscVoic = osc.querySelector('.voices');
+                    const oscFreq = osc.querySelector('.frequency');
+                    const oscDetu = osc.querySelector('.detune');
+                    const oscPart = osc.querySelector('.partials');
+                    const oscType = osc.querySelector('.type');
+                    if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                        const key = oscsKeys[index];
+                        if (key !== undefined) {
+                            const o = c[key];
+                            oscGain.value = o.gain;
+                            oscDriv.value = o.drive;
+                            oscDrCh.value = o.driveCharacter;
+                            oscVoic.value = o.oscVoices;
+                            oscType.value = o.waveType;
+                            oscPart.value = `${o.wavePartials}`;
+                            oscFreq.value = `${o.freq}`;
+                            oscDetu.value = `${o.detune}`;
+                            [oscGain, oscDriv, oscDrCh, oscVoic, oscType, oscPart, oscFreq, oscDetu].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        }
+                        else {
+                            console.error('oscillator data not found during preset load');
+                        }
+                    }
+                    else {
+                        console.error('parameter elements not found during preset load');
+                    }
+                    index += 1;
+                }
+            }
+            else {
+                console.error('data not found in open orchestra');
+            }
+        }
+        else if (directory === 'circuit') {
+            const d = object[0];
+            if (d !== undefined) {
+                const seqNodeList = document.querySelectorAll('.seqs');
+                const seqsKeys = Object.keys(d);
+                let index = 0;
+                for (const seq of seqNodeList) {
+                    const stagesEl = seq.querySelector('.stages');
+                    const levelsEl = seq.querySelector('.stage-levels');
+                    const seqRateEl = seq.querySelector('.sequence-rate');
+                    const filterTypeEL = seq.querySelector('.filter-type');
+                    const filterCutoffEL = seq.querySelector('.filter-cutoff');
+                    const filterResonanceEl = seq.querySelector('.filter-resonance');
+                    const ampModEl = seq.querySelector('.amp-mod');
+                    const filtModEl = seq.querySelector('.filt-mod');
+                    const freqModEl = seq.querySelector('.freq-mod');
+                    const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+                    const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+                    const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+                    if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                        const key = seqsKeys[index];
+                        if (key !== undefined) {
+                            const s = d[key];
+                            stagesEl.value = s.stages;
+                            levelsEl.value = s.levels;
+                            seqRateEl.value = s.seqRate;
+                            filterTypeEL.value = s.type;
+                            filterCutoffEL.value = s.cutoff;
+                            filterResonanceEl.value = s.resonance;
+                            ampModEl.value = s.ampMod;
+                            filtModEl.value = s.filtMod;
+                            freqModEl.value = s.freqMod;
+                            const sequenceEl = document.getElementById(`${seq.id}`);
+                            if (sequenceEl) {
+                                const containers = sequenceEl.querySelectorAll('.leveler-layout');
+                                for (const container of containers) {
+                                    renderLeveler(Number(s.stages), Number(s.levels), container);
+                                }
+                            }
+                            const ampList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            let i = 0;
+                            ampList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            const filtList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            filtList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.filtLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            const freqList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            freqList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            [stagesEl, levelsEl, seqRateEl, filterTypeEL, filterCutoffEL, filterResonanceEl, ampModEl, filtModEl, freqModEl].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        }
+                        else {
+                            console.error('sequencer data not found during preset load');
+                        }
+                    }
+                    else {
+                        console.error('sequencer parameter not found during preset load');
+                    }
+                    index += 1;
+                }
+            }
+            else {
+                console.error('data not found in open circuit');
+            }
+        }
+        else if (directory === 'fx') {
+            const b = object[0];
+            if (b !== undefined) {
+                if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+                    DryWetFX.value = b['DryWet'];
+                    EQBandControl1.value = b['EQ']['b1'];
+                    EQBandControl2.value = b['EQ']['b2'];
+                    EQBandControl3.value = b['EQ']['b3'];
+                    EQCutoffControl1.value = b['EQ']['c1'];
+                    EQCutoffControl2.value = b['EQ']['c2'];
+                    EQQControl.value = b['EQ']['Q'];
+                    DDLDryControl.value = b['DDL']['dry'];
+                    DDLWetControl.value = b['DDL']['wet'];
+                    DDLFeedControl.value = b['DDL']['feed'];
+                    DDLTimeControl.value = b['DDL']['time'];
+                    [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+                }
+                else {
+                    console.error('FX parameter not found during preset load');
+                }
+            }
+            else {
+                console.error('data not found in open FX');
+            }
+        }
+        else if (directory === 'all') {
+            const a = object[0];
+            const b = object[1];
+            const c = object[2];
+            const d = object[3];
+            if (a !== undefined && b !== undefined && c !== undefined && d !== undefined) {
+                if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
+                    masterGain.value = a['master'];
+                    masterPan.value = a['pan'];
+                    masterTempo.value = a['tempo'];
+                    masterMeasure.value = a['beatsPerMeasure'];
+                    DMControl.value = a['driveMult'];
+                    FPControl.value = a['FortePiano'];
+                    CControl.value = a['creciendo'];
+                    VControl.value = a['variance'];
+                    EControl.value = a['expressivity'];
+                    SControl.value = a['Sustain'];
+                    LControl.value = a['Attack'];
+                    TControl.value = a['Release'];
+                    [masterGain, masterPan, masterTempo, masterMeasure, DMControl, FPControl, EControl, CControl, VControl, SControl, LControl, TControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+                }
+                else {
+                    console.error('macro display failed during preset load');
+                }
+                if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+                    DryWetFX.value = b['DryWet'];
+                    EQBandControl1.value = b['EQ']['b1'];
+                    EQBandControl2.value = b['EQ']['b2'];
+                    EQBandControl3.value = b['EQ']['b3'];
+                    EQCutoffControl1.value = b['EQ']['c1'];
+                    EQCutoffControl2.value = b['EQ']['c2'];
+                    EQQControl.value = b['EQ']['Q'];
+                    DDLDryControl.value = b['DDL']['dry'];
+                    DDLWetControl.value = b['DDL']['wet'];
+                    DDLFeedControl.value = b['DDL']['feed'];
+                    DDLTimeControl.value = b['DDL']['time'];
+                    [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+                }
+                else {
+                    console.error('FX parameter not found during preset load');
+                }
+                const oscsNodeList = document.querySelectorAll('.oscs');
+                const oscsKeys = Object.keys(c);
+                let index = 0;
+                for (const osc of oscsNodeList) {
+                    const oscGain = osc.querySelector('.amplitude');
+                    const oscDriv = osc.querySelector('.drive');
+                    const oscDrCh = osc.querySelector('.drive-character');
+                    const oscVoic = osc.querySelector('.voices');
+                    const oscFreq = osc.querySelector('.frequency');
+                    const oscDetu = osc.querySelector('.detune');
+                    const oscPart = osc.querySelector('.partials');
+                    const oscType = osc.querySelector('.type');
+                    if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                        const key = oscsKeys[index];
+                        if (key !== undefined) {
+                            const o = c[key];
+                            oscGain.value = o.gain;
+                            oscDriv.value = o.drive;
+                            oscDrCh.value = o.driveCharacter;
+                            oscVoic.value = o.oscVoices;
+                            oscType.value = o.waveType;
+                            oscPart.value = `${o.wavePartials}`;
+                            oscFreq.value = `${o.freq}`;
+                            oscDetu.value = `${o.detune}`;
+                            [oscGain, oscDriv, oscDrCh, oscVoic, oscType, oscPart, oscFreq, oscDetu].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        }
+                        else {
+                            console.error('oscillator data not found during preset load');
+                        }
+                    }
+                    else {
+                        console.error('parameter elements not found during preset load');
+                    }
+                    index += 1;
+                }
+                const seqNodeList = document.querySelectorAll('.seqs');
+                const seqsKeys = Object.keys(d);
+                index = 0;
+                for (const seq of seqNodeList) {
+                    const stagesEl = seq.querySelector('.stages');
+                    const levelsEl = seq.querySelector('.stage-levels');
+                    const seqRateEl = seq.querySelector('.sequence-rate');
+                    const filterTypeEL = seq.querySelector('.filter-type');
+                    const filterCutoffEL = seq.querySelector('.filter-cutoff');
+                    const filterResonanceEl = seq.querySelector('.filter-resonance');
+                    const ampModEl = seq.querySelector('.amp-mod');
+                    const filtModEl = seq.querySelector('.filt-mod');
+                    const freqModEl = seq.querySelector('.freq-mod');
+                    const ampSeqLvlsContEl = seq.querySelector('.amp-sequence-leveler-container');
+                    const filtSeqLvlsContEl = seq.querySelector('.filt-sequence-leveler-container');
+                    const freqSeqLvlsContEl = seq.querySelector('.freq-sequence-leveler-container');
+                    if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                        const key = seqsKeys[index];
+                        if (key !== undefined) {
+                            const s = d[key];
+                            stagesEl.value = s.stages;
+                            levelsEl.value = s.levels;
+                            seqRateEl.value = s.seqRate;
+                            filterTypeEL.value = s.type;
+                            filterCutoffEL.value = s.cutoff;
+                            filterResonanceEl.value = s.resonance;
+                            ampModEl.value = s.ampMod;
+                            filtModEl.value = s.filtMod;
+                            freqModEl.value = s.freqMod;
+                            const sequenceEl = document.getElementById(`${seq.id}`);
+                            if (sequenceEl) {
+                                const containers = sequenceEl.querySelectorAll('.leveler-layout');
+                                for (const container of containers) {
+                                    renderLeveler(Number(s.stages), Number(s.levels), container);
+                                }
+                            }
+                            const ampList = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            let i = 0;
+                            ampList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            const filtList = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            filtList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.filtLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            const freqList = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            freqList.forEach((stage) => {
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                const stageLevels = stage.querySelectorAll('div');
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+                            [stagesEl, levelsEl, seqRateEl, filterTypeEL, filterCutoffEL, filterResonanceEl, ampModEl, filtModEl, freqModEl].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        }
+                        else {
+                            console.error('sequencer data not found during preset load');
+                        }
+                    }
+                    else {
+                        console.error('sequencer parameter not found during preset load');
+                    }
+                    index += 1;
+                }
+            }
+            else {
+                console.error('data not found in open all');
+            }
+        }
+        else {
+            console.error('open directory not found');
+        }
+    }
+    catch (err) {
+        console.error(err);
     }
 });
 const options = { 'sampleRate': 44100.0, 'latencyHint': 'interactive' };
@@ -352,9 +1004,11 @@ function initMacros() {
     macros['Attack'] = 3;
     macros['Release'] = 10;
     macros['Sustain'] = 3.5;
-    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
+    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) {
         masterGain.value = '100';
         masterPan.value = '0';
+        masterTempo.value = '0';
+        masterMeasure.value = '0';
         DMControl.value = '0';
         FPControl.value = '30';
         CControl.value = '0';
@@ -365,21 +1019,55 @@ function initMacros() {
         TControl.value = '5';
     }
     else {
-        console.log('macro display initialization failed');
+        console.error('macro display failed during initialization');
     }
     macrosInitialized = true;
 }
 ;
+function initFX() {
+    FXdata['DryWet'] = 0;
+    FXdata['EQ'] = {
+        'b1': 1,
+        'b2': .75,
+        'b3': .63,
+        'c1': 500,
+        'c2': 3000,
+        'Q': .1,
+    };
+    FXdata['DDL'] = {
+        'dry': 1,
+        'wet': 0,
+        'feed': .63,
+        'time': .3,
+    };
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+        DryWetFX.value = '0';
+        EQBandControl1.value = '100';
+        EQBandControl2.value = '75';
+        EQBandControl3.value = '63';
+        EQCutoffControl1.value = '500';
+        EQCutoffControl2.value = '3000';
+        EQQControl.value = '1';
+        DDLDryControl.value = '100';
+        DDLWetControl.value = '0';
+        DDLFeedControl.value = '63';
+        DDLTimeControl.value = '300';
+    }
+    else {
+        console.error('FX parameter not found during initialization');
+    }
+    FXInitialized = true;
+}
+;
 function initOscillators() {
-    oscillators = {};
     const oscsNodeList = document.querySelectorAll('.oscs');
+    const gain = 0.244089621695242;
+    const frequency = 261.6;
+    const detune = -3;
+    const partials = 256;
     let count = 0;
     for (const osc of oscsNodeList) {
         count += 1;
-        const gain = 0.244089621695242;
-        const frequency = 261.6;
-        const detune = -3;
-        const partials = 256;
         const unique = crypto.randomUUID().split('-')[0];
         if (typeof unique === 'string') {
             const ID = `${count}-${unique}`;
@@ -412,11 +1100,13 @@ function initOscillators() {
                 'freq': freqCalc,
                 'detune': detune,
                 'waveform': waveform,
+                'waveType': 'triangle',
+                'wavePartials': partials,
                 'meterID': `meter-${count}`,
             };
         }
         else {
-            console.log('Oscillator ID generation failed during initialization');
+            console.error('Oscillator ID generation failed during initialization');
         }
         const oscGain = osc.querySelector('.amplitude');
         const oscDriv = osc.querySelector('.drive');
@@ -431,13 +1121,13 @@ function initOscillators() {
             oscDriv.value = '0';
             oscDrCh.value = 'Serpentine';
             oscVoic.value = '2';
+            oscType.value = 'triangle';
+            oscPart.value = `${partials}`;
             oscFreq.value = `${frequency}`;
             oscDetu.value = `${detune}`;
-            oscPart.value = `${partials}`;
-            oscType.value = 'triangle';
         }
         else {
-            console.log('parameter elements not found during initialization');
+            console.error('parameter elements not found during initialization');
         }
     }
     oscillatorsInitialized = true;
@@ -468,7 +1158,7 @@ function initSequencers() {
             };
         }
         else {
-            console.log('Sequencer ID generation failed during initialization');
+            console.error('Sequencer ID generation failed during initialization');
         }
         const stagesEl = seq.querySelector('.stages');
         const levelsEl = seq.querySelector('.stage-levels');
@@ -509,45 +1199,10 @@ function initSequencers() {
             });
         }
         else {
-            console.log('Sequencer parameter not found during initialization');
+            console.error('Sequencer parameter not found during initialization');
         }
     }
     sequencersInitialized = true;
-}
-;
-function initFX() {
-    FXdata['DryWet'] = 0;
-    FXdata['EQ'] = {
-        'b1': 1,
-        'b2': .75,
-        'b3': .63,
-        'c1': 500,
-        'c2': 3000,
-        'Q': .1,
-    };
-    FXdata['DDL'] = {
-        'dry': 1,
-        'wet': 0,
-        'feed': .63,
-        'time': .3,
-    };
-    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
-        DryWetFX.value = '0';
-        EQBandControl1.value = '100';
-        EQBandControl2.value = '75';
-        EQBandControl3.value = '63';
-        EQCutoffControl1.value = '500';
-        EQCutoffControl2.value = '3000';
-        EQQControl.value = '1';
-        DDLDryControl.value = '100';
-        DDLWetControl.value = '0';
-        DDLFeedControl.value = '63';
-        DDLTimeControl.value = '300';
-    }
-    else {
-        console.log('FX parameter not found during initialization');
-    }
-    FXInitialized = true;
 }
 ;
 function initAnalysis() {
@@ -916,6 +1571,7 @@ function updateOscillator(oscID) {
                 imag[0] = 0;
                 waveform = normEngine(partialsVal, real, imag);
                 oscillators[oscID]['waveform'] = waveform;
+                oscillators[oscID]['waveType'] = oscType;
                 oscillators[oscID]['oscVoices'] = voiceVal + 1;
                 oscillators[oscID]['gain'] = gainVal;
                 oscillators[oscID]['drive'] = driveVal;
@@ -1945,7 +2601,7 @@ async function setup() {
             }
         }
         else {
-            console.log('oscillator elements not found during listener setup');
+            console.error('oscillator elements not found during listener setup');
         }
         const seqsNodeList = document.querySelectorAll('.seqs');
         if (seqsNodeList.length > 0) {
@@ -1962,7 +2618,7 @@ async function setup() {
             }
         }
         else {
-            console.log('sequencer elements not found during listener setup');
+            console.error('sequencer elements not found during listener setup');
         }
         [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
             element.addEventListener('input', () => {
@@ -1992,7 +2648,7 @@ async function setup() {
         });
     }
     else {
-        console.log('Element Integrity Degraded during listener setup');
+        console.error('Element Integrity Degraded during listener setup');
     }
 }
 ;

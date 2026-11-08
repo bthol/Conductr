@@ -7,4 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         ipcRenderer.on('main-channel', (_event, value) => callback(value));
         ipcRenderer.on('save-channel', (_event, value) => callback(value));
     },
+    open: (callback) => {
+        ipcRenderer.on('open-channel', (_event, data, dir) => callback(data, dir));
+    }
 });

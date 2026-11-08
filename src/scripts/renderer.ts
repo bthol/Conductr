@@ -8,51 +8,795 @@ interface Window {
     electronAPI: {
         msg: (channel: string, message: string) => void;
         res: (callback: (data: any) => void) => void;
+        open: (callback: (type: string, data: string) => void) => void;
     }
 };
 
-// main process response handler
+// save routes
 window.electronAPI.res((cmd) => {
     // test command 
     if (cmd === 'save-macros' && macrosInitialized) {
-        // collect all preset data
-        const data: Array<Object> = [macros];
+        // collect preset data
+        const m = {
+            'master': masterGain.value,
+            'pan': masterPan.value,
+            'tempo': masterTempo.value,
+            'beatsPerMeasure': masterMeasure.value,
+            'driveMult': DMControl.value,
+            'FortePiano': FPControl.value,
+            'creciendo': CControl.value,
+            'variance': VControl.value,
+            'expressivity': EControl.value,
+            'Sustain': SControl.value,
+            'Attack': LControl.value,
+            'Release': TControl.value
+        };
+        // package preset data
+        const data: Array<Object> = [m];
         // convert to JSON string
         const json: string = JSON.stringify(data, null, 2);
         // send JSON back to main
         window.electronAPI.msg('save-macros', json);
 
     } else if (cmd === 'save-orchestra' && oscillatorsInitialized) {
-        // collect all preset data
-        const data: Array<Object> = [oscillators];
+        // collect preset data
+        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+        let o: {[key: string]: any} = {};
+        for (const osc of oscsNodeList) {
+            const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+            const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+            const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
+            const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
+            const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+            const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
+            const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
+            const oscType: HTMLInputElement | null = osc.querySelector('.type');
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                o[osc.id] = {
+                    'gain': oscGain.value,
+                    'drive': oscDriv.value,
+                    'driveCharacter': oscDrCh.value,
+                    'oscVoices': oscVoic.value,
+                    'freq': oscFreq.value,
+                    'detune': oscDetu.value,
+                    'wavePartials': oscPart.value,
+                    'waveType': oscType.value,
+                }
+            }
+        }
+        // package preset data
+        const data: Array<Object> = [o];
         // convert to JSON string
         const json: string = JSON.stringify(data, null, 2);
         // send JSON back to main
         window.electronAPI.msg('save-orchestra', json);
     
     } else if (cmd === 'save-circuit' && oscillatorsInitialized) {
-        // collect all preset data
-        const data: Array<Object> = [oscillators];
+        // collect preset data
+        const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+        let s: {[key: string]: any} = {};
+        for (const seq of seqsNodeList) {
+            const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+            const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+            const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+            const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+            const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
+            const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+            const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+            const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                // get sequence levels
+                // collect Amp level from each stage
+                // collect Filter level from each stage
+                // collect Frequency level from each stage
+                const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                let ampLvls: Array<number> = []; // store levels
+                let filtLvls: Array<number> = []; // store levels
+                let freqLvls: Array<number> = []; // store levels
+                const stages: number = Number(stagesEl.value);
+                const levels: number = Number(levelsEl.value);
+                for (let stage = 0; stage < stages; stage++) { // number of stages should be equal between amp, filt, and freq
+                    const ampStageLevelList: NodeListOf<Element> | undefined = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList: NodeListOf<Element> | undefined = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList: NodeListOf<Element> | undefined = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    // amp leveler
+                    if (ampStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                            ampLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        ampLvls.push(NaN);
+                    }
+                    // filter leveler
+                    if (filtStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                            filtLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        filtLvls.push(NaN);
+                    }
+                    // frequency leveler
+                    if (freqStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                            freqLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        freqLvls.push(NaN);
+                    }
+                }
+                // append data to object
+                s[seq.id] = {
+                    'stages': stagesEl.value,
+                    'levels': levelsEl.value,
+                    'seqRate': seqRateEl.value,
+                    'type': filterTypeEL.value,
+                    'cutoff': filterCutoffEL.value,
+                    'resonance': filterResonanceEl.value,
+                    'ampMod': ampModEl.value,
+                    'filtMod': filtModEl.value,
+                    'freqMod': freqModEl.value,
+                    'ampLvls': ampLvls,
+                    'filtLvls': filtLvls,
+                    'freqLvls': freqLvls
+                }
+            }
+        }
+        // package preset data
+        const data: Array<Object> = [s];
         // convert to JSON string
         const json: string = JSON.stringify(data, null, 2);
         // send JSON back to main
         window.electronAPI.msg('save-circuit', json);
     
     } else if (cmd === 'save-fx' && FXInitialized) {
-        // collect all preset data
-        const data: Array<Object> = [FXdata];
+        // collect preset data
+        const f: Object = {
+            'DryWet': DryWetFX.value,
+            'EQ': {
+                'b1': EQBandControl1.value,
+                'b2': EQBandControl2.value,
+                'b3': EQBandControl3.value,
+                'c1': EQCutoffControl1.value,
+                'c2': EQCutoffControl2.value,
+                'Q': EQQControl.value
+            },
+            'DDL': {
+                'dry': DDLDryControl.value,
+                'wet': DDLWetControl.value,
+                'feed': DDLFeedControl.value,
+                'time': DDLTimeControl.value
+            }
+        };
+        // package preset data
+        const data: Array<Object> = [f];
         // convert to JSON string
         const json: string = JSON.stringify(data, null, 2);
         // send JSON back to main
         window.electronAPI.msg('save-fx', json);
 
     } else if (cmd === 'save-all' && macrosInitialized && oscillatorsInitialized && sequencersInitialized && FXInitialized) {
-        // collect all preset data
-        const data: Array<Object> = [macros, FXdata, oscillators, sequencers];
+        // collect preset data
+
+        // macros
+        const m = {
+            'master': masterGain.value,
+            'pan': masterPan.value,
+            'tempo': masterTempo.value,
+            'beatsPerMeasure': masterMeasure.value,
+            'driveMult': DMControl.value,
+            'FortePiano': FPControl.value,
+            'creciendo': CControl.value,
+            'variance': VControl.value,
+            'expressivity': EControl.value,
+            'Sustain': SControl.value,
+            'Attack': LControl.value,
+            'Release': TControl.value
+        };
+        
+        // FX
+        const f: Object = {
+            'DryWet': DryWetFX.value,
+            'EQ': {
+                'b1': EQBandControl1.value,
+                'b2': EQBandControl2.value,
+                'b3': EQBandControl3.value,
+                'c1': EQCutoffControl1.value,
+                'c2': EQCutoffControl2.value,
+                'Q': EQQControl.value
+            },
+            'DDL': {
+                'dry': DDLDryControl.value,
+                'wet': DDLWetControl.value,
+                'feed': DDLFeedControl.value,
+                'time': DDLTimeControl.value
+            }
+        };
+
+        // orchestra (oscillators)
+        const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+        let o: {[key: string]: any} = {};
+        for (const osc of oscsNodeList) {
+            const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+            const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+            const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
+            const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
+            const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+            const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
+            const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
+            const oscType: HTMLInputElement | null = osc.querySelector('.type');
+            if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                o[osc.id] = {
+                    'gain': oscGain.value,
+                    'drive': oscDriv.value,
+                    'driveCharacter': oscDrCh.value,
+                    'oscVoices': oscVoic.value,
+                    'freq': oscFreq.value,
+                    'detune': oscDetu.value,
+                    'wavePartials': oscPart.value,
+                    'waveType': oscType.value,
+                }
+            }
+        }
+
+        // circuit (sequencers)
+        const seqsNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+        let s: {[key: string]: any} = {};
+        for (const seq of seqsNodeList) {
+            const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+            const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+            const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+            const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+            const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+            const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
+            const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+            const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+            const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+            const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+            const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+            const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
+            if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                
+                // get sequence levels
+                // collect Amp level from each stage
+                // collect Filter level from each stage
+                // collect Frequency level from each stage
+                const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                let ampLvls: Array<number> = []; // store levels
+                let filtLvls: Array<number> = []; // store levels
+                let freqLvls: Array<number> = []; // store levels
+                const stages: number = Number(stagesEl.value);
+                const levels: number = Number(levelsEl.value);
+                for (let stage = 0; stage < stages; stage++) { // number of stages should be equal between amp, filt, and freq
+                    const ampStageLevelList: NodeListOf<Element> | undefined = ampLvlsStageList[stage]?.querySelectorAll('div');
+                    const filtStageLevelList: NodeListOf<Element> | undefined = filtLvlsStageList[stage]?.querySelectorAll('div');
+                    const freqStageLevelList: NodeListOf<Element> | undefined = freqLvlsStageList[stage]?.querySelectorAll('div');
+                    // amp leveler
+                    if (ampStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (ampStageLevelList[level]?.classList.contains('level-style')) {
+                            ampLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        ampLvls.push(NaN);
+                    }
+                    // filter leveler
+                    if (filtStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (filtStageLevelList[level]?.classList.contains('level-style')) {
+                            filtLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        filtLvls.push(NaN);
+                    }
+                    // frequency leveler
+                    if (freqStageLevelList) { // get level from stage and store in array
+                        for (let level = 0; level < levels; level++) { if (freqStageLevelList[level]?.classList.contains('level-style')) {
+                            freqLvls.push(level);
+                            break;
+                        }}
+                    } else { // preserve stage number index by NaN placeholder
+                        freqLvls.push(NaN);
+                    }
+                }
+                // append data to object
+                s[seq.id] = {
+                    'stages': stagesEl.value,
+                    'levels': levelsEl.value,
+                    'seqRate': seqRateEl.value,
+                    'type': filterTypeEL.value,
+                    'cutoff': filterCutoffEL.value,
+                    'resonance': filterResonanceEl.value,
+                    'ampMod': ampModEl.value,
+                    'filtMod': filtModEl.value,
+                    'freqMod': freqModEl.value,
+                    'ampLvls': ampLvls,
+                    'filtLvls': filtLvls,
+                    'freqLvls': freqLvls
+                }
+            }
+        }
+
+        // package preset data
+        const data: Array<Object> = [m, f, o, s];
         // convert to JSON string
         const json: string = JSON.stringify(data, null, 2);
         // send JSON back to main
         window.electronAPI.msg('save-all', json);
+    }
+});
+
+// open routes
+window.electronAPI.open((data, dir) => {
+    try {
+        const directory: string = dir;
+        const object: any = JSON.parse(data);
+        if (directory === 'macros') {
+            // data objects
+            const a: any | undefined = object[0]; // macros
+            if (a !== undefined) {
+                // assign data from file
+
+                // macros
+                if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
+                    
+                    masterGain.value = a['master']; // 0 - 100
+                    masterPan.value = a['pan']; // -50 - 50
+                    masterTempo.value = a['tempo']; // 1 - 200
+                    masterMeasure.value = a['beatsPerMeasure']; // 1 - 100
+
+                    DMControl.value = a['driveMult']; // -10 - 30
+                    FPControl.value = a['FortePiano']; // -10 - 30
+                    CControl.value = a['creciendo']; // -10 - 10
+                    VControl.value = a['variance']; // 1 - 10
+            
+                    // ARS Envelope macros
+                    EControl.value = a['expressivity']; // -10 - 10
+                    SControl.value = a['Sustain']; // 1 - 10
+                    LControl.value = a['Attack']; // 1 - 10
+                    TControl.value = a['Release']; // 1 - 10
+
+                    // dispatch events
+                    [masterGain, masterPan, masterTempo, masterMeasure, DMControl, FPControl, EControl, CControl, VControl, SControl, LControl, TControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+            
+                } else {
+                    console.error('macro display failed during preset load');
+                }
+
+            } else {
+                console.error('data not found in open macros');
+            }
+        } else if (directory === 'orchestra') {
+            // unpack data object
+            const c: any | undefined = object[0]; // oscillators
+            if (c !== undefined) {
+                // assign data from file
+
+                // Oscillators
+                const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+                const oscsKeys: Array<string> = Object.keys(c);
+                let index: number = 0;
+                for (const osc of oscsNodeList) {
+                    const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+                    const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+                    const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
+                    const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
+                    const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+                    const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
+                    const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
+                    const oscType: HTMLInputElement | null = osc.querySelector('.type');
+                    if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                        // update parameters with preset data
+                        const key: string | undefined = oscsKeys[index];
+                        if (key !== undefined) {
+                            const o = c[key];
+                            oscGain.value = o.gain; // 0 - 99
+                            oscDriv.value = o.drive; // 0 - 100, 0 == bypass
+                            oscDrCh.value = o.driveCharacter; // gusto flavor
+                            oscVoic.value = o.oscVoices; // 0 - 3, data adds 1 (plurals are additional voices to a first voice)
+                            oscType.value = o.waveType; // waveform type
+                            oscPart.value = `${o.wavePartials}`; // 4 - 4096, waveform partials
+                            oscFreq.value = `${o.freq}`; // 20 - 20,000
+                            oscDetu.value = `${o.detune}`; // -24 - 24
+        
+                            // dispatch events
+                            [oscGain, oscDriv, oscDrCh, oscVoic, oscType, oscPart, oscFreq, oscDetu].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        } else {
+                            console.error('oscillator data not found during preset load');
+                        }
+                    } else {
+                        console.error('parameter elements not found during preset load');
+                    }
+                    index += 1;
+                }
+
+            } else {
+                console.error('data not found in open orchestra');
+            }
+
+        } else if (directory === 'circuit') {
+            // unpack data object
+            const d: any | undefined = object[0]; // sequencers
+            if (d !== undefined) {
+                // assign data from file
+
+                // Sequencers
+                const seqNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+                const seqsKeys: Array<string> = Object.keys(d);
+                let index: number = 0;
+                for (const seq of seqNodeList) {
+                    const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+                    const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+                    const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+                    const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+                    const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+                    const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
+                    const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+                    const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+                    const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+                    const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+                    const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+                    const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
+                    
+                    if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                        const key: string | undefined = seqsKeys[index];
+                        if (key !== undefined) {
+                            const s = d[key];
+                            stagesEl.value = s.stages;
+                            levelsEl.value = s.levels;
+                            seqRateEl.value = s.seqRate;
+                            filterTypeEL.value = s.type;
+                            filterCutoffEL.value = s.cutoff;
+                            filterResonanceEl.value = s.resonance;
+                            ampModEl.value = s.ampMod;
+                            filtModEl.value = s.filtMod;
+                            freqModEl.value = s.freqMod;
+
+                            // rerender levelers
+                            const sequenceEl = document.getElementById(`${seq.id}`);
+                            if (sequenceEl) {
+                                const containers = sequenceEl.querySelectorAll('.leveler-layout');
+                                for (const container of containers) {
+                                    renderLeveler(Number(s.stages), Number(s.levels), container);
+                                }
+                            }
+
+                            const ampList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            let i: number = 0;
+                            ampList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            const filtList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            filtList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.filtLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            const freqList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            freqList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            // dispatch events
+                            [stagesEl, levelsEl, seqRateEl, filterTypeEL, filterCutoffEL, filterResonanceEl, ampModEl, filtModEl, freqModEl].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        } else {
+                            console.error('sequencer data not found during preset load');
+                        }
+                    } else {
+                        console.error('sequencer parameter not found during preset load');
+                    }
+                    index += 1;
+                }
+
+            } else {
+                console.error('data not found in open circuit');
+            }
+        } else if (directory === 'fx') {
+            // data objects
+            const b: any | undefined = object[0]; // FX
+            if (b !== undefined) {
+                // assign data from file
+
+                // FX
+                if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+                    // main controls
+                    DryWetFX.value = b['DryWet']; // -50 - 50
+                    // EQ
+                    EQBandControl1.value = b['EQ']['b1']; // 1 - 100
+                    EQBandControl2.value = b['EQ']['b2']; // 1 - 100
+                    EQBandControl3.value = b['EQ']['b3']; // 1 - 100
+                    EQCutoffControl1.value = b['EQ']['c1']; // 100 - 20000
+                    EQCutoffControl2.value = b['EQ']['c2']; // 100 - 20000
+                    EQQControl.value = b['EQ']['Q']; // 1 - 100
+                    // DDL
+                    DDLDryControl.value = b['DDL']['dry']; // 0 - 100
+                    DDLWetControl.value = b['DDL']['wet']; // 0 - 100
+                    DDLFeedControl.value = b['DDL']['feed']; // 1 - 99 
+                    DDLTimeControl.value = b['DDL']['time']; // 0 - 3000 milliseconds
+
+                    // dispatch events
+                    [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+
+                } else {
+                    console.error('FX parameter not found during preset load');
+                }
+
+            } else {
+                console.error('data not found in open FX');
+            }
+        
+        } else if (directory === 'all') {
+            // unpack data objects
+            const a: any | undefined = object[0]; // macros
+            const b: any | undefined = object[1]; // FX
+            const c: any | undefined = object[2]; // oscillators
+            const d: any | undefined = object[3]; // sequencers
+            if (a !== undefined && b !== undefined && c !== undefined && d !== undefined) {
+                // assign data from file
+
+                // macros
+                if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
+                    
+                    masterGain.value = a['master']; // 0 - 100
+                    masterPan.value = a['pan']; // -50 - 50
+                    masterTempo.value = a['tempo']; // 1 - 200
+                    masterMeasure.value = a['beatsPerMeasure']; // 1 - 100
+
+                    DMControl.value = a['driveMult']; // -10 - 30
+                    FPControl.value = a['FortePiano']; // -10 - 30
+                    CControl.value = a['creciendo']; // -10 - 10
+                    VControl.value = a['variance']; // 1 - 10
+            
+                    // ARS Envelope macros
+                    EControl.value = a['expressivity']; // -10 - 10
+                    SControl.value = a['Sustain']; // 1 - 10
+                    LControl.value = a['Attack']; // 1 - 10
+                    TControl.value = a['Release']; // 1 - 10
+
+                    // dispatch events
+                    [masterGain, masterPan, masterTempo, masterMeasure, DMControl, FPControl, EControl, CControl, VControl, SControl, LControl, TControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+            
+                } else {
+                    console.error('macro display failed during preset load');
+                }
+
+                // FX
+                if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+                    // main controls
+                    DryWetFX.value = b['DryWet']; // -50 - 50
+                    // EQ
+                    EQBandControl1.value = b['EQ']['b1']; // 1 - 100
+                    EQBandControl2.value = b['EQ']['b2']; // 1 - 100
+                    EQBandControl3.value = b['EQ']['b3']; // 1 - 100
+                    EQCutoffControl1.value = b['EQ']['c1']; // 100 - 20000
+                    EQCutoffControl2.value = b['EQ']['c2']; // 100 - 20000
+                    EQQControl.value = b['EQ']['Q']; // 1 - 100
+                    // DDL
+                    DDLDryControl.value = b['DDL']['dry']; // 0 - 100
+                    DDLWetControl.value = b['DDL']['wet']; // 0 - 100
+                    DDLFeedControl.value = b['DDL']['feed']; // 1 - 99 
+                    DDLTimeControl.value = b['DDL']['time']; // 0 - 3000 milliseconds
+
+                    // dispatch events
+                    [DryWetFX, EQBandControl1, EQBandControl2, EQBandControl3, EQCutoffControl1, EQCutoffControl2, EQQControl, DDLDryControl, DDLWetControl, DDLFeedControl, DDLTimeControl].forEach((element) => {
+                        const inputEvent = new Event('input', {
+                            bubbles: true,
+                            cancelable: true
+                        });
+                        element.dispatchEvent(inputEvent);
+                    });
+
+                } else {
+                    console.error('FX parameter not found during preset load');
+                }
+
+                // Oscillators
+                const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+                const oscsKeys: Array<string> = Object.keys(c);
+                let index: number = 0;
+                for (const osc of oscsNodeList) {
+                    const oscGain: HTMLInputElement | null = osc.querySelector('.amplitude');
+                    const oscDriv: HTMLInputElement | null = osc.querySelector('.drive');
+                    const oscDrCh: HTMLInputElement | null = osc.querySelector('.drive-character');
+                    const oscVoic: HTMLInputElement | null = osc.querySelector('.voices');
+                    const oscFreq: HTMLInputElement | null = osc.querySelector('.frequency');
+                    const oscDetu: HTMLInputElement | null = osc.querySelector('.detune');
+                    const oscPart: HTMLInputElement | null = osc.querySelector('.partials');
+                    const oscType: HTMLInputElement | null = osc.querySelector('.type');
+                    if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
+                        // update parameters with preset data
+                        const key: string | undefined = oscsKeys[index];
+                        if (key !== undefined) {
+                            const o = c[key];
+                            oscGain.value = o.gain; // 0 - 99
+                            oscDriv.value = o.drive; // 0 - 100, 0 == bypass
+                            oscDrCh.value = o.driveCharacter; // gusto flavor
+                            oscVoic.value = o.oscVoices; // 0 - 3, data adds 1 (plurals are additional voices to a first voice)
+                            oscType.value = o.waveType; // waveform type
+                            oscPart.value = `${o.wavePartials}`; // 4 - 4096, waveform partials
+                            oscFreq.value = `${o.freq}`; // 20 - 20,000
+                            oscDetu.value = `${o.detune}`; // -24 - 24
+        
+                            // dispatch events
+                            [oscGain, oscDriv, oscDrCh, oscVoic, oscType, oscPart, oscFreq, oscDetu].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        } else {
+                            console.error('oscillator data not found during preset load');
+                        }
+                    } else {
+                        console.error('parameter elements not found during preset load');
+                    }
+                    index += 1;
+                }
+
+                // Sequencers
+                const seqNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
+                const seqsKeys: Array<string> = Object.keys(d);
+                index = 0;
+                for (const seq of seqNodeList) {
+                    const stagesEl: HTMLInputElement | null = seq.querySelector('.stages');
+                    const levelsEl: HTMLInputElement | null = seq.querySelector('.stage-levels');
+                    const seqRateEl: HTMLInputElement | null = seq.querySelector('.sequence-rate');
+                    const filterTypeEL: HTMLInputElement | null = seq.querySelector('.filter-type');
+                    const filterCutoffEL: HTMLInputElement | null = seq.querySelector('.filter-cutoff');
+                    const filterResonanceEl: HTMLInputElement | null = seq.querySelector('.filter-resonance');
+                    const ampModEl: HTMLInputElement | null = seq.querySelector('.amp-mod');
+                    const filtModEl: HTMLInputElement | null = seq.querySelector('.filt-mod');
+                    const freqModEl: HTMLInputElement | null = seq.querySelector('.freq-mod');
+                    const ampSeqLvlsContEl: HTMLElement | null = seq.querySelector('.amp-sequence-leveler-container');
+                    const filtSeqLvlsContEl: HTMLElement | null = seq.querySelector('.filt-sequence-leveler-container');
+                    const freqSeqLvlsContEl: HTMLElement | null = seq.querySelector('.freq-sequence-leveler-container');
+                    
+                    if (stagesEl && levelsEl && seqRateEl && filterTypeEL && filterCutoffEL && filterResonanceEl && ampModEl && filtModEl && freqModEl && ampSeqLvlsContEl && filtSeqLvlsContEl && freqSeqLvlsContEl) {
+                        const key: string | undefined = seqsKeys[index];
+                        if (key !== undefined) {
+                            const s = d[key];
+                            stagesEl.value = s.stages;
+                            levelsEl.value = s.levels;
+                            seqRateEl.value = s.seqRate;
+                            filterTypeEL.value = s.type;
+                            filterCutoffEL.value = s.cutoff;
+                            filterResonanceEl.value = s.resonance;
+                            ampModEl.value = s.ampMod;
+                            filtModEl.value = s.filtMod;
+                            freqModEl.value = s.freqMod;
+
+                            // rerender levelers
+                            const sequenceEl = document.getElementById(`${seq.id}`);
+                            if (sequenceEl) {
+                                const containers = sequenceEl.querySelectorAll('.leveler-layout');
+                                for (const container of containers) {
+                                    renderLeveler(Number(s.stages), Number(s.levels), container);
+                                }
+                            }
+
+                            const ampList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            let i: number = 0;
+                            ampList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            const filtList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            filtList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.filtLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            const freqList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
+                            i = 0;
+                            freqList.forEach((stage: Element) => {
+                                // remove current level
+                                stage.querySelector('.level-style')?.classList.remove('level-style');
+                                // get levels in stage
+                                const stageLevels: NodeListOf<Element> = stage.querySelectorAll('div');
+                                // select level in stage
+                                stageLevels[s.ampLvls[i]]?.classList.add('level-style');
+                                i += 1;
+                            });
+
+                            // dispatch events
+                            [stagesEl, levelsEl, seqRateEl, filterTypeEL, filterCutoffEL, filterResonanceEl, ampModEl, filtModEl, freqModEl].forEach((element) => {
+                                const inputEvent = new Event('input', {
+                                    bubbles: true,
+                                    cancelable: true
+                                });
+                                element.dispatchEvent(inputEvent);
+                            });
+                        } else {
+                            console.error('sequencer data not found during preset load');
+                        }
+                    } else {
+                        console.error('sequencer parameter not found during preset load');
+                    }
+                    index += 1;
+                }
+
+            } else {
+                console.error('data not found in open all');
+            }
+
+        } else {
+            console.error('open directory not found');
+        }
+    } catch (err) {
+        console.error(err);
     }
 });
 
@@ -730,11 +1474,15 @@ function initMacros(): void {
     macros['Attack'] = 3; // 1 - 10
     macros['Release'] = 10; // 1 - 10
     macros['Sustain'] = 3.5; // 1 - 10
-
+    
     // display
-    if (masterGain && masterPan && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
+
+    if (masterGain && masterPan && masterTempo && masterMeasure && DMControl && FPControl && EControl && CControl && VControl && SControl && LControl && TControl) { // test element integrity
         masterGain.value = '100'; // 0 - 100
         masterPan.value = '0'; // -50 - 50
+        masterTempo.value = '0'; // 1 - 200
+        masterMeasure.value = '0'; // 1 - 100
+
         DMControl.value = '0'; // -10 - 30
         FPControl.value = '30'; // -10 - 30
         CControl.value = '0'; // -10 - 10
@@ -747,26 +1495,70 @@ function initMacros(): void {
         TControl.value = '5'; // 1 - 10
 
     } else {
-        console.log('macro display initialization failed');
+        console.error('macro display failed during initialization');
     }
     
     // update status
     macrosInitialized = true;
 };
 
+function initFX(): void {
+    // model
+    FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
+    FXdata['EQ'] = {
+        'b1': 1,    // 0 - 1
+        'b2': .75,  // 0 - 1
+        'b3': .63,  // 0 - 1
+        'c1': 500,  // hertz, 100 - 20000
+        'c2': 3000, // hertz, 100 - 20000
+        'Q': .1,    // .1 - 10
+    };
+    FXdata['DDL'] = {
+        'dry': 1,     // 0 - 1
+        'wet': 0,     // 0 - 1
+        'feed': .63,  // .01 - .99 (loss per feedback)
+        'time': .3,   // .001 - 3 (seconds)
+    };
+
+    // display
+    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
+        // main controls
+        DryWetFX.value = '0'; // -50 - 50
+        // EQ
+        EQBandControl1.value = '100'; // 1 - 100
+        EQBandControl2.value = '75'; // 1 - 100
+        EQBandControl3.value = '63'; // 1 - 100
+        EQCutoffControl1.value = '500'; // 100 - 20000
+        EQCutoffControl2.value = '3000'; // 100 - 20000
+        EQQControl.value = '1'; // 1 - 100
+        // DDL
+        DDLDryControl.value = '100'; // 0 - 100
+        DDLWetControl.value = '0'; // 0 - 100
+        DDLFeedControl.value = '63'; // 1 - 99 
+        DDLTimeControl.value = '300'; // 0 - 3000 milliseconds
+    } else {
+        console.error('FX parameter not found during initialization');
+    }
+    
+    // update status
+    FXInitialized = true;
+};
+
 function initOscillators(): void {
-    oscillators = {}; // delete old data
     const oscsNodeList: NodeListOf<Element> = document.querySelectorAll('.oscs');
+    
+    // Model parameters
+    const gain: number = 0.244089621695242;
+    const frequency: number = 261.6; // 65.4, 130.8, 261.6, 523.2, 1046.4
+    const detune: number = -3;
+    const partials: number = 256;
+    
     let count: number = 0;
     for (const osc of oscsNodeList) {
         count += 1;
-
-        // Model parameters
-        const gain: number = 0.244089621695242;
-        const frequency: number = 261.6; // 65.4, 130.8, 261.6, 523.2, 1046.4
-        const detune: number = -3;
-        const partials: number = 256;
-
+        
+        // Model
+        // oscillators = {}; // ensure empty structure
         // Generate a unique string
         const unique: string | undefined = crypto.randomUUID().split('-')[0];
         if (typeof unique === 'string') {
@@ -821,11 +1613,13 @@ function initOscillators(): void {
                 'freq':freqCalc, // 20 - 20,000
                 'detune':detune, // -24 - 24
                 'waveform':waveform, // periodic waveform
-                'meterID': `meter-${count}`,
+                'waveType':'triangle', // wave type string
+                'wavePartials':partials, // wave partials
+                'meterID':`meter-${count}`,
             };
 
         } else {
-            console.log('Oscillator ID generation failed during initialization');
+            console.error('Oscillator ID generation failed during initialization');
         }
 
         // Display
@@ -842,18 +1636,18 @@ function initOscillators(): void {
 
         // test oscilator element integrity + OSC ID
         if (oscGain && oscDriv && oscDrCh && oscVoic && oscFreq && oscDetu && oscPart && oscType) {
-            // set Oscillator parameters to default
+            
+            // set Oscillator parameters
             oscGain.value = '50'; // 0 - 99
             oscDriv.value = '0'; // 0 - 100, 0 == bypass
             oscDrCh.value = 'Serpentine'; // gusto flavor
             oscVoic.value = '2'; // 0 - 3, data adds 1 (plurals are additional voices to a first voice)
+            oscType.value = 'triangle';
+            oscPart.value = `${partials}`; // 4 - 4096
             oscFreq.value = `${frequency}`; // 20 - 20,000
             oscDetu.value = `${detune}`; // -24 - 24
-            oscPart.value = `${partials}`; // 4 - 4096
-            oscType.value = 'triangle';
-
         } else {
-            console.log('parameter elements not found during initialization');
+            console.error('parameter elements not found during initialization');
         }
     }
 
@@ -865,9 +1659,8 @@ function initSequencers(): void {
     const seqNodeList: NodeListOf<Element> = document.querySelectorAll('.seqs');
     let count: number = 0;
     for (const seq of seqNodeList) {
-        count += 1;
-        
         // Model
+        count += 1;
 
         // Generate a unique Sequencer ID
         const unique: string | undefined = crypto.randomUUID().split('-')[0];
@@ -895,9 +1688,9 @@ function initSequencers(): void {
                 'freqLvls':[0, 0, 0, 0],
             };
         } else {
-            console.log('Sequencer ID generation failed during initialization');
+            console.error('Sequencer ID generation failed during initialization');
         }
-
+        
         // Display
 
         // Sequencer Elements
@@ -950,54 +1743,12 @@ function initSequencers(): void {
             });
 
         } else {
-            console.log('Sequencer parameter not found during initialization');
-        }    
+            console.error('Sequencer parameter not found during initialization');
+        }
     }
 
     // update status
     sequencersInitialized = true;
-};
-
-function initFX(): void {
-    // model
-    FXdata['DryWet'] = 0; // 0 - 2: 0 = 100% dry, 2 = 100% wet
-    FXdata['EQ'] = {
-        'b1': 1,    // 0 - 1
-        'b2': .75,  // 0 - 1
-        'b3': .63,  // 0 - 1
-        'c1': 500,  // hertz, 100 - 20000
-        'c2': 3000, // hertz, 100 - 20000
-        'Q': .1,    // .1 - 10
-    };
-    FXdata['DDL'] = {
-        'dry': 1,     // 0 - 1
-        'wet': 0,     // 0 - 1
-        'feed': .63,  // .01 - .99 (loss per feedback)
-        'time': .3,   // .001 - 3 (seconds)
-    };
-
-    // display
-    if (DryWetFX && EQBandControl1 && EQBandControl2 && EQBandControl3 && EQCutoffControl1 && EQCutoffControl2 && EQQControl && DDLDryControl && DDLWetControl && DDLFeedControl && DDLTimeControl) {
-        // main controls
-        DryWetFX.value = '0'; // -50 - 50
-        // EQ
-        EQBandControl1.value = '100'; // 1 - 100
-        EQBandControl2.value = '75'; // 1 - 100
-        EQBandControl3.value = '63'; // 1 - 100
-        EQCutoffControl1.value = '500'; // 100 - 20000
-        EQCutoffControl2.value = '3000'; // 100 - 20000
-        EQQControl.value = '1'; // 1 - 100
-        // DDL
-        DDLDryControl.value = '100'; // 0 - 100
-        DDLWetControl.value = '0'; // 0 - 100
-        DDLFeedControl.value = '63'; // 1 - 99 
-        DDLTimeControl.value = '300'; // 0 - 3000 milliseconds
-    } else {
-        console.log('FX parameter not found during initialization');
-    }
-
-    // update status
-    FXInitialized = true;
 };
 
 function initAnalysis(): void {
@@ -1421,6 +2172,7 @@ function updateOscillator(oscID: string): boolean {
                 
                 // assign new oscillator data to initialized structure
                 oscillators[oscID]['waveform'] = waveform;
+                oscillators[oscID]['waveType'] = oscType; // keep wave type to prevent expensive analysis on waveform
                 oscillators[oscID]['oscVoices'] = voiceVal + 1; // voiceVal is additional voices to first
                 oscillators[oscID]['gain'] = gainVal;
                 oscillators[oscID]['drive'] = driveVal;
@@ -1489,16 +2241,16 @@ function updateSequence(seqID: string): boolean {
                 const filtMod: number = Number(filtModEl.value);
                 const freqMod: number = Number(freqModEl.value);
 
-                // collect Amp level from each bar
-                // collect Filter level from each bar
-                // collect Frequency level from each bar
+                // collect Amp level from each stage
+                // collect Filter level from each stage
+                // collect Frequency level from each stage
                 const ampLvlsStageList: NodeListOf<Element> = ampSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
                 const filtLvlsStageList: NodeListOf<Element> = filtSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
                 const freqLvlsStageList: NodeListOf<Element> = freqSeqLvlsContEl.querySelectorAll('.leveler-stage-style');
                 let ampLvls: Array<number> = []; // store levels
                 let filtLvls: Array<number> = []; // store levels
                 let freqLvls: Array<number> = []; // store levels
-                for (let stage = 0; stage < stages; stage++) { // number of levels (stages) should be equal between amp, filt, and freq
+                for (let stage = 0; stage < stages; stage++) { // number of stages should be equal between amp, filt, and freq
                     const ampStageLevelList: NodeListOf<Element> | undefined = ampLvlsStageList[stage]?.querySelectorAll('div');
                     const filtStageLevelList: NodeListOf<Element> | undefined = filtLvlsStageList[stage]?.querySelectorAll('div');
                     const freqStageLevelList: NodeListOf<Element> | undefined = freqLvlsStageList[stage]?.querySelectorAll('div');
@@ -2954,7 +3706,7 @@ async function setup(): Promise<void> {
                 }
             }
         } else {
-            console.log('oscillator elements not found during listener setup');
+            console.error('oscillator elements not found during listener setup');
         }
 
         // Sequencer events
@@ -2973,7 +3725,7 @@ async function setup(): Promise<void> {
                 }
             }
         } else {
-            console.log('sequencer elements not found during listener setup');
+            console.error('sequencer elements not found during listener setup');
         }
 
         // FX Chain
@@ -3009,7 +3761,7 @@ async function setup(): Promise<void> {
         
 
     } else {
-        console.log('Element Integrity Degraded during listener setup');
+        console.error('Element Integrity Degraded during listener setup');
     }
 };
 setup();

@@ -7,9 +7,13 @@ const {contextBridge} = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // .send() renderer to main, .on() main to renderer
+  // .invoke() sends and awaits a promise of response
   msg: (channel: string, message: string) => ipcRenderer.send(channel, message),
   res: (callback: (data: any) => void) => {
     ipcRenderer.on('main-channel', (_event: any, value: any) => callback(value));
     ipcRenderer.on('save-channel', (_event: any, value: any) => callback(value));
   },
+  open: (callback: (data: any, dir: string) => void) => {
+    ipcRenderer.on('open-channel', (_event: any, data: any, dir: string) => callback(data, dir));
+  }
 });

@@ -141,7 +141,33 @@ app.whenReady().then(() => {
         {
           label: 'Open',
           accelerator: 'CmdOrCtrl+O',
-          click: () => { console.log('Open'); }
+          click: async () => {
+            // create directory if it doesn't already exist
+            const directory = path.join(app.getPath('userData'), 'presets');
+            if (!fssync.existsSync(directory)) {
+              fssync.mkdirSync(directory, { recursive: true });
+            }
+
+            
+            // prompt user with save dialog
+            const { filePaths, canceled } = await dialog.showOpenDialog({
+              title: 'Open Preset',
+              buttonLabel: 'load',
+              defaultPath: path.join(app.getPath('userData'), 'presets', 'preset.json'),
+              filters: [{ name: 'JSON Files', extensions: ['json'] }],
+              properties: ['openFile']
+            });
+            if (canceled || filePaths.length === 0) return { success: false };
+            
+            // open file from file path chosen by user
+            try {
+              const json = await fs.readFile(filePaths[0], 'utf-8');
+              win.webContents.send('open-channel', json, path.basename(path.dirname(filePaths[0])));
+              return { success: true };
+            } catch (error) {
+              return { success: false, error: error.message };
+            }
+          }
         },
         {
           label: 'Save Preset',
@@ -152,7 +178,7 @@ app.whenReady().then(() => {
           }
         },
         {
-          label: 'Save Macros',
+          label: 'Save Macro',
           // accelerator: 'CmdOrCtrl+Shift+M',
           click: () => {
             // send request to renderer for save data, and file name
@@ -227,8 +253,8 @@ ipcMain.on('save-macros', async (event, json) => {
 
   // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
-    title: 'Macros Preset',
-    buttonLabel: 'save macros',
+    title: 'Macro Preset',
+    buttonLabel: 'save preset',
     defaultPath: path.join(app.getPath('userData'), 'presets', 'macros', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
@@ -254,7 +280,7 @@ ipcMain.on('save-orchestra', async (event, json) => {
   // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
     title: 'Orchestra Preset',
-    buttonLabel: 'save orchestra',
+    buttonLabel: 'save preset',
     defaultPath: path.join(app.getPath('userData'), 'presets', 'orchestra', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
@@ -280,7 +306,7 @@ ipcMain.on('save-circuit', async (event, json) => {
   // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
     title: 'Circuit Preset',
-    buttonLabel: 'save circuit',
+    buttonLabel: 'save preset',
     defaultPath: path.join(app.getPath('userData'), 'presets', 'circuit', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
@@ -306,7 +332,7 @@ ipcMain.on('save-fx', async (event, json) => {
   // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
     title: 'FX preset',
-    buttonLabel: 'save FX',
+    buttonLabel: 'save preset',
     defaultPath: path.join(app.getPath('userData'), 'presets', 'fx', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
@@ -333,7 +359,7 @@ ipcMain.on('save-all', async (event, json) => {
   // prompt user with save dialog
   const { filePath, canceled } = await dialog.showSaveDialog({
     title: 'All Preset',
-    buttonLabel: 'save all',
+    buttonLabel: 'save preset',
     defaultPath: path.join(app.getPath('userData'), 'presets', 'all', 'preset.json'),
     filters: [{ name: 'JSON Files', extensions: ['json'] }]
   });
